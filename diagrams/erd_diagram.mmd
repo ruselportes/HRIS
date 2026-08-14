@@ -1,0 +1,129 @@
+erDiagram
+    PROJECT_SITES ||--o{ CREWS : hosts
+    USERS ||--o{ EMPLOYEES : manages
+    EMPLOYEES ||--o{ CREW_MEMBERS : assigned_to
+    CREWS ||--o{ CREW_MEMBERS : contains
+    USERS ||--o{ CREWS : leads
+    
+    CREWS ||--o{ ATTENDANCE_BATCHES : submits
+    ATTENDANCE_BATCHES ||--o{ ATTENDANCE_LOGS : contains
+    EMPLOYEES ||--o{ ATTENDANCE_LOGS : records
+    
+    ATTENDANCE_BATCHES ||--|| TIME_ANCHORS : references
+    EMPLOYEES ||--o{ OVERTIME_REQUESTS : files
+    EMPLOYEES ||--o{ LEAVE_REQUESTS : files
+    
+    PAYROLL_PERIODS ||--o{ PAYROLL_RECORDS : generates
+    EMPLOYEES ||--o{ PAYROLL_RECORDS : receives
+
+    USERS {
+        int id PK
+        string name
+        string email
+        string password
+        enum role "ADMIN, HR, ENGINEER, FOREMAN"
+        datetime created_at
+    }
+
+    PROJECT_SITES {
+        int id PK
+        string site_code
+        string site_name
+        string location_address
+        double latitude
+        double longitude
+        enum status "ACTIVE, COMPLETED"
+    }
+
+    EMPLOYEES {
+        int id PK
+        string employee_number UK
+        string first_name
+        string last_name
+        string trade_skill "MASON, CARPENTER, STEELMAN, HELPER"
+        decimal daily_rate
+        string contact_number
+        enum status "ACTIVE, INACTIVE"
+    }
+
+    CREWS {
+        int id PK
+        string crew_name
+        int project_site_id FK
+        int foreman_user_id FK
+    }
+
+    CREW_MEMBERS {
+        int id PK
+        int crew_id FK
+        int employee_id FK
+        datetime assigned_date
+    }
+
+    TIME_ANCHORS {
+        int id PK
+        string device_uuid
+        bigint server_timestamp_ms
+        bigint monotonic_clock_ms
+        string anchor_signature
+    }
+
+    ATTENDANCE_BATCHES {
+        int id PK
+        int crew_id FK
+        int foreman_id FK
+        date attendance_date
+        bigint monotonic_submission_ms
+        string batch_hash_final
+        string tee_signature
+        enum sync_status "PENDING, SYNCED, REJECTED"
+        enum audit_flag "NORMAL, FOREMAN_LATE, RECOVERY"
+    }
+
+    ATTENDANCE_LOGS {
+        int id PK
+        int batch_id FK
+        int employee_id FK
+        time claimed_time_in
+        time claimed_time_out
+        enum status "PRESENT, ABSENT, LATE, HALF_DAY"
+        string hmac_hash
+        int sequence_number
+    }
+
+    OVERTIME_REQUESTS {
+        int id PK
+        int employee_id FK
+        date ot_date
+        decimal hours_requested
+        enum ot_type "REGULAR, REST_DAY, HOLIDAY, NIGHT_DIFF"
+        enum status "PENDING, APPROVED, REJECTED"
+    }
+
+    LEAVE_REQUESTS {
+        int id PK
+        int employee_id FK
+        enum leave_type "VACATION, SICK, EMERGENCY"
+        date start_date
+        date end_date
+        enum status "PENDING, APPROVED, REJECTED"
+    }
+
+    PAYROLL_PERIODS {
+        int id PK
+        date period_start
+        date period_end
+        date payout_date
+        enum status "DRAFT, APPROVED, DISBURSED"
+    }
+
+    PAYROLL_RECORDS {
+        int id PK
+        int payroll_period_id FK
+        int employee_id FK
+        decimal total_days_worked
+        decimal basic_pay
+        decimal overtime_pay
+        decimal deductions
+        decimal net_pay
+    }

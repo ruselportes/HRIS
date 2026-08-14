@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HRIS System UI Prototypes (PR-01 to PR-15)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --panel: #111726;
+      --card: rgba(22, 30, 46, 0.95);
+      --border: rgba(255, 255, 255, 0.1);
+      --cyan: #00f2fe;
+      --blue: #4facfe;
+      --green: #00e676;
+      --amber: #ffab00;
+      --red: #ff5252;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; padding: 2rem; }
+    .prototype-container { max-width: 1000px; margin: 0 auto 4rem auto; background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+    .proto-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.5rem; }
+    .proto-title { font-size: 1.3rem; font-weight: 700; color: var(--cyan); }
+    .proto-tag { background: rgba(0,242,254,0.1); border: 1px solid var(--cyan); color: var(--cyan); padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; font-weight: 700; }
+    
+    /* UI Element Components */
+    .mock-window { background: #0c101d; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .mock-bar { background: #161e2e; padding: 0.6rem 1rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid var(--border); }
+    .mock-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .mock-dot.red { background: #ff5f56; } .mock-dot.yellow { background: #ffbd2e; } .mock-dot.green { background: #27c93f; }
+    .mock-body { padding: 1.5rem; }
+    
+    /* Table & Forms */
+    .mock-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9rem; }
+    .mock-table th, .mock-table td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); text-align: left; }
+    .mock-table th { background: rgba(255,255,255,0.03); color: var(--cyan); text-transform: uppercase; font-size: 0.75rem; }
+    
+    .btn { padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; }
+    .btn-cyan { background: linear-gradient(135deg, var(--cyan), var(--blue)); color: #000; }
+    .btn-green { background: var(--green); color: #000; }
+    .btn-amber { background: var(--amber); color: #000; }
+    .btn-red { background: var(--red); color: #fff; }
+    
+    .badge-status { padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+    .badge-status.active { background: rgba(0,230,118,0.15); color: var(--green); border: 1px solid var(--green); }
+    .badge-status.pending { background: rgba(255,171,0,0.15); color: var(--amber); border: 1px solid var(--amber); }
+    
+    /* Mobile Mockup */
+    .mobile-frame { width: 340px; margin: 0 auto; background: #000; border: 10px solid #1f2937; border-radius: 36px; padding: 1rem; color: #fff; box-shadow: 0 15px 30px rgba(0,0,0,0.7); }
+    .mobile-header { text-align: center; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); margin-bottom: 1rem; font-weight: 700; color: var(--cyan); font-size: 0.95rem; }
+    .checklist-item { background: #161e2e; border: 1px solid var(--border); padding: 0.75rem; border-radius: 8px; margin-bottom: 0.6rem; display: flex; justify-content: space-between; align-items: center; }
+  </style>
+</head>
+<body>
+
+  <!-- PR-01: User Management & RBAC -->
+  <div id="pr-01" class="prototype-container">
+    <div class="proto-header">
+      <div class="proto-title">PR-01: User Management & Role-Based Access Control (RBAC) UI</div>
+      <div class="proto-tag">FR-01 Prototype</div>
+    </div>
+    <div class="mock-window">
+      <div class="mock-bar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span> <small style="color:var(--muted); margin-left:10px;">hris.arcenasdev.com/admin/users</small></div>
+      <div class="mock-body">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3>System User Accounts & Role Permissions</h3>
+          <button class="btn btn-cyan">+ Add New System User</button>
+        </div>
+        <table class="mock-table">
+          <thead><tr><th>User ID</th><th>Name</th><th>Email</th><th>Assigned Role</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr><td>#USR-001</td><td>Engr. Clark Villamor</td><td>clark.villamor@arcenas.com</td><td><span class="badge-status active">SITE ENGINEER</span></td><td>Active</td><td><button class="btn btn-amber">Edit Permissions</button></td></tr>
+            <tr><td>#USR-002</td><td>Jay Mark Reños</td><td>jaymark.renos@arcenas.com</td><td><span class="badge-status active">HR OFFICER</span></td><td>Active</td><td><button class="btn btn-amber">Edit Permissions</button></td></tr>
+            <tr><td>#USR-003</td><td>Efren Cabudbud Jr.</td><td>efren.cabudbud@arcenas.com</td><td><span class="badge-status active">SITE FOREMAN</span></td><td>Active</td><td><button class="btn btn-amber">Edit Permissions</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR-02: Worker Registry -->
+  <div id="pr-02" class="prototype-container">
+    <div class="proto-header">
+      <div class="proto-title">PR-02: Employee Profile & Trade Skill Registry UI</div>
+      <div class="proto-tag">FR-02 Prototype</div>
+    </div>
+    <div class="mock-window">
+      <div class="mock-bar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><small style="color:var(--muted); margin-left:10px;">hris.arcenasdev.com/hr/employees</small></div>
+      <div class="mock-body">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3>Construction Worker Master Registry</h3>
+          <button class="btn btn-cyan">+ Register New Worker</button>
+        </div>
+        <table class="mock-table">
+          <thead><tr><th>Worker ID</th><th>Full Name</th><th>Trade Specialization</th><th>Daily Base Rate</th><th>Emergency Contact</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>#EMP-101</td><td>Juan Dela Cruz</td><td>Master Mason (Class A)</td><td>₱750.00 / day</td><td>+63 917 123 4567</td><td><span class="badge-status active">ACTIVE</span></td></tr>
+            <tr><td>#EMP-102</td><td>Pedro Penduko</td><td>Senior Steelman</td><td>₱800.00 / day</td><td>+63 918 987 6543</td><td><span class="badge-status active">ACTIVE</span></td></tr>
+            <tr><td>#EMP-103</td><td>Jose Rizal</td><td>General Helper</td><td>₱550.00 / day</td><td>+63 920 456 7890</td><td><span class="badge-status active">ACTIVE</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR-03: Crew Assignment Board -->
+  <div id="pr-03" class="prototype-container">
+    <div class="proto-header">
+      <div class="proto-title">PR-03: Project Site Crew Assignment & Deployment Board UI</div>
+      <div class="proto-tag">FR-03 Prototype</div>
+    </div>
+    <div class="mock-window">
+      <div class="mock-bar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><small style="color:var(--muted); margin-left:10px;">hris.arcenasdev.com/engineer/crews</small></div>
+      <div class="mock-body">
+        <h3>Site Crew Deployment Board — Arcenas Commercial Tower Site</h3>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; margin-top:1rem;">
+          <div style="background:#161e2e; padding:1rem; border-radius:10px; border:1px solid var(--border);">
+            <h4 style="color:var(--cyan); margin-bottom:0.5rem;">🏗️ Masonry Crew Alpha (Foreman: Efren Cabudbud)</h4>
+            <div style="background:#0c101d; padding:0.5rem; border-radius:6px; margin-bottom:0.4rem;">• Juan Dela Cruz (Master Mason)</div>
+            <div style="background:#0c101d; padding:0.5rem; border-radius:6px; margin-bottom:0.4rem;">• Mario Bros (Assistant Mason)</div>
+            <button class="btn btn-cyan" style="width:100%; margin-top:0.5rem;">+ Assign Worker to Crew</button>
+          </div>
+          <div style="background:#161e2e; padding:1rem; border-radius:10px; border:1px solid var(--border);">
+            <h4 style="color:var(--cyan); margin-bottom:0.5rem;">⚙️ Structural Rebar Crew Beta (Foreman: Rusel Portes)</h4>
+            <div style="background:#0c101d; padding:0.5rem; border-radius:6px; margin-bottom:0.4rem;">• Pedro Penduko (Senior Steelman)</div>
+            <div style="background:#0c101d; padding:0.5rem; border-radius:6px; margin-bottom:0.4rem;">• Jose Rizal (Helper)</div>
+            <button class="btn btn-cyan" style="width:100%; margin-top:0.5rem;">+ Assign Worker to Crew</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR-04: Mobile Offline Digital Checklist -->
+  <div id="pr-04" class="prototype-container">
+    <div class="proto-header">
+      <div class="proto-title">PR-04: React Native Mobile Digital Attendance Checklist UI</div>
+      <div class="proto-tag">FR-04 Prototype</div>
+    </div>
+    <div class="mobile-frame">
+      <div class="mobile-header">📲 FOREMAN MOBILE APP<br><small style="color:var(--muted);">Crew Alpha • July 24, 2026</small></div>
+      <div style="background:rgba(0,230,118,0.1); border:1px solid var(--green); padding:0.4rem; border-radius:6px; font-size:0.75rem; text-align:center; margin-bottom:0.8rem; color:var(--green);">● OFFLINE MODE — Cryptographic Monotonic Active</div>
+      <div class="checklist-item">
+        <div><strong>Juan Dela Cruz</strong><br><small style="color:var(--muted);">Mason • #EMP-101</small></div>
+        <div><button class="btn btn-green">PRESENT</button></div>
+      </div>
+      <div class="checklist-item">
+        <div><strong>Mario Bros</strong><br><small style="color:var(--muted);">Helper • #EMP-104</small></div>
+        <div><button class="btn btn-green">PRESENT</button></div>
+      </div>
+      <button class="btn btn-cyan" style="width:100%; margin-top:1rem; padding:0.8rem;">🔒 SUBMIT & SEAL ATTENDANCE</button>
+    </div>
+  </div>
+
+  <!-- PR-05: Local Storage Encryption -->
+  <div id="pr-05" class="prototype-container">
+    <div class="proto-header">
+      <div class="proto-title">PR-05: SQLCipher AES-256 Storage & Encryption Status UI</div>
+      <div class="proto-tag">FR-05 Prototype</div>
+    </div>
+    <div class="mock-window">
+      <div class="mock-bar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><small style="color:var(--muted); margin-left:10px;">Mobile Client Diagnostics / Encrypted Storage</small></div>
+      <div class="mock-body">
+        <h3 style="color:var(--green); margin-bottom:0.5rem;">🔒 SQLCipher Hardware-Encrypted Local Database Status</h3>
+        <p style="color:var(--muted); margin-bottom:1rem;">All offline attendance data stored on mobile devices is encrypted at rest using AES-256 with keys derived from Android Keystore TEE / iOS Secure Enclave.</p>
+        <div style="background:#0c101d; padding:1rem; border-radius:8px; font-family:'Fira Code', monospace; font-size:0.85rem; color:var(--cyan);">
+          DB_FILE: /data/user/0/com.arcenas.hris/databases/attendance_local.db<br>
+          ENCRYPTION_CIPHER: SQLCipher AES-256-CBC<br>
+          KEY_STORAGE: Android KeyStore (TEE Hardware Backed)<br>
+          LOCAL_RECORDS_STORED: 142 Records (Unsynced Payload Size: 48 KB)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR-06: Monotonic Time Capture -->
+  <div id="pr-06" class="prototype-container">
+    <div class="proto-header">
+      <div class="proto-title">PR-06: Monotonic Hardware Clock Audit Inspector UI</div>
+      <div class="proto-tag">FR-06 Prototype</div>
+    </div>
+    <div class="mock-window">
+      <div class="mock-bar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><small style="color:var(--muted); margin-left:10px;">hris.arcenasdev.com/audit/monotonic-clock</small></div>
+      <div class="mock-body">
+        <h3>Monotonic Clock vs. OS System Clock Audit Inspector</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:1rem;">
+          <div style="background:#161e2e; padding:1rem; border-radius:8px; border:1px solid var(--red);">
+            <h4 style="color:var(--red);">⚠️ Untrusted Mobile OS Clock</h4>
+            <div style="font-family:'Fira Code', monospace; margin-top:0.5rem; font-size:0.9rem;">
+              Date.now(): 2026-07-24 07:00:02 AM<br>
+              Status: Modified by User (Rolled back -2 hrs)
+            </div>
+          </div>
+          <div style="background:#161e2e; padding:1rem; border-radius:8px; border:1px solid var(--green);">
+            <h4 style="color:var(--green);">🛡️ Hardware Monotonic Clock (Immutable)</h4>
+            <div style="font-family:'Fira Code', monospace; margin-top:0.5rem; font-size:0.9rem;">
+              elapsedRealtime(): 84,291,400 ms<br>
+              True Event Time: 09:00:02 AM (Delta Validated)
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR-07: HMAC Hash Chaining Ledger -->
+  <div id="pr-07" class="prototype-container">
+    <div class="proto-header">
+      <div class="proto-title">PR-07: HMAC-SHA256 Hash Chain Ledger Explorer UI</div>
+      <div class="proto-tag">FR-07 Prototype</div>
+    </div>
+    <div class="mock-window">
+      <div class="mock-bar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><small style="color:var(--muted); margin-left:10px;">hris.arcenasdev.com/audit/hash-chain</small></div>
+      <div class="mock-body">
+        <h3>Append-Only Cryptographic HMAC Hash Ledger Explorer</h3>
+        <div style="font-family:'Fira Code', monospace; font-size:0.8rem; margin-top:1rem;">
+          <div style="background:#161e2e; padding:0.8rem; border-radius:6px; margin-bottom:0.5rem; border-left:4px solid var(--cyan);">
+            <strong>ENTRY #101 [EMP-101 | Juan Dela Cruz | 07:00:00 AM]</strong><br>
+            Previous Hash: 0000000000000000000000000000000000000000<br>
+            Current Hash: 8f9b2c4e1a7d3f5b8e9a2c4e1a7d3f5b8e9a2c4e1a7d3f5b
+          </div>
+          <div style="background:#161e2e; padding:0.8rem; border-radius:6px; margin-bottom:0.5rem; border-left:4px solid var(--cyan);">
+            <strong>ENTRY #102 [EMP-104 | Mario Bros | 07:00:00 AM]</strong><br>
+            Previous Hash: 8f9b2c4e1a7d3f5b8e9a2c4e1a7d3f5b8e9a2c4e1a7d3f5b<br>
+            Current Hash: 3a4f9b2c4e1a7d3f5b8e9a2c4e1a7d3f5b8e9a2c4e1a7d3f
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR-08: Hardware TEE Signing -->
+  <div id="pr-08" class="prototype-container">
+    <div class="proto-header">
+      <div class="proto-title">PR-08: Hardware Enclave (TEE) Signature Verification Portal UI</div>
+      <div class="proto-tag">FR-08 Prototype</div>
+    </div>
+    <div class="mock-window">
+      <div class="mock-bar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><small style="color:var(--muted); margin-left:10px;">hris.arcenasdev.com/security/tee-signatures</small></div>
+      <div class="mock-body">
+        <h3 style="color:var(--cyan);">Hardware Security Enclave (TEE) Verification Status</h3>
+        <div style="background:rgba(0,230,118,0.1); border:1px solid var(--green); padding:1rem; border-radius:8px; margin-top:1rem;">
+          <h4 style="color:var(--green);">✅ ECDSA P-256 Hardware Signature Verified</h4>
+          <p style="color:var(--muted); font-size:0.9rem; margin-top:0.4rem;">Sync payload signed by registered Android Keystore key inside device Hardware Security Module. Device Identity Confirmed: Samsung Galaxy Tab Active 3 (#DEV-9842).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR-09: Mobile Background Sync Queue -->
+  <div id="pr-09" class="prototype-container">
+    <div class="proto-header">
+      <div class="proto-title">PR-09: Mobile Background Sync Queue UI</div>
+      <div class="proto-tag">FR-09 Prototype</div>
+    </div>
+    <div class="mobile-frame">
+      <div class="mobile-header">🔄 BACKGROUND SYNC QUEUE</div>
+      <div style="background:rgba(0,242,254,0.1); border:1px solid var(--cyan); padding:0.6rem; border-radius:6px; font-size:0.8rem; text-align:center; color:var(--cyan); margin-bottom:1rem;">
+        📶 Cellular Signal Restored • Syncing 2 Batches...
+      </div>
+      <div class="checklist-item">
+        <div><strong>Batch #2026-07-24 (Crew Alpha)</strong><br><small style="color:var(--muted);">50 Workers • Signed TEE</small></div>
+        <div><span class="badge-status active">SYNCED</span></div>
+      </div>
+      <div class="checklist-item">
+        <div><strong>Batch #2026-07-23 (Crew Alpha)</strong><br><small style="color:var(--muted);">48 Workers • Signed TEE</small></div>
+        <div><span class="badge-status active">SYNCED</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR-10: Late Foreman Override -->
+  <div id="pr-10" class="prototype-container">
+    <div class="proto-header">
+      <div class="proto-title">PR-10: Late Foreman Reason Selection & 7:00 AM Auto-Credit Modal UI</div>
+      <div class="proto-tag">FR-10 Prototype</div>
+    </div>
+    <div class="mock-window">
+      <div class="mock-bar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><small style="color:var(--muted); margin-left:10px;">Mobile Client / Late Attendance Override</small></div>
+      <div class="mock-body">
+        <div style="background:#161e2e; border:1px solid var(--amber); padding:1.5rem; border-radius:12px;">
+          <h3 style="color:var(--amber); margin-bottom:0.5rem;">⚠️ Submission Time Exceeds Scheduled Shift Start</h3>
+          <p style="font-size:0.9rem; color:var(--muted);">Physical Submission Time: <strong>08:15 AM</strong>. Scheduled Shift Start: <strong>07:00 AM</strong>.</p>
+          <div style="margin:1rem 0;">
+            <label style="font-size:0.85rem; color:var(--cyan);">Select Mandatory Override Reason:</label>
+            <select style="width:100%; padding:0.6rem; background:#0c101d; border:1px solid var(--border); color:#fff; border-radius:6px; margin-top:0.4rem;">
+              <option>Foreman Transport Delay / Traffic</option>
+              <option>Site Access Key Delay</option>
+              <option>Weather Inclement Delay</option>
+            </select>
+          </div>
+          <p style="font-size:0.8rem; color:var(--green);">✓ Workers credited for 7:00 AM shift start. Record flagged FOREMAN_LATE_OVERRIDE for Site Engineer audit.</p>
+          <button class="btn btn-amber" style="width:100%; margin-top:1rem;">CONFIRM & APPLY WORKER 7:00 AM CREDIT</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR-11: 1-Click Crew Re-Assignment -->
+  <div id="pr-11" class="prototype-container">
+    <div class="proto-header">
+      <div class="proto-title">PR-11: 1-Click Crew Re-Assignment & Stand-In Foreman Selector UI</div>
+      <div class="proto-tag">FR-11 Prototype</div>
+    </div>
+    <div class="mock-window">
+      <div class="mock-bar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><small style="color:var(--muted); margin-left:10px;">hris.arcenasdev.com/hr/crews/reassign</small></div>
+      <div class="mock-body">
+        <h3>Absent Foreman Re-Assignment Portal</h3>
+        <div style="background:#161e2e; padding:1.25rem; border-radius:8px; margin-top:1rem;">
+          <p style="color:var(--red);">🚨 Foreman Efren Cabudbud marked ABSENT today.</p>
+          <div style="margin:1rem 0;">
+            <label style="font-size:0.85rem; color:var(--cyan);">Assign "Crew Alpha" to Stand-in Foreman / Lead Man:</label>
+            <select style="width:100%; padding:0.6rem; background:#0c101d; border:1px solid var(--border); color:#fff; border-radius:6px; margin-top:0.4rem;">
+              <option>Foreman Rusel Portes (Rebar Lead)</option>
+              <option>Lead Man Juan Dela Cruz (Masonry)</option>
+            </select>
+          </div>
+          <button class="btn btn-cyan">RE-ASSIGN CREW ALPHA NOW</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR-12: Retroactive Crew Recovery Sign-Off -->
+  <div id="pr-12" class="prototype-container">
+    <div class="proto-header">
+      <div class="proto-title">PR-12: Retroactive Attendance Recovery & Engineer Sign-Off Board UI</div>
+      <div class="proto-tag">FR-12 Prototype</div>
+    </div>
+    <div class="mock-window">
+      <div class="mock-bar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><small style="color:var(--muted); margin-left:10px;">hris.arcenasdev.com/engineer/recovery</small></div>
+      <div class="mock-body">
+        <h3>Retroactive Crew Attendance Recovery Board</h3>
+        <table class="mock-table">
+          <thead><tr><th>Unrecorded Date</th><th>Crew</th><th>Default Hours</th><th>Engineer Sign-Off</th></tr></thead>
+          <tbody>
+            <tr><td>July 23, 2026</td><td>Crew Alpha (50 Workers)</td><td>8.0 hrs / worker</td><td><button class="btn btn-green">✍️ DIGITALLY SIGN & RECOVER PAYROLL</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR-13: Automated Payroll Processing -->
+  <div id="pr-13" class="prototype-container">
+    <div class="proto-header">
+      <div class="proto-title">PR-13: Automated Payroll Processing & Payslip Generator UI</div>
+      <div class="proto-tag">FR-13 Prototype</div>
+    </div>
+    <div class="mock-window">
+      <div class="mock-bar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><small style="color:var(--muted); margin-left:10px;">hris.arcenasdev.com/payroll/compute</small></div>
+      <div class="mock-body">
+        <h3>Bi-Weekly Payroll Computation Engine (PH Labor Code Articles 86, 87, 93, 94)</h3>
+        <table class="mock-table">
+          <thead><tr><th>Worker Name</th><th>Days Worked</th><th>Basic Pay</th><th>OT Pay (1.25x)</th><th>Holiday (2.0x)</th><th>Net Pay</th></tr></thead>
+          <tbody>
+            <tr><td>Juan Dela Cruz</td><td>12 Days</td><td>₱9,000.00</td><td>₱1,171.88</td><td>₱1,500.00</td><td><strong>₱11,671.88</strong></td></tr>
+            <tr><td>Pedro Penduko</td><td>12 Days</td><td>₱9,600.00</td><td>₱1,250.00</td><td>₱1,600.00</td><td><strong>₱12,450.00</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR-14: Overtime & Leave Filing Portal -->
+  <div id="pr-14" class="prototype-container">
+    <div class="proto-header">
+      <div class="proto-title">PR-14: Employee Overtime & Leave Filing Portal UI</div>
+      <div class="proto-tag">FR-14 Prototype</div>
+    </div>
+    <div class="mock-window">
+      <div class="mock-bar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><small style="color:var(--muted); margin-left:10px;">hris.arcenasdev.com/portal/leave-ot</small></div>
+      <div class="mock-body">
+        <h3>Overtime & Leave Filing Approval Queue</h3>
+        <table class="mock-table">
+          <thead><tr><th>Filer Name</th><th>Request Type</th><th>Date / Hours</th><th>Supervisor Approval</th></tr></thead>
+          <tbody>
+            <tr><td>Juan Dela Cruz</td><td>Regular Overtime</td><td>July 24 (2.0 hrs)</td><td><span class="badge-status active">APPROVED BY ENGINEER</span></td></tr>
+            <tr><td>Pedro Penduko</td><td>Sick Leave</td><td>July 25 (1 Day)</td><td><span class="badge-status pending">PENDING HR REVIEW</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR-15: Executive Compliance Audit -->
+  <div id="pr-15" class="prototype-container">
+    <div class="proto-header">
+      <div class="proto-title">PR-15: Executive Compliance Audit & Site Labor Cost Dashboard UI</div>
+      <div class="proto-tag">FR-15 Prototype</div>
+    </div>
+    <div class="mock-window">
+      <div class="mock-bar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><small style="color:var(--muted); margin-left:10px;">hris.arcenasdev.com/analytics/dashboard</small></div>
+      <div class="mock-body">
+        <h3>Executive Compliance Audit & Site Labor Analytics</h3>
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1rem; margin-top:1rem;">
+          <div style="background:#161e2e; padding:1rem; border-radius:8px; border:1px solid var(--cyan);">
+            <small style="color:var(--muted);">Total Active Site Workers</small>
+            <h2 style="color:var(--cyan); font-size:1.8rem; margin-top:0.2rem;">342 Workers</h2>
+          </div>
+          <div style="background:#161e2e; padding:1rem; border-radius:8px; border:1px solid var(--green);">
+            <small style="color:var(--muted);">On-Time Attendance Rate</small>
+            <h2 style="color:var(--green); font-size:1.8rem; margin-top:0.2rem;">98.4%</h2>
+          </div>
+          <div style="background:#161e2e; padding:1rem; border-radius:8px; border:1px solid var(--amber);">
+            <small style="color:var(--muted);">Flagged Overrides / Audits</small>
+            <h2 style="color:var(--amber); font-size:1.8rem; margin-top:0.2rem;">2 Events</h2>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,9 @@
+flowchart LR
+    classDef actorStyle fill:#1e293b,stroke:#00f2fe,stroke-width:3px,color:#ffffff,font-size:18px,font-weight:bold;
+    classDef ucStyle fill:#0f172a,stroke:#38bdf8,stroke-width:3px,color:#f8fafc,font-size:18px,font-weight:bold;
+
+    subgraph HRIS ["🏛️ HRIS SYSTEM BOUNDARY"]
+        UC(["UC-13: Philippine Labor Code Payroll Computation"]):::ucStyle
+    end
+
+    Actor["💼 Payroll Officer"]:::actorStyle ---> UC

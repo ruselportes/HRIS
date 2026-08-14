@@ -1,0 +1,18 @@
+stateDiagram-v2
+    [*] --> CREATED_OFFLINE: Foreman Logs Attendance
+    CREATED_OFFLINE --> HASH_CHAINED: HMAC-SHA256 Chain Generated
+    HASH_CHAINED --> ENCRYPTED_AT_REST: Written to SQLCipher DB
+    
+    ENCRYPTED_AT_REST --> SYNC_QUEUED: Device Connects to Internet
+    SYNC_QUEUED --> TEE_SIGNED: Signed by Hardware Enclave
+    
+    TEE_SIGNED --> VERIFYING_SERVER: Transmitted to REST API
+    
+    VERIFYING_SERVER --> VERIFIED_SYNCED: Signature & Chain Validated
+    VERIFYING_SERVER --> FLAGGED_TAMPERED: Validation Failed
+    
+    VERIFIED_SYNCED --> PAYROLL_APPROVED: Processed by Payroll Engine
+    FLAGGED_TAMPERED --> MANUAL_HR_AUDIT: Sent to Site Engineer Review
+    
+    MANUAL_HR_AUDIT --> PAYROLL_APPROVED: Engineer Overrides Flag
+    PAYROLL_APPROVED --> [*]

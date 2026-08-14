@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HRIS Cryptographic Time-Tampering Explained</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #090d16;
+      --bg-secondary: #111726;
+      --bg-card: rgba(22, 30, 46, 0.75);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --accent-cyan: #00f2fe;
+      --accent-blue: #4facfe;
+      --accent-purple: #9d4edd;
+      --accent-green: #00e676;
+      --accent-red: #ff5252;
+      --accent-amber: #ffab00;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'Fira Code', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      padding: 2.5rem 1rem;
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(0, 242, 254, 0.06) 0%, transparent 45%),
+        radial-gradient(circle at 85% 85%, rgba(157, 78, 221, 0.06) 0%, transparent 45%);
+    }
+
+    .container {
+      max-width: 1050px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3.5rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.4rem 1.2rem;
+      background: rgba(0, 242, 254, 0.1);
+      border: 1px solid var(--accent-cyan);
+      border-radius: 50px;
+      color: var(--accent-cyan);
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 1.2rem;
+    }
+
+    h1 {
+      font-size: 2.6rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #ffffff 0%, var(--accent-cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 1rem;
+    }
+
+    .subtitle {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      max-width: 750px;
+      margin: 0 auto;
+    }
+
+    /* Section Headings */
+    .section-title {
+      font-size: 1.65rem;
+      font-weight: 700;
+      margin: 3.5rem 0 1.5rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.75rem;
+    }
+
+    .section-title span {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Concept Hero Box */
+    .hero-concept {
+      background: linear-gradient(135deg, rgba(17, 23, 38, 0.9), rgba(22, 30, 46, 0.9));
+      border: 1px solid rgba(0, 242, 254, 0.25);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+      margin-bottom: 2.5rem;
+    }
+
+    .hero-concept h3 {
+      font-size: 1.4rem;
+      color: var(--accent-cyan);
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .hero-concept p {
+      font-size: 1.05rem;
+      color: var(--text-main);
+      margin-bottom: 1rem;
+    }
+
+    /* Cheater vs System Comparison */
+    .scenario-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+
+    .scenario-card {
+      border-radius: 16px;
+      padding: 1.5rem;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      position: relative;
+    }
+
+    .scenario-card.cheater {
+      border-top: 4px solid var(--accent-red);
+      background: rgba(255, 82, 82, 0.04);
+    }
+
+    .scenario-card.system {
+      border-top: 4px solid var(--accent-green);
+      background: rgba(0, 230, 118, 0.04);
+    }
+
+    .scenario-card h4 {
+      font-size: 1.2rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .scenario-card.cheater h4 { color: var(--accent-red); }
+    .scenario-card.system h4 { color: var(--accent-green); }
+
+    .scenario-card p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    /* 4 Simple Steps Breakdown */
+    .step-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.75rem;
+      margin-bottom: 1.5rem;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .step-card:hover {
+      border-color: rgba(0, 242, 254, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .step-num {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      color: #000;
+      font-weight: 800;
+      font-size: 1.1rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .step-title {
+      font-size: 1.3rem;
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    .analogy-box {
+      background: rgba(255, 171, 0, 0.08);
+      border-left: 4px solid var(--accent-amber);
+      padding: 0.85rem 1.2rem;
+      border-radius: 0 10px 10px 0;
+      margin: 1rem 0;
+      font-size: 0.95rem;
+      color: #ffe082;
+    }
+
+    .analogy-box strong {
+      color: var(--accent-amber);
+    }
+
+    .tech-explanation {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+
+    .code-pill {
+      background: #060911;
+      border: 1px solid rgba(0, 242, 254, 0.2);
+      color: var(--accent-cyan);
+      font-family: var(--font-mono);
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      display: inline-block;
+      margin-top: 0.5rem;
+    }
+
+    /* Comparison Table */
+    .table-box {
+      overflow-x: auto;
+      margin: 2rem 0;
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-secondary);
+      text-align: left;
+    }
+
+    th, td {
+      padding: 1.1rem 1.4rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--accent-cyan);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    td {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 4rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border-color);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <header>
+      <div class="badge">Plain English Tech Guide</div>
+      <h1>How Cryptographic Anti-Tampering Works</h1>
+      <p class="subtitle">An easy-to-understand breakdown of how our mobile app catches fake attendance timestamps—even when offline with no internet connection!</p>
+    </header>
+
+    <!-- CORE CONCEPT HERO -->
+    <div class="hero-concept">
+      <h3>💡 The Main Problem in Simple Terms</h3>
+      <p>Imagine a site foreman at a remote construction site with no cell service. He opens his phone settings, rolls the clock back from <strong>9:00 AM to 7:00 AM</strong>, and marks a worker as clocking in early.</p>
+      <p>Standard apps rely on the phone's clock and get tricked. <strong>Our app uses 4 hardware & cryptographic layers to catch the trick instantly.</strong></p>
+    </div>
+
+    <!-- CHEATER VS SYSTEM SCENARIOS -->
+    <div class="scenario-grid">
+      <div class="scenario-card cheater">
+        <h4>❌ What a Cheater Tries to Do</h4>
+        <p>1. Goes to phone <em>Settings ➔ Date & Time</em>.<br>
+        2. Turns off "Automatic Time" and sets the time back 2 hours.<br>
+        3. Clocks in late workers so they look punctual.<br>
+        4. Expects the HR server to accept the fake times when syncing later.</p>
+      </div>
+
+      <div class="scenario-card system">
+        <h4>🛡️ How the System Catches Them</h4>
+        <p>1. The app completely ignores the phone's clock.<br>
+        2. It uses an un-changeable internal hardware stopwatch.<br>
+        3. It seals records with tamper-evident digital locks.<br>
+        4. The server validates signatures and rejects altered records!</p>
+      </div>
+    </div>
+
+    <!-- 4 SIMPLE STEPS BREAKDOWN -->
+    <h2 class="section-title"><span>🔒 The 4 Layers of Protection Explained Simply</span></h2>
+
+    <!-- STEP 1 -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div class="step-title">The Hardware Stopwatch (Monotonic Clock)</div>
+      </div>
+      
+      <div class="analogy-box">
+        <strong>💡 Real-World Analogy:</strong> Think of a marathon runner wearing a sealed physical stopwatch that started counting seconds the moment the race started. Even if the runner turns back their arm wrist-watch display, the internal stopwatch keeps ticking continuously!
+      </div>
+
+      <div class="tech-explanation">
+        Instead of asking the phone <em>"What time is it?"</em> (which users can change), the app asks the phone chip: <code>elapsedRealtime()</code>—meaning <em>"How many milliseconds have passed since this phone turned on?"</em>. Users <strong>CANNOT</strong> change or pause this counter without restarting the device hardware.
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div class="step-title">Time Calibration (Anchor & Offset Math)</div>
+      </div>
+
+      <div class="analogy-box">
+        <strong>💡 Real-World Analogy:</strong> Before you hike into a remote canyon with no signal, you sync your stopwatch with the official town clock at 8:00 AM (Stopwatch at 1,000 sec). 5 hours later (Stopwatch at 19,000 sec), you know the true time is 1:00 PM simply by adding the 5-hour difference!
+      </div>
+
+      <div class="tech-explanation">
+        The last time the app was online, it saved an <strong>Anchor Point</strong>: True Server Time + Monotonic Stopwatch Reading. When logging attendance offline, true event time is computed by relative math:
+        <br>
+        <div class="code-pill">True Event Time = Saved Server Anchor Time + (Current Stopwatch - Saved Anchor Stopwatch)</div>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">3</div>
+        <div class="step-title">Tamper-Evident Ledger Chain (HMAC-SHA256)</div>
+      </div>
+
+      <div class="analogy-box">
+        <strong>💡 Real-World Analogy:</strong> Imagine a numbered paper checkbook where every page contains a unique wax seal fingerprint made from the previous page's contents. If someone tears out page #3 or edits a number on page #2, the seal on page #4 stops matching!
+      </div>
+
+      <div class="tech-explanation">
+        Every time attendance is logged, the record is locked together with the previous record's cryptographic hash key into an append-only chain. If a user hacks into the phone database to edit past records, the hash chain breaks instantly upon sync.
+      </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">4</div>
+        <div class="step-title">Unforgeable Hardware Stamp (TEE / Secure Enclave)</div>
+      </div>
+
+      <div class="analogy-box">
+        <strong>💡 Real-World Analogy:</strong> Like an official government notary seal stamped directly by a physical security vault inside the phone. Software, apps, and even root hackers cannot steal or forge this seal.
+      </div>
+
+      <div class="tech-explanation">
+        Before syncing data to the web HRIS server, the mobile device signs the attendance payload inside the phone's hardware security chip (Android Keystore / iOS Secure Enclave) using ECDSA asymmetric cryptography. The server verifies this signature to confirm the payload came from an authentic, registered device.
+      </div>
+    </div>
+
+    <!-- RECAP TABLE -->
+    <h2 class="section-title"><span>📋 Quick Threat Summary</span></h2>
+    <div class="table-box">
+      <table>
+        <thead>
+          <tr>
+            <th>What the Cheater Tries</th>
+            <th>Why Naive Apps Fail</th>
+            <th>How Our HRIS System Stops It</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Changes phone clock backward</strong></td>
+            <td>Uses <code>Date.now()</code> (Tricked!)</td>
+            <td>Uses Monotonic Hardware Stopwatch & Offset Math</td>
+          </tr>
+          <tr>
+            <td><strong>Edits phone database directly</strong></td>
+            <td>Database has no integrity checks</td>
+            <td>Cryptographic HMAC Hash Chain breaks & flags tampering</td>
+          </tr>
+          <tr>
+            <td><strong>Sends fake requests from PC</strong></td>
+            <td>Server accepts any API request</td>
+            <td>Hardware Security Chip (TEE) Signature fails validation</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer>
+      <p>Understandable HRIS Cryptographic Security Architecture • 2026</p>
+    </footer>
+
+  </div>
+
+</body>
+</html>

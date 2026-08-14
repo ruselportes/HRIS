@@ -1,0 +1,43 @@
+# Internal / non-pushable capstone files
+internal/
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# --- Backend (Laravel) ---
+/vendor/
+node_modules/
+.env
+.env.*
+.phpunit.result.cache
+storage/*.key
+storage/**/*.sqlite
+public/storage
+public/hot
+.storage
+
+# --- Web (React / Tailwind) ---
+/dist/
+/build/
+/web/node_modules/
+
+# --- Mobile (React Native / Android / iOS) ---
+/mobile/node_modules/
+/mobile/android/app/build/
+/mobile/android/build/
+/mobile/android/.gradle/
+/mobile/android/local.properties
+/mobile/android/key.properties
+/mobile/ios/Pods/
+/mobile/ios/build/
+*.jks
+*.keystore
+*.p8
+*.p12

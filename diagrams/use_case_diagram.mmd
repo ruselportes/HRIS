@@ -1,0 +1,52 @@
+flowchart LR
+    classDef actorStyle fill:#1e293b,stroke:#00f2fe,stroke-width:3px,color:#ffffff,font-size:16px,font-weight:bold;
+    classDef ucStyle fill:#0f172a,stroke:#4facfe,stroke-width:2px,color:#f8fafc,font-size:15px,font-weight:600;
+    classDef sysStyle fill:#020617,stroke:#38bdf8,stroke-width:2px,color:#38bdf8,font-size:18px,font-weight:bold;
+
+    subgraph HRIS ["🏛️ HRIS SYSTEM BOUNDARY (Arcenas Development Corp)"]
+        direction TB
+        UC01(["UC-01: User Authentication & Role Access (RBAC)"]):::ucStyle
+        UC02(["UC-02: Worker Registry & Skill Certifications"]):::ucStyle
+        UC03(["UC-03: Crew Assignment & Site Deployment"]):::ucStyle
+        UC04(["UC-04: Offline Digital Checklist Clock-In"]):::ucStyle
+        UC05(["UC-05: Local Storage Hardware Encryption"]):::ucStyle
+        UC06(["UC-06: Monotonic Hardware Clock Capture"]):::ucStyle
+        UC07(["UC-07: Append-Only HMAC Hash Ledger"]):::ucStyle
+        UC08(["UC-08: Hardware TEE Payload Signing"]):::ucStyle
+        UC09(["UC-09: Automatic Background Sync Engine"]):::ucStyle
+        UC10(["UC-10: Late Foreman Override & Shift Credit"]):::ucStyle
+        UC11(["UC-11: 1-Click Absent Crew Re-Assignment"]):::ucStyle
+        UC12(["UC-12: Retroactive Crew Recovery Sign-Off"]):::ucStyle
+        UC13(["UC-13: Philippine Labor Code Payroll Computation"]):::ucStyle
+        UC14(["UC-14: Overtime & Leave Approval Workflow"]):::ucStyle
+        UC15(["UC-15: Executive Compliance & Labor Cost Analytics"]):::ucStyle
+    end
+
+    subgraph ACTORS ["👥 SYSTEM ACTORS"]
+        direction TB
+        Foreman["👷 Site Foreman"]:::actorStyle
+        Engineer["👷‍♂️ Site Engineer"]:::actorStyle
+        HR["💼 HR / Payroll Officer"]:::actorStyle
+        Admin["⚙️ System Admin"]:::actorStyle
+    end
+
+    Admin ---> UC01
+
+    Foreman ---> UC04
+    Foreman ---> UC05
+    Foreman ---> UC06
+    Foreman ---> UC07
+    Foreman ---> UC08
+    Foreman ---> UC09
+    Foreman ---> UC10
+
+    Engineer ---> UC03
+    Engineer ---> UC10
+    Engineer ---> UC12
+    Engineer ---> UC14
+
+    HR ---> UC02
+    HR ---> UC11
+    HR ---> UC13
+    HR ---> UC14
+    HR ---> UC15

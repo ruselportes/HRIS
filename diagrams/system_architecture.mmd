@@ -1,0 +1,23 @@
+graph TB
+    subgraph "Mobile Client (Field Site - Offline/Online)"
+        A["React Native UI Checklist"] --> B["Monotonic Clock Service"]
+        A --> C["Local SQLite / SQLCipher (AES-256)"]
+        C --> D["HMAC-SHA256 Hash Chain Ledger"]
+        D --> E["Android Keystore / iOS Secure Enclave (TEE)"]
+        E --> F["Background Sync Service"]
+    end
+
+    subgraph "Network Transport Layer"
+        F -->|HTTPS REST API / JSON Payload| G["Cloudflare WAF / API Gateway"]
+    end
+
+    subgraph "Backend Server (Central Office)"
+        G --> H["Laravel 10 REST API Server"]
+        H --> I["Cryptographic Verification Engine"]
+        H --> J["Payroll & Compliance Computation Engine"]
+        H --> K["MySQL 8.0 Primary Database"]
+    end
+
+    subgraph "Web Administrative Client"
+        L["React.js + Tailwind HR Dashboard"] -->|HTTPS REST API| H
+    end

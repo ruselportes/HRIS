@@ -1,0 +1,20 @@
+sequenceDiagram
+    autonumber
+    actor Foreman as Site Foreman
+    participant App as React Native App
+    participant Mono as Hardware Monotonic Clock
+    participant Crypto as Crypto Engine
+    participant DB as SQLCipher Encrypted DB
+
+    Foreman->>App: Tap "Submit Attendance Checklist"
+    App->>Mono: Query SystemClock.elapsedRealtime()
+    Mono-->>App: Return M_event (ms)
+    App->>App: Compute T_event = T_anchor + (M_event - M_anchor)
+    
+    loop For Each Worker in Crew
+        App->>Crypto: Generate HMAC_SHA256(Key, Record + PreviousHash + M_event)
+        Crypto-->>App: Return Hash_N
+        App->>DB: INSERT INTO attendance_logs (Payload, Hash_N)
+    end
+    
+    App-->>Foreman: Display "Attendance Saved Offline (Cryptographically Sealed)"

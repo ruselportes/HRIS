@@ -1,0 +1,6 @@
+flowchart TD
+    A["Device System Clock (Untrusted)"] -->|Bypassed By| B["Hardware Monotonic Clock (Boot Elapsed Time)"]
+    B --> C["Anchor Timestamp + Monotonic Delta Offset Math"]
+    C --> D["Cryptographic Hash Chaining (HMAC-SHA256)"]
+    D --> E["Hardware Key Signing (TEE / Secure Enclave)"]
+    E --> F["HRIS Server Sync & Verification Engine"]

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="390" style="background:white;">
+  <rect x="170" y="10" width="640" height="340" rx="5" fill="white" stroke="#0f172a" stroke-width="2"/>
+  <text x="490" y="38" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="bold" fill="#0f172a">HRIS System</text>
+  <text x="490" y="56" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" fill="#64748b">UC-03: Crew Assignment &amp; Site Deployment</text>
+<line x1="109" y1="196" x2="290" y2="90" stroke="#475569" stroke-width="1.5"/>
+<line x1="109" y1="196" x2="290" y2="180" stroke="#475569" stroke-width="1.5"/>
+<line x1="109" y1="196" x2="290" y2="270" stroke="#475569" stroke-width="1.5"/>
+<ellipse cx="490" cy="90" rx="200" ry="30" stroke="#0f172a" stroke-width="2" fill="white"/>
+<text x="490" y="95.0" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="bold" fill="#0f172a">Create Project Site</text>
+<ellipse cx="490" cy="180" rx="200" ry="30" stroke="#0f172a" stroke-width="2" fill="white"/>
+<text x="490" y="185.0" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="bold" fill="#0f172a">Assign Workers to Crew</text>
+<ellipse cx="490" cy="270" rx="200" ry="30" stroke="#0f172a" stroke-width="2" fill="white"/>
+<text x="490" y="275.0" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="bold" fill="#0f172a">Assign Foreman to Crew</text>
+<circle cx="85" cy="161" r="16" stroke="#0f172a" stroke-width="2" fill="white"/>
+<line x1="85" y1="177" x2="85" y2="215" stroke="#0f172a" stroke-width="2"/>
+<line x1="61" y1="189" x2="109" y2="189" stroke="#0f172a" stroke-width="2"/>
+<line x1="85" y1="215" x2="61" y2="245" stroke="#0f172a" stroke-width="2"/>
+<line x1="85" y1="215" x2="109" y2="245" stroke="#0f172a" stroke-width="2"/>
+<text x="85" y="263" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="bold" fill="#0f172a">Site Engineer</text>
+</svg>

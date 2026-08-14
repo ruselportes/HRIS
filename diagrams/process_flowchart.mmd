@@ -1,0 +1,29 @@
+flowchart TD
+    Start(["Foreman Opens Mobile App"]) --> CheckNet{"Internet Available?"}
+    
+    CheckNet -- Yes --> FetchAnchor["Fetch Server Time Anchor (T_anchor, M_anchor)"]
+    CheckNet -- No --> UseSavedAnchor["Use Saved Local Time Anchor"]
+    
+    FetchAnchor --> RenderChecklist["Render Digital Crew Checklist"]
+    UseSavedAnchor --> RenderChecklist
+    
+    RenderChecklist --> MarkAttendance["Foreman Taps Worker Statuses"]
+    MarkAttendance --> ReadMonotonic["Read Hardware Monotonic Clock (M_event)"]
+    
+    ReadMonotonic --> CalcTime["Compute T_event = T_anchor + (M_event - M_anchor)"]
+    CalcTime --> HMACChain["Build HMAC-SHA256 Hash Chain Ledger Entry"]
+    HMACChain --> SaveEncrypted["Save to Local SQLite/SQLCipher (AES-256)"]
+    
+    SaveEncrypted --> DetectConn{"Network Restored?"}
+    DetectConn -- No --> WaitQueue["Wait in Background Sync Queue"]
+    WaitQueue --> DetectConn
+    
+    DetectConn -- Yes --> SignTEE["Sign Batch Payload in Hardware TEE (ECDSA)"]
+    SignTEE --> PushAPI["Push Payload to Laravel REST API"]
+    
+    PushAPI --> VerifySig{"Verify ECDSA & HMAC Chain?"}
+    VerifySig -- Fail --> FlagTamper["Flag 'TAMPERING_DETECTED' & Lock Entry"]
+    VerifySig -- Pass --> ProcessPayroll["Insert to DB & Send to Payroll Engine"]
+    
+    FlagTamper --> End(["Process End"])
+    ProcessPayroll --> End
