@@ -142,6 +142,113 @@ If the capstone evaluation panel asks:
 * **Liza Mae C. Sugala** — Systems Analyst
 * **Rusel R. Portes** — Lead Developer / Programmer
 * **Efren S. Cabudbud Jr.** — Database & QA Lead
+* **Carl Vey Sente** — UI/UX
 * **Rayla G. Lanaza** — UI/UX & Documentation Lead
 
 **Project Title Reviewer:** Clark Kevin V. Villamor
+
+---
+
+## 🔀 Git Collaboration Workflow
+
+> Follow this guide every time you work on the repository. **Never push directly to `main`.**
+
+### 1. Clone the Repository (first time)
+
+```bash
+git clone https://github.com/ruselportes/HRIS.git
+cd HRIS
+```
+
+### 2. Create Your Own Branch
+
+Always work on a separate branch, never directly on `main`.
+
+```bash
+git checkout main
+git pull origin main          # make sure main is up to date
+git checkout -b feature/payroll  # or fix/<name>, docs/<name>
+```
+
+Branch naming conventions:
+
+| Branch type | Prefix | Example |
+| :--- | :--- | :--- |
+| New feature | `feature/` | `feature/payroll-module` |
+| Bug fix | `fix/` | `fix/sync-timestamp-bug` |
+| Documentation | `docs/` | `docs/srs-update` |
+| Database / schema | `db/` | `db/attendance-schema-v2` |
+
+### 3. Pull Latest Changes Often
+
+Before starting and before pushing, always pull the latest changes:
+
+```bash
+git pull origin main
+```
+
+If you are on a feature branch and `main` moved forward, rebase your branch on top of it:
+
+```bash
+git pull --rebase origin main
+```
+
+### 4. Commit Frequently with Clear Messages
+
+```bash
+git status                # see what changed
+git add <file-or-folder>  # stage specific files
+git commit -m "Add payroll summary API endpoint"
+```
+
+Good commit message style:
+
+```
+<verb> <short summary>
+```
+
+Examples:
+- `Add attendance sync endpoint`
+- `Fix HMAC hash chain validation bug`
+- `Update SRS with leave approval flow`
+
+### 5. Push Your Branch and Open a Pull Request
+
+```bash
+git push -u origin feature/payroll
+```
+
+Then on GitHub, open a **Pull Request (PR)** from your branch into `main`:
+
+1. Go to the repository on GitHub → **Pull Requests** → **New pull request**.
+2. Base: `main` ← Compare: `your-branch`.
+3. Add a title and short description of what you changed.
+4. Request a review from **Rusel R. Portes** (Lead Developer).
+5. Wait for review and approval before merging.
+
+### 6. Keep Your Branch Up to Date (if requested to fix)
+
+```bash
+git pull --rebase origin main   # update with latest main
+git add .
+git commit -m "Address review feedback"
+git push                        # force not needed after rebase + normal push
+```
+
+### 7. Merging Rules
+
+- **Never** push directly to `main` or `master`.
+- Merge only through a reviewed Pull Request.
+- `main` must always stay in a working, runnable state.
+- Conflicts: `git pull --rebase origin main`, resolve conflicts in your editor, then `git add . && git rebase --continue`.
+
+### 8. Quick Reference
+
+| Task | Command |
+| :--- | :--- |
+| See current branch | `git branch` |
+| Switch branch | `git checkout <branch>` |
+| List all branches | `git branch -a` |
+| Discard local changes (danger) | `git checkout -- <file>` |
+| See who changed what | `git log --oneline` |
+| Delete local branch | `git branch -d <branch>` |
