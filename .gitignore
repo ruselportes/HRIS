@@ -1,24 +1,49 @@
-# Laravel
-backend/vendor/
-backend/storage/logs/*.log
-backend/.env
-backend/.env.backup
+# ── Laravel / backend ──────────────────────────────────────────────
+/backend/vendor/
+/backend/node_modules/
+/backend/.env
+/backend/.env.backup
+/backend/.phpunit.result.cache
+/backend/storage/logs/*.log
+/backend/storage/framework/cache/data/*
+/backend/storage/framework/sessions/*
+/backend/storage/framework/views/*
+/backend/public/build/
+/backend/public/storage/
+/backend/.phpstorm.meta.php
+/backend/_ide_helper.php
+/backend/.phpdoc
 
-# React / web
-web/node_modules/
-web/dist/
-web/.env.local
+# ── React / web ────────────────────────────────────────────────────
+/web/node_modules/
+/web/dist/
+/web/.env.local
+/web/.env.development.local
+/web/.env.test.local
+/web/.env.production.local
 
-# React Native / mobile
-mobile/node_modules/
-mobile/android/build/
-mobile/android/.gradle/
-mobile/ios/build/
-mobile/ios/Pods/
-mobile/.env
+# ── React Native / mobile ──────────────────────────────────────────
+/mobile/node_modules/
+/mobile/android/build/
+/mobile/android/.gradle/
+/mobile/android/app/build/
+/mobile/android/local.properties
+/mobile/android/*.apk
+/mobile/android/*.aab
+/mobile/ios/build/
+/mobile/ios/Pods/
+/mobile/ios/*.xcworkspace/xcuserdata/
+/mobile/.env
+/mobile/.env.*
+/mobile/*.keystore
+/mobile/*.jks
+/mobile/mobile_debug.keystore
 
-# IDE / OS
+# ── IDE / OS ───────────────────────────────────────────────────────
 .vscode/
 .idea/
+*.iml
 Thumbs.db
 .DS_Store
+*.swp
+*.swo
