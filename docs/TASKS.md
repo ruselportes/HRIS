@@ -3,7 +3,7 @@
 Each phase below is weighted **10%** of total project completion (10 phases = 100%).
 Check off tasks as they're completed; a phase counts as done once every task under it is checked.
 
-**Overall progress: 15% (Phase 1: 8/10 — SDD & STD deliverables pending)**
+**Overall progress: ~9% (Phase 1: 12/14 items — only SDD & STD deliverables pending, all scaffolding functionally verified)**
 
 ---
 
