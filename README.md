@@ -77,6 +77,7 @@ Requires `ANDROID_HOME` set and a JDK installed for Android builds.
 | Systems Analyst | Liza Mae C. Sugala |
 | Lead Developer / Programmer | Rusel R. Portes |
 | Database & QA Lead | Efren S. Cabudbud Jr. |
-| UI/UX & Documentation Lead | Rayla G. Lanaza |
+| Documentation Lead | Rayla G. Lanaza |
+| UI/UX|Carl Vey Sente|
 
-Adviser: Engr. Clark Kevin V. Villamor
+
