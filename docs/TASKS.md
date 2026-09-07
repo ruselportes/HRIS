@@ -3,7 +3,7 @@
 Each phase below is weighted **10%** of total project completion (10 phases = 100%).
 Check off tasks as they're completed; a phase counts as done once every task under it is checked.
 
-**Overall progress: 15% (Phase 1 partially complete)**
+**Overall progress: 15% (Phase 1: 8/10 — SDD & STD deliverables pending)**
 
 ---
 
@@ -17,12 +17,12 @@ Check off tasks as they're completed; a phase counts as done once every task und
 - [x] `HRIS_ERD.drawio` added to `docs/`
 - [x] Monorepo folder structure created (`backend/`, `web/`, `mobile/`, `docs/`)
 - [x] Design prototypes (14 screens) imported to `docs/prototypes/`
-- [ ] Shared tokens/components extracted from `HRIS Design System.dc.html`
-- [ ] `git init` + initial commit
-- [ ] Laravel project scaffolded in `backend/`
-- [ ] React project scaffolded in `web/` (TailwindCSS configured)
-- [ ] React Native project scaffolded in `mobile/`
-- [ ] MySQL database created; 13-table schema migrated
+- [x] Shared tokens extracted from `HRIS Design System.dc.html` (compiled in `_ds/styles.css` → Tailwind v4 `@theme` in `web/src/index.css`)
+- [x] `git init` + initial commit
+- [x] Laravel project scaffolded in `backend/` (Laravel 13 + MariaDB `hris` DB)
+- [x] React project scaffolded in `web/` (TailwindCSS v4 configured)
+- [x] React Native project scaffolded in `mobile/`
+- [x] MySQL database created; 13-table schema migrated
 
 ## Phase 2 — Employee & Workforce Management (UC-01, UC-02) (10%)
 
