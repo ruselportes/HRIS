@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/industry-65011e00-df34-4f6b-95ef-8d3ce1c921d0/styles.css">
+<script src="_ds/industry-65011e00-df34-4f6b-95ef-8d3ce1c921d0/_ds_bundle.js"></script>
+<style>
+@keyframes hris-pulse { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
+body { margin: 0; background: var(--color-bg); }
+a { color: var(--color-accent-700); }
+a:hover { color: var(--color-accent-900); }
+</style>
+</helmet>
+
+<div style="width: 1720px; font-family: var(--font-body); color: var(--color-text); padding: 56px 56px 96px; display: flex; flex-direction: column; gap: 56px;">
+
+  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; border-bottom: 1px solid var(--color-divider); padding-bottom: 24px;">
+    <div>
+      <div style="font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 10px;">Arcenas Development Corporation · HRIS field app · Site Foreman</div>
+      <h1 style="font-size: 52px; margin: 0 0 10px; letter-spacing: -.02em;">Roll call — offline</h1>
+      <p style="margin: 0; font-size: 15px; max-width: 700px; color: var(--color-neutral-700);">React Native. One screen, one job: mark 38 men present before 07:30 with wet gloves, in direct sun, with no signal. Every control is at least 56px, every status is a word plus a shape, and nothing needs the keyboard.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: auto auto; gap: 5px 24px; font-size: 12px; color: var(--color-neutral-700); text-align: right; flex: none;">
+      <span>Device</span><span style="color: var(--color-text);">390 × 844 pt</span>
+      <span>Min target</span><span style="color: var(--color-text);">56 px, 12 px gaps</span>
+      <span>Body size</span><span style="color: var(--color-text);">17 px, statuses 15 px</span>
+      <span>Text entry</span><span style="color: var(--color-text);">None on the main path</span>
+    </div>
+  </header>
+
+  <section style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; align-items: baseline; gap: 16px;">
+      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">01 — Screens</h2>
+      <span style="font-size: 12px; color: var(--color-neutral-700);">Left to right: the working list, a marked worker with its timestamp, and the sync queue when signal returns.</span>
+    </div>
+
+    <div style="display: flex; gap: 40px; align-items: flex-start; flex-wrap: wrap;">
+
+      <!-- SCREEN 1 -->
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">A — Roll call, offline</div>
+        <div class="blueprint" style="width: 390px; background: var(--color-bg); display: flex; flex-direction: column; padding: 0;">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+
+          <div style="background: var(--color-accent-900); color: var(--color-bg); padding: 10px 18px 0; display: flex; align-items: center; font-size: 13px; font-variant-numeric: tabular-nums;">
+            <span>07:14</span>
+            <span style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9a14 14 0 0118 0"></path><path d="M6.5 13a9 9 0 0111 0"></path><path d="M12 17.5v.5"></path><path d="M4 4l16 16"></path></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="17" height="10"></rect><path d="M21 10v4"></path><rect x="4" y="9" width="9" height="6" fill="currentColor" stroke="none"></rect></svg>
+            </span>
+          </div>
+
+          <div style="background: var(--color-accent-900); color: var(--color-bg); padding: 12px 18px 16px; display: flex; align-items: center; gap: 14px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M15 6l-6 6 6 6"></path></svg>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-family: var(--font-heading); font-size: 24px; line-height: 1.05;">Roll Call</div>
+              <div style="font-size: 13px; opacity: .72;">Site 07 · Formwork crew B · Mon 07 Sep</div>
+            </div>
+          </div>
+
+          <div style="background: var(--color-neutral-200); border-bottom: 1px solid var(--color-divider); padding: 14px 18px; display: flex; align-items: center; gap: 12px;">
+            <span style="width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--color-neutral-800); flex: none;"></span>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-family: var(--font-heading); font-size: 17px; letter-spacing: .04em; text-transform: uppercase; color: var(--color-neutral-900); line-height: 1.1;">Offline · 3h 12m</div>
+              <div style="font-size: 13px; color: var(--color-neutral-800);">Last contact 04:02. Keep working.</div>
+            </div>
+          </div>
+
+          <div style="background: #FCECE0; border-bottom: 1px solid #E2681C; padding: 14px 18px; display: flex; align-items: center; gap: 12px;">
+            <span style="width: 12px; height: 12px; border-radius: 50%; background: #E2681C; flex: none; animation: hris-pulse 1.4s ease-in-out infinite;"></span>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-family: var(--font-heading); font-size: 19px; color: #96420E; line-height: 1.1;">18 of 38 records pending sync</div>
+              <div style="font-size: 13px; color: #96420E;">Held on this phone. Uploads on signal.</div>
+            </div>
+          </div>
+
+          <div style="padding: 14px 18px 12px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--color-neutral-200);">
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: baseline; gap: 8px;">
+                <span style="font-family: var(--font-heading); font-size: 26px; font-variant-numeric: tabular-nums; line-height: 1;">18</span>
+                <span style="font-size: 14px; color: var(--color-neutral-700);">of 38 marked</span>
+              </div>
+              <div style="height: 8px; background: var(--color-neutral-200); margin-top: 8px;"><div style="width: 47%; height: 8px; background: var(--color-accent);"></div></div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; padding: 12px 18px; border-bottom: 1px solid var(--color-neutral-200); overflow: hidden;">
+            <span style="display: inline-flex; align-items: center; padding: 10px 16px; min-height: 44px; background: var(--color-accent); color: var(--color-bg); font-family: var(--font-heading); font-size: 15px; letter-spacing: .03em; white-space: nowrap;">Unmarked 20</span>
+            <span style="display: inline-flex; align-items: center; padding: 10px 16px; min-height: 44px; border: 1px solid var(--color-divider); font-family: var(--font-heading); font-size: 15px; letter-spacing: .03em; white-space: nowrap;">All 38</span>
+            <span style="display: inline-flex; align-items: center; padding: 10px 16px; min-height: 44px; border: 1px solid var(--color-divider); font-family: var(--font-heading); font-size: 15px; letter-spacing: .03em; white-space: nowrap;">Marked 18</span>
+          </div>
+
+          <div style="padding: 12px; display: flex; flex-direction: column; gap: 12px;">
+
+            <div style="border: 1px solid var(--color-divider); padding: 14px;">
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <span style="width: 44px; height: 44px; border: 1px solid var(--color-divider); display: grid; place-items: center; font-family: var(--font-heading); font-size: 15px; flex: none;">JA</span>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 18px; line-height: 1.15;">Abainza, Jomar T.</div>
+                  <div style="font-size: 14px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">ADC-0455 · Steelwork</div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 10px;">
+                <button class="btn" style="flex: 1; min-height: 64px; font-size: 17px; letter-spacing: .02em; border: 1.5px solid #2F7A4D; color: #1F5334; background: transparent; white-space: nowrap;">Present</button>
+                <button class="btn" style="flex: 1; min-height: 64px; font-size: 17px; letter-spacing: .02em; border: 1.5px solid #C9781B; color: #8A5211; background: transparent; white-space: nowrap;">Late</button>
+                <button class="btn" style="flex: 1; min-height: 64px; font-size: 17px; letter-spacing: .02em; border: 1.5px solid #A83A2C; color: #75261C; background: transparent; white-space: nowrap;">Absent</button>
+              </div>
+            </div>
+
+            <div style="border: 1px solid var(--color-divider); border-left: 3px solid #E2681C; padding: 14px;">
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <span style="width: 44px; height: 44px; border: 1px solid var(--color-divider); display: grid; place-items: center; font-family: var(--font-heading); font-size: 15px; flex: none;">EB</span>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 18px; line-height: 1.15;">Bacus, Elmer P.</div>
+                  <div style="font-size: 14px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">ADC-0509 · Formwork</div>
+                </div>
+                <span class="tag" style="background: #FCECE0; color: #96420E; font-size: 13px; padding: 6px 12px; gap: 6px; flex: none;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #E2681C;"></span>Pending</span>
+              </div>
+              <div style="display: flex; gap: 10px;">
+                <button class="btn" style="flex: 1; min-height: 64px; font-size: 17px; letter-spacing: .02em; border: 1.5px solid #2F7A4D; background: #2F7A4D; color: #fff; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"></path></svg>
+                  Present
+                </button>
+                <button class="btn" style="flex: 1; min-height: 64px; font-size: 17px; letter-spacing: .02em; border: 1.5px solid var(--color-neutral-300); color: var(--color-neutral-600); background: transparent; white-space: nowrap;">Late</button>
+                <button class="btn" style="flex: 1; min-height: 64px; font-size: 17px; letter-spacing: .02em; border: 1.5px solid var(--color-neutral-300); color: var(--color-neutral-600); background: transparent; white-space: nowrap;">Absent</button>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-neutral-200);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-700)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>
+                <span style="font-size: 15px; color: var(--color-neutral-800); font-variant-numeric: tabular-nums;">Marked present 07:10</span>
+                <button class="btn btn-ghost" style="white-space: nowrap; flex: none; margin-left: auto; min-height: 44px; font-size: 15px;">Undo</button>
+              </div>
+            </div>
+
+            <div style="border: 1px solid var(--color-divider); border-left: 3px solid #E2681C; padding: 14px;">
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <span style="width: 44px; height: 44px; border: 1px solid var(--color-divider); display: grid; place-items: center; font-family: var(--font-heading); font-size: 15px; flex: none;">KO</span>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 18px; line-height: 1.15;">Ompad, Kevin R.</div>
+                  <div style="font-size: 14px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">ADC-0742 · Rebar</div>
+                </div>
+                <span class="tag" style="background: #FCECE0; color: #96420E; font-size: 13px; padding: 6px 12px; gap: 6px; flex: none;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #E2681C;"></span>Pending</span>
+              </div>
+              <div style="display: flex; gap: 10px;">
+                <button class="btn" style="flex: 1; min-height: 64px; font-size: 17px; letter-spacing: .02em; border: 1.5px solid var(--color-neutral-300); color: var(--color-neutral-600); background: transparent; white-space: nowrap;">Present</button>
+                <button class="btn" style="flex: 1; min-height: 64px; font-size: 17px; letter-spacing: .02em; border: 1.5px solid #C9781B; background: #C9781B; color: #fff; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg>
+                  Late
+                </button>
+                <button class="btn" style="flex: 1; min-height: 64px; font-size: 17px; letter-spacing: .02em; border: 1.5px solid var(--color-neutral-300); color: var(--color-neutral-600); background: transparent; white-space: nowrap;">Absent</button>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-neutral-200);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-700)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>
+                <span style="font-size: 15px; color: var(--color-neutral-800); font-variant-numeric: tabular-nums;">Marked late 08:22 · 52 min</span>
+                <button class="btn btn-ghost" style="white-space: nowrap; flex: none; margin-left: auto; min-height: 44px; font-size: 15px;">Undo</button>
+              </div>
+            </div>
+
+            <div style="border: 1px solid var(--color-divider); border-left: 3px solid #E2681C; padding: 14px;">
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <span style="width: 44px; height: 44px; border: 1px solid var(--color-divider); display: grid; place-items: center; font-family: var(--font-heading); font-size: 15px; flex: none;">NS</span>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 18px; line-height: 1.15;">Sarmiento, Noel D.</div>
+                  <div style="font-size: 14px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">ADC-0810 · Masonry</div>
+                </div>
+                <span class="tag" style="background: #FCECE0; color: #96420E; font-size: 13px; padding: 6px 12px; gap: 6px; flex: none;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #E2681C;"></span>Pending</span>
+              </div>
+              <div style="display: flex; gap: 10px;">
+                <button class="btn" style="flex: 1; min-height: 64px; font-size: 17px; letter-spacing: .02em; border: 1.5px solid var(--color-neutral-300); color: var(--color-neutral-600); background: transparent; white-space: nowrap;">Present</button>
+                <button class="btn" style="flex: 1; min-height: 64px; font-size: 17px; letter-spacing: .02em; border: 1.5px solid var(--color-neutral-300); color: var(--color-neutral-600); background: transparent; white-space: nowrap;">Late</button>
+                <button class="btn" style="flex: 1; min-height: 64px; font-size: 17px; letter-spacing: .02em; border: 1.5px solid #A83A2C; background: #A83A2C; color: #fff; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+                  Absent
+                </button>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-neutral-200);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-700)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>
+                <span style="font-size: 15px; color: var(--color-neutral-800); font-variant-numeric: tabular-nums;">Marked absent 07:31</span>
+                <button class="btn btn-ghost" style="white-space: nowrap; flex: none; margin-left: auto; min-height: 44px; font-size: 15px;">Undo</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding: 12px 12px 16px; border-top: 1px solid var(--color-neutral-200);">
+            <button class="btn btn-primary btn-block blueprint" style="white-space: nowrap; min-height: 64px; font-size: 19px; margin-top: 0;"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Submit roll call — 18 of 38</button>
+            <div style="font-size: 13px; color: var(--color-neutral-700); text-align: center; margin-top: 10px;">Saves to this phone. Nothing is lost if you close the app.</div>
+          </div>
+
+          <div style="display: flex; border-top: 1px solid var(--color-divider);">
+            <div style="flex: 1; padding: 12px 0 16px; text-align: center; color: var(--color-accent-800); box-shadow: inset 0 3px 0 var(--color-accent);">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20v-1a5 5 0 015-5h6a5 5 0 015 5v1"></path><circle cx="12" cy="8" r="3.5"></circle></svg>
+              <div style="font-size: 13px; margin-top: 3px;">Roll call</div>
+            </div>
+            <div style="flex: 1; padding: 12px 0 16px; text-align: center; color: var(--color-neutral-700);">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>
+              <div style="font-size: 13px; margin-top: 3px;">Timesheet</div>
+            </div>
+            <div style="flex: 1; padding: 12px 0 16px; text-align: center; color: var(--color-neutral-700); position: relative;">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 018-8 8 8 0 015.7 2.4"></path><path d="M20 12a8 8 0 01-8 8 8 8 0 01-5.7-2.4"></path><path d="M18 3v4h-4"></path><path d="M6 21v-4h4"></path></svg>
+              <div style="font-size: 13px; margin-top: 3px;">Sync</div>
+              <span style="position: absolute; top: 8px; right: 30px; font-size: 12px; background: #E2681C; color: #fff; padding: 1px 6px;">18</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 2 -->
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">B — Bulk mark &amp; override</div>
+        <div class="blueprint" style="width: 390px; background: var(--color-bg); display: flex; flex-direction: column; padding: 0;">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+
+          <div style="background: var(--color-accent-900); color: var(--color-bg); padding: 10px 18px 0; display: flex; align-items: center; font-size: 13px; font-variant-numeric: tabular-nums;">
+            <span>07:31</span>
+            <span style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9a14 14 0 0118 0"></path><path d="M6.5 13a9 9 0 0111 0"></path><path d="M12 17.5v.5"></path><path d="M4 4l16 16"></path></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="17" height="10"></rect><path d="M21 10v4"></path><rect x="4" y="9" width="9" height="6" fill="currentColor" stroke="none"></rect></svg>
+            </span>
+          </div>
+
+          <div style="background: var(--color-accent-900); color: var(--color-bg); padding: 12px 18px 16px; display: flex; align-items: center; gap: 14px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M15 6l-6 6 6 6"></path></svg>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-family: var(--font-heading); font-size: 24px; line-height: 1.05;">Roll Call</div>
+              <div style="font-size: 13px; opacity: .72;">Site 07 · Formwork crew B · Mon 07 Sep</div>
+            </div>
+          </div>
+
+          <div style="background: var(--color-neutral-200); border-bottom: 1px solid var(--color-divider); padding: 14px 18px; display: flex; align-items: center; gap: 12px;">
+            <span style="width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--color-neutral-800); flex: none;"></span>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-family: var(--font-heading); font-size: 17px; letter-spacing: .04em; text-transform: uppercase; color: var(--color-neutral-900); line-height: 1.1;">Offline · 3h 29m</div>
+              <div style="font-size: 13px; color: var(--color-neutral-800);">Last contact 04:02. Keep working.</div>
+            </div>
+          </div>
+
+          <div style="padding: 16px 18px 12px; border-bottom: 1px solid var(--color-neutral-200);">
+            <div style="font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700); margin-bottom: 10px;">Bulk action — 20 unmarked</div>
+            <button class="btn btn-secondary btn-block" style="white-space: nowrap; min-height: 60px; font-size: 17px; margin-top: 0; border-color: #2F7A4D; color: #1F5334;">Mark all 20 remaining present</button>
+            <div style="font-size: 13px; color: var(--color-neutral-700); margin-top: 10px;">Use only after a headcount. Every record still carries your name.</div>
+          </div>
+
+          <div style="padding: 16px 18px 12px; border-bottom: 1px solid var(--color-neutral-200);">
+            <div style="font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700); margin-bottom: 12px;">Set time manually</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <button class="btn btn-secondary" style="white-space: nowrap; flex: none; width: 64px; min-height: 64px; font-size: 26px; padding: 0;">−</button>
+              <div class="input" style="flex: 1; min-height: 64px; font-size: 26px; display: grid; place-items: center; font-variant-numeric: tabular-nums; font-family: var(--font-heading);">07:00</div>
+              <button class="btn btn-secondary" style="white-space: nowrap; flex: none; width: 64px; min-height: 64px; font-size: 26px; padding: 0;">+</button>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 12px;">
+              <span style="flex: 1; display: inline-flex; align-items: center; justify-content: center; min-height: 52px; border: 1px solid var(--color-divider); font-size: 16px; font-variant-numeric: tabular-nums;">−15 min</span>
+              <span style="flex: 1; display: inline-flex; align-items: center; justify-content: center; min-height: 52px; border: 1px solid var(--color-accent); background: var(--color-accent-100); color: var(--color-accent-800); font-size: 16px; font-variant-numeric: tabular-nums;">Now</span>
+              <span style="flex: 1; display: inline-flex; align-items: center; justify-content: center; min-height: 52px; border: 1px solid var(--color-divider); font-size: 16px; font-variant-numeric: tabular-nums;">+15 min</span>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; border-left: 3px solid #6B4B8A; background: #EFE9F4; padding: 12px;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#4A3260" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px;"><path d="M5 21V4h11l-1.5 4L16 12H5"></path></svg>
+              <div style="font-size: 14px; color: #4A3260;">A manual time is flagged for HR review and logged under your name.</div>
+            </div>
+          </div>
+
+          <div style="padding: 16px 18px;">
+            <div style="font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700); margin-bottom: 12px;">Reason — tap one</div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <div style="min-height: 56px; border: 1px solid var(--color-accent); background: var(--color-accent-100); color: var(--color-accent-800); display: flex; align-items: center; gap: 12px; padding: 0 16px; font-size: 16px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M4 12l5 5L20 6"></path></svg>
+                Biometric device down
+              </div>
+              <div style="min-height: 56px; border: 1px solid var(--color-divider); display: flex; align-items: center; padding: 0 16px; font-size: 16px;">Late gate opening</div>
+              <div style="min-height: 56px; border: 1px solid var(--color-divider); display: flex; align-items: center; padding: 0 16px; font-size: 16px;">Worker forgot to tap out</div>
+              <div style="min-height: 56px; border: 1px solid var(--color-divider); display: flex; align-items: center; padding: 0 16px; font-size: 16px;">Transferred mid-shift</div>
+              <div style="min-height: 56px; border: 1px solid var(--color-divider); display: flex; align-items: center; gap: 12px; padding: 0 16px; font-size: 16px; color: var(--color-neutral-700);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M4 20l4-1 10-10-3-3L5 16z"></path></svg>
+                Other — type a reason
+              </div>
+            </div>
+          </div>
+
+          <div style="padding: 12px 12px 16px; border-top: 1px solid var(--color-neutral-200); display: flex; gap: 10px;">
+            <button class="btn btn-secondary" style="white-space: nowrap; flex: 1; min-height: 60px; font-size: 17px;">Cancel</button>
+            <button class="btn btn-primary blueprint" style="white-space: nowrap; flex: 1; min-height: 60px; font-size: 17px;"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Save</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 3 -->
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">C — Sync queue, signal returns</div>
+        <div class="blueprint" style="width: 390px; background: var(--color-bg); display: flex; flex-direction: column; padding: 0;">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+
+          <div style="background: var(--color-accent-900); color: var(--color-bg); padding: 10px 18px 0; display: flex; align-items: center; font-size: 13px; font-variant-numeric: tabular-nums;">
+            <span>11:46</span>
+            <span style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9a14 14 0 0118 0"></path><path d="M6.5 13a9 9 0 0111 0"></path><path d="M12 17.5v.5"></path></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="17" height="10"></rect><path d="M21 10v4"></path><rect x="4" y="9" width="9" height="6" fill="currentColor" stroke="none"></rect></svg>
+            </span>
+          </div>
+
+          <div style="background: var(--color-accent-900); color: var(--color-bg); padding: 12px 18px 16px; display: flex; align-items: center; gap: 14px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M15 6l-6 6 6 6"></path></svg>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-family: var(--font-heading); font-size: 24px; line-height: 1.05;">Sync</div>
+              <div style="font-size: 13px; opacity: .72;">Site 07 · Formwork crew B</div>
+            </div>
+          </div>
+
+          <div style="background: #FCECE0; border-bottom: 1px solid #E2681C; padding: 14px 18px; display: flex; align-items: center; gap: 12px;">
+            <span style="width: 12px; height: 12px; border-radius: 50%; background: #E2681C; flex: none; animation: hris-pulse 1.4s ease-in-out infinite;"></span>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-family: var(--font-heading); font-size: 19px; color: #96420E; line-height: 1.1;">Syncing 14 of 38</div>
+              <div style="font-size: 13px; color: #96420E;">Signal found 11:44. Do not close the app.</div>
+            </div>
+          </div>
+
+          <div style="padding: 16px 18px 12px;">
+            <div style="height: 10px; background: var(--color-neutral-200);"><div style="width: 37%; height: 10px; background: #E2681C;"></div></div>
+            <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 14px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">
+              <span>14 uploaded</span><span>24 remaining</span>
+            </div>
+          </div>
+
+          <div style="padding: 6px 12px 12px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="border: 1px solid var(--color-divider); padding: 14px; display: flex; align-items: center; gap: 12px; min-height: 72px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M4 12l5 5L20 6"></path></svg>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 17px;">Bacus, Elmer P.</div>
+                <div style="font-size: 14px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">Present 07:10</div>
+              </div>
+              <span class="tag" style="background: #E6F1EA; color: #1F5334; font-size: 13px; padding: 6px 12px; flex: none;">Synced</span>
+            </div>
+
+            <div style="border: 1px solid var(--color-divider); border-left: 3px solid #E2681C; padding: 14px; display: flex; align-items: center; gap: 12px; min-height: 72px;">
+              <span style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid #E2681C; flex: none; animation: hris-pulse 1.4s ease-in-out infinite;"></span>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 17px;">Ompad, Kevin R.</div>
+                <div style="font-size: 14px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">Late 08:22</div>
+              </div>
+              <span class="tag" style="background: #FCECE0; color: #96420E; font-size: 13px; padding: 6px 12px; flex: none;">Uploading</span>
+            </div>
+
+            <div style="border: 1px solid var(--color-divider); border-left: 3px solid #6B4B8A; padding: 14px; display: flex; align-items: center; gap: 12px; min-height: 72px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A3260" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M5 21V4h11l-1.5 4L16 12H5"></path></svg>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 17px;">Cabahug, Lito M.</div>
+                <div style="font-size: 14px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">Present 07:00 · manual</div>
+              </div>
+              <span class="tag" style="background: #EFE9F4; color: #4A3260; font-size: 13px; padding: 6px 12px; flex: none;">Flagged</span>
+            </div>
+
+            <div style="border: 1px solid var(--color-divider); border-left: 3px solid #A83A2C; padding: 14px; display: flex; align-items: center; gap: 12px; min-height: 72px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#75261C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M12 4l8 15H4z"></path><path d="M12 10v4"></path><path d="M12 16.5v.5"></path></svg>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 17px;">Villamor, Jun P.</div>
+                <div style="font-size: 14px; color: #75261C;">Rejected — on approved leave</div>
+              </div>
+              <button class="btn btn-secondary" style="white-space: nowrap; flex: none; min-height: 48px; font-size: 15px;">Fix</button>
+            </div>
+
+            <div style="border: 1px solid var(--color-divider); padding: 14px; display: flex; align-items: center; gap: 12px; min-height: 72px; opacity: .6;">
+              <span style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--color-neutral-500); flex: none;"></span>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 17px;">+ 23 more records</div>
+                <div style="font-size: 14px; color: var(--color-neutral-700);">Queued in order marked</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: auto; padding: 12px 12px 16px; border-top: 1px solid var(--color-neutral-200);">
+            <button class="btn btn-secondary btn-block" style="white-space: nowrap; min-height: 60px; font-size: 17px; margin-top: 0;">Retry failed — 1</button>
+            <div style="font-size: 13px; color: var(--color-neutral-700); text-align: center; margin-top: 10px;">Records upload automatically. This button is only for rejections.</div>
+          </div>
+
+          <div style="display: flex; border-top: 1px solid var(--color-divider);">
+            <div style="flex: 1; padding: 12px 0 16px; text-align: center; color: var(--color-neutral-700);">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20v-1a5 5 0 015-5h6a5 5 0 015 5v1"></path><circle cx="12" cy="8" r="3.5"></circle></svg>
+              <div style="font-size: 13px; margin-top: 3px;">Roll call</div>
+            </div>
+            <div style="flex: 1; padding: 12px 0 16px; text-align: center; color: var(--color-neutral-700);">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>
+              <div style="font-size: 13px; margin-top: 3px;">Timesheet</div>
+            </div>
+            <div style="flex: 1; padding: 12px 0 16px; text-align: center; color: var(--color-accent-800); box-shadow: inset 0 3px 0 var(--color-accent); position: relative;">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 018-8 8 8 0 015.7 2.4"></path><path d="M20 12a8 8 0 01-8 8 8 8 0 01-5.7-2.4"></path><path d="M18 3v4h-4"></path><path d="M6 21v-4h4"></path></svg>
+              <div style="font-size: 13px; margin-top: 3px;">Sync</div>
+              <span style="position: absolute; top: 8px; right: 30px; font-size: 12px; background: #E2681C; color: #fff; padding: 1px 6px;">24</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; align-items: baseline; gap: 16px;">
+      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">02 — Field rules</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 28px;">
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Three buttons, always visible</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">64px tall, full width of the card, 10px apart. No swipe gestures and no long-press — a gloved thumb cannot do either reliably.</div>
+      </div>
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">The tap writes a timestamp</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">Recorded on the card in plain words: "Marked present 07:10", with Undo beside it at full 44px. The foreman never types a time on the main path.</div>
+      </div>
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Two banners, never merged</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">Grey states the connection; orange states the queue. Connection and pending work are different facts and a foreman acts on them differently.</div>
+      </div>
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Filled means chosen</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">The selected status fills solid with a glyph; unchosen options drop to grey outline. Readable at arm's length in full sun.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+</x-dc>
+</body>
+</html>

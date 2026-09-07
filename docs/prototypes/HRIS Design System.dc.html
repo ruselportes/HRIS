@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/industry-65011e00-df34-4f6b-95ef-8d3ce1c921d0/styles.css">
+<script src="_ds/industry-65011e00-df34-4f6b-95ef-8d3ce1c921d0/_ds_bundle.js"></script>
+<style>
+@keyframes hris-pulse { 0%,100% { opacity: 1 } 50% { opacity: .2 } }
+body { margin: 0; background: var(--color-bg); }
+a { color: var(--color-accent-700); }
+a:hover { color: var(--color-accent-900); }
+</style>
+</helmet>
+
+<div style="width: 1720px; font-family: var(--font-body); color: var(--color-text); padding: 56px 56px 96px; display: flex; flex-direction: column; gap: 60px;">
+
+  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; border-bottom: 1px solid var(--color-divider); padding-bottom: 24px;">
+    <div>
+      <div style="font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 10px;">Arcenas Development Corporation</div>
+      <h1 style="font-size: 58px; margin: 0 0 10px; letter-spacing: -.02em;">HRIS Design System</h1>
+      <p style="margin: 0; font-size: 15px; max-width: 660px; color: var(--color-neutral-700);">Shared visual language for the HRIS web app (React + TailwindCSS) and the field app (React Native). One token set, two densities: compact for HR and admin desks, large-touch and glove-friendly for foremen on site.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: auto auto; gap: 5px 24px; font-size: 12px; color: var(--color-neutral-700); text-align: right; flex: none;">
+      <span>Version</span><span style="color: var(--color-text);">0.1 — starter</span>
+      <span>Base grid</span><span style="color: var(--color-text);">4px · 8px rhythm</span>
+      <span>Type</span><span style="color: var(--color-text);">Barlow Condensed / Barlow</span>
+      <span>Icons</span><span style="color: var(--color-text);">Lucide, 1.5 stroke</span>
+      <span>Touch minimum</span><span style="color: var(--color-text);">44px web · 56px mobile</span>
+    </div>
+  </header>
+
+  <!-- 01 COLOR -->
+  <section style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; align-items: baseline; gap: 16px;">
+      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">01 — Color</h2>
+      <span style="font-size: 12px; color: var(--color-neutral-700);">Steel blue carries the interface. Safety orange is functional only — sync state and field-critical alerts, never decoration.</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 28px;">
+      <div class="blueprint" style="padding: 24px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 16px;">Steel — primary</div>
+        <div style="display: grid; grid-template-columns: repeat(9, 1fr);">
+          <div style="height: 60px; background: var(--color-accent-100);"></div>
+          <div style="height: 60px; background: var(--color-accent-200);"></div>
+          <div style="height: 60px; background: var(--color-accent-300);"></div>
+          <div style="height: 60px; background: var(--color-accent-400);"></div>
+          <div style="height: 60px; background: var(--color-accent-500);"></div>
+          <div style="height: 60px; background: var(--color-accent-600);"></div>
+          <div style="height: 60px; background: var(--color-accent-700);"></div>
+          <div style="height: 60px; background: var(--color-accent-800);"></div>
+          <div style="height: 60px; background: var(--color-accent-900);"></div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(9, 1fr); font-size: 10px; color: var(--color-neutral-700); text-align: center; padding-top: 6px;">
+          <span>100</span><span>200</span><span>300</span><span>400</span><span>500</span><span>600</span><span>700</span><span>800</span><span>900</span>
+        </div>
+        <div style="margin-top: 16px; font-size: 12px; color: var(--color-neutral-700); display: flex; flex-direction: column; gap: 4px;">
+          <span><b style="color: var(--color-text); font-weight: 500;">accent #5980A6</b> — primary buttons, active nav, focus ring</span>
+          <span><b style="color: var(--color-text); font-weight: 500;">accent-700 #416180</b> — accent text at body size</span>
+          <span><b style="color: var(--color-text); font-weight: 500;">accent-900 #1D2D3D</b> — reversed fields, mobile app bar, sidebar</span>
+        </div>
+      </div>
+
+      <div class="blueprint" style="padding: 24px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 16px;">Neutral — ground &amp; ink</div>
+        <div style="display: grid; grid-template-columns: repeat(9, 1fr);">
+          <div style="height: 60px; background: var(--color-neutral-100);"></div>
+          <div style="height: 60px; background: var(--color-neutral-200);"></div>
+          <div style="height: 60px; background: var(--color-neutral-300);"></div>
+          <div style="height: 60px; background: var(--color-neutral-400);"></div>
+          <div style="height: 60px; background: var(--color-neutral-500);"></div>
+          <div style="height: 60px; background: var(--color-neutral-600);"></div>
+          <div style="height: 60px; background: var(--color-neutral-700);"></div>
+          <div style="height: 60px; background: var(--color-neutral-800);"></div>
+          <div style="height: 60px; background: var(--color-neutral-900);"></div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(9, 1fr); font-size: 10px; color: var(--color-neutral-700); text-align: center; padding-top: 6px;">
+          <span>100</span><span>200</span><span>300</span><span>400</span><span>500</span><span>600</span><span>700</span><span>800</span><span>900</span>
+        </div>
+        <div style="margin-top: 16px; font-size: 12px; color: var(--color-neutral-700); display: flex; flex-direction: column; gap: 4px;">
+          <span><b style="color: var(--color-text); font-weight: 500;">bg #F2F2F3</b> page ground · <b style="color: var(--color-text); font-weight: 500;">surface #E9E9EA</b> input fill</span>
+          <span><b style="color: var(--color-text); font-weight: 500;">text #1D1F20</b> · <b style="color: var(--color-text); font-weight: 500;">muted neutral-700</b> · divider ink 16%</span>
+          <span>Cards, tables and figures stay transparent line drawings — no surface fill.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="blueprint" style="padding: 24px;">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 18px;">Semantic &amp; field states</div>
+      <div style="display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 20px;">
+        <div>
+          <div style="height: 54px; background: #2F7A4D;"></div>
+          <div style="display: flex; height: 14px;"><div style="flex: 1; background: #E6F1EA;"></div><div style="flex: 1; background: #1F5334;"></div></div>
+          <div style="font-family: var(--font-heading); font-size: 16px; margin-top: 8px;">Success</div>
+          <div style="font-size: 11px; color: var(--color-neutral-700);">#2F7A4D · tint #E6F1EA · ink #1F5334</div>
+          <div style="font-size: 11px; color: var(--color-neutral-700);">Present, Synced, approved</div>
+        </div>
+        <div>
+          <div style="height: 54px; background: #C9781B;"></div>
+          <div style="display: flex; height: 14px;"><div style="flex: 1; background: #FBF0E2;"></div><div style="flex: 1; background: #8A5211;"></div></div>
+          <div style="font-family: var(--font-heading); font-size: 16px; margin-top: 8px;">Warning</div>
+          <div style="font-size: 11px; color: var(--color-neutral-700);">#C9781B · tint #FBF0E2 · ink #8A5211</div>
+          <div style="font-size: 11px; color: var(--color-neutral-700);">Late, expiring clearances</div>
+        </div>
+        <div>
+          <div style="height: 54px; background: #A83A2C;"></div>
+          <div style="display: flex; height: 14px;"><div style="flex: 1; background: #F7E8E5;"></div><div style="flex: 1; background: #75261C;"></div></div>
+          <div style="font-family: var(--font-heading); font-size: 16px; margin-top: 8px;">Error</div>
+          <div style="font-size: 11px; color: var(--color-neutral-700);">#A83A2C · tint #F7E8E5 · ink #75261C</div>
+          <div style="font-size: 11px; color: var(--color-neutral-700);">Absent, failed sync, payroll block</div>
+        </div>
+        <div>
+          <div style="height: 54px; background: #E2681C;"></div>
+          <div style="display: flex; height: 14px;"><div style="flex: 1; background: #FCECE0;"></div><div style="flex: 1; background: #96420E;"></div></div>
+          <div style="font-family: var(--font-heading); font-size: 16px; margin-top: 8px;">Safety orange</div>
+          <div style="font-size: 11px; color: var(--color-neutral-700);">#E2681C · tint #FCECE0 · ink #96420E</div>
+          <div style="font-size: 11px; color: var(--color-neutral-700);">Pending Sync, field-critical</div>
+        </div>
+        <div>
+          <div style="height: 54px; background: var(--color-neutral-700);"></div>
+          <div style="display: flex; height: 14px;"><div style="flex: 1; background: var(--color-neutral-200);"></div><div style="flex: 1; background: var(--color-neutral-900);"></div></div>
+          <div style="font-family: var(--font-heading); font-size: 16px; margin-top: 8px;">Offline</div>
+          <div style="font-size: 11px; color: var(--color-neutral-700);">neutral-700 · tint 200 · ink 900</div>
+          <div style="font-size: 11px; color: var(--color-neutral-700);">No connection, cached data</div>
+        </div>
+        <div>
+          <div style="height: 54px; background: #6B4B8A;"></div>
+          <div style="display: flex; height: 14px;"><div style="flex: 1; background: #EFE9F4;"></div><div style="flex: 1; background: #4A3260;"></div></div>
+          <div style="font-family: var(--font-heading); font-size: 16px; margin-top: 8px;">Flagged</div>
+          <div style="font-size: 11px; color: var(--color-neutral-700);">#6B4B8A · tint #EFE9F4 · ink #4A3260</div>
+          <div style="font-size: 11px; color: var(--color-neutral-700);">Override Flagged, needs review</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 TYPE + TOKENS -->
+  <section style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; align-items: baseline; gap: 16px;">
+      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">02 — Type, spacing, radius, elevation</h2>
+      <span style="font-size: 12px; color: var(--color-neutral-700);">Mobile steps one size up from web across the board.</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1.35fr 1fr; gap: 28px;">
+      <div class="blueprint" style="padding: 24px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 18px;">Type scale</div>
+        <div style="display: flex; flex-direction: column;">
+          <div style="display: grid; grid-template-columns: 128px 1fr 190px; align-items: baseline; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--color-neutral-200);">
+            <span style="font-size: 11px; color: var(--color-neutral-700);">display / 42</span>
+            <span style="font-family: var(--font-heading); font-size: 42px; line-height: 1.1;">Payroll Cut-off</span>
+            <span style="font-size: 11px; color: var(--color-neutral-700);">Condensed 600 · page titles</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 128px 1fr 190px; align-items: baseline; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--color-neutral-200);">
+            <span style="font-size: 11px; color: var(--color-neutral-700);">h2 / 32</span>
+            <span style="font-family: var(--font-heading); font-size: 32px; line-height: 1.12;">Daily Time Record</span>
+            <span style="font-size: 11px; color: var(--color-neutral-700);">Section heads</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 128px 1fr 190px; align-items: baseline; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--color-neutral-200);">
+            <span style="font-size: 11px; color: var(--color-neutral-700);">h3 / 25</span>
+            <span style="font-family: var(--font-heading); font-size: 25px;">Site 04 — Cebu North</span>
+            <span style="font-size: 11px; color: var(--color-neutral-700);">Card and panel titles</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 128px 1fr 190px; align-items: baseline; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--color-neutral-200);">
+            <span style="font-size: 11px; color: var(--color-neutral-700);">h4 / 20</span>
+            <span style="font-family: var(--font-heading); font-size: 20px;">Attendance Summary</span>
+            <span style="font-size: 11px; color: var(--color-neutral-700);">Sub-heads, modal titles</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 128px 1fr 190px; align-items: baseline; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--color-neutral-200);">
+            <span style="font-size: 11px; color: var(--color-neutral-700);">body / 15</span>
+            <span style="font-size: 15px;">Barlow 400 — record text, form values, table cells.</span>
+            <span style="font-size: 11px; color: var(--color-neutral-700);">Web body · mobile 17</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 128px 1fr 190px; align-items: baseline; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--color-neutral-200);">
+            <span style="font-size: 11px; color: var(--color-neutral-700);">small / 13</span>
+            <span style="font-size: 13px;">Secondary detail, helper text, meta rows.</span>
+            <span style="font-size: 11px; color: var(--color-neutral-700);">Mobile 15</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 128px 1fr 190px; align-items: baseline; gap: 16px; padding: 10px 0;">
+            <span style="font-size: 11px; color: var(--color-neutral-700);">label / 11</span>
+            <span style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase;">Table header · Kicker · Badge</span>
+            <span style="font-size: 11px; color: var(--color-neutral-700);">Never below 11 web / 13 mobile</span>
+          </div>
+        </div>
+        <div style="margin-top: 16px; font-size: 12px; color: var(--color-neutral-700);">Tabular figures (<code style="font-family: ui-monospace, monospace;">font-variant-numeric: tabular-nums</code>) on every payroll and time column.</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 28px;">
+        <div class="blueprint" style="padding: 24px;">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 18px;">Spacing — 0.85× scale</div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 12px;"><span style="font-size: 11px; color: var(--color-neutral-700);">space-1 · 3.4</span><div style="height: 12px; width: 3.4px; background: var(--color-accent);"></div></div>
+            <div style="display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 12px;"><span style="font-size: 11px; color: var(--color-neutral-700);">space-2 · 6.8</span><div style="height: 12px; width: 6.8px; background: var(--color-accent);"></div></div>
+            <div style="display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 12px;"><span style="font-size: 11px; color: var(--color-neutral-700);">space-3 · 10.2</span><div style="height: 12px; width: 10.2px; background: var(--color-accent);"></div></div>
+            <div style="display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 12px;"><span style="font-size: 11px; color: var(--color-neutral-700);">space-4 · 13.6</span><div style="height: 12px; width: 13.6px; background: var(--color-accent);"></div></div>
+            <div style="display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 12px;"><span style="font-size: 11px; color: var(--color-neutral-700);">space-6 · 20.4</span><div style="height: 12px; width: 20.4px; background: var(--color-accent);"></div></div>
+            <div style="display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 12px;"><span style="font-size: 11px; color: var(--color-neutral-700);">space-8 · 27.2</span><div style="height: 12px; width: 27.2px; background: var(--color-accent);"></div></div>
+          </div>
+        </div>
+
+        <div class="blueprint" style="padding: 24px;">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 18px;">Radius &amp; elevation</div>
+          <div style="display: flex; gap: 14px; margin-bottom: 20px;">
+            <div style="flex: 1; text-align: center;"><div style="height: 44px; border: 1px solid var(--color-divider); border-radius: 0;"></div><div style="font-size: 11px; color: var(--color-neutral-700); margin-top: 6px;">0 — default</div></div>
+            <div style="flex: 1; text-align: center;"><div style="height: 44px; border: 1px solid var(--color-divider); border-radius: 2px;"></div><div style="font-size: 11px; color: var(--color-neutral-700); margin-top: 6px;">sm 2 — badges</div></div>
+            <div style="flex: 1; text-align: center;"><div style="height: 44px; border: 1px solid var(--color-divider); border-radius: 4px;"></div><div style="font-size: 11px; color: var(--color-neutral-700); margin-top: 6px;">md 4 — mobile</div></div>
+            <div style="flex: 1; text-align: center;"><div style="height: 44px; border: 1px solid var(--color-divider); border-radius: 7px;"></div><div style="font-size: 11px; color: var(--color-neutral-700); margin-top: 6px;">lg 7 — sheets</div></div>
+          </div>
+          <div style="display: flex; gap: 14px;">
+            <div style="flex: 1; text-align: center;"><div style="height: 44px; background: var(--color-neutral-100); box-shadow: var(--shadow-sm);"></div><div style="font-size: 11px; color: var(--color-neutral-700); margin-top: 8px;">sm — rows</div></div>
+            <div style="flex: 1; text-align: center;"><div style="height: 44px; background: var(--color-neutral-100); box-shadow: var(--shadow-md);"></div><div style="font-size: 11px; color: var(--color-neutral-700); margin-top: 8px;">md — dropdown, toast</div></div>
+            <div style="flex: 1; text-align: center;"><div style="height: 44px; background: var(--color-neutral-100); box-shadow: var(--shadow-lg);"></div><div style="font-size: 11px; color: var(--color-neutral-700); margin-top: 8px;">lg — modal, sheet</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 CONNECTIVITY -->
+  <section style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; align-items: baseline; gap: 16px;">
+      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">03 — Connectivity</h2>
+      <span style="font-size: 12px; color: var(--color-neutral-700);">Every screen states its connection truthfully. The indicator is persistent, never a transient toast.</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 28px;">
+      <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Online</div>
+        <div style="display: inline-flex; align-items: center; gap: 8px; border: 1px solid #2F7A4D; padding: 6px 12px; align-self: flex-start;">
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: #2F7A4D;"></span>
+          <span style="font-family: var(--font-heading); font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: #1F5334;">Online</span>
+        </div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">Solid dot. Writes commit straight through. Header-right on web, under the app bar on mobile.</div>
+      </div>
+
+      <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Syncing</div>
+        <div style="display: inline-flex; align-items: center; gap: 8px; border: 1px solid #E2681C; padding: 6px 12px; align-self: flex-start;">
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: #E2681C; animation: hris-pulse 1.4s ease-in-out infinite;"></span>
+          <span style="font-family: var(--font-heading); font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: #96420E;">Syncing 12</span>
+        </div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">Pulsing safety orange with the queue count. Count is the reassurance — never hide it.</div>
+      </div>
+
+      <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Offline</div>
+        <div style="display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--color-neutral-700); background: var(--color-neutral-200); padding: 6px 12px; align-self: flex-start;">
+          <span style="width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--color-neutral-700);"></span>
+          <span style="font-family: var(--font-heading); font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--color-neutral-900);">Offline · 3h 12m</span>
+        </div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">Hollow dot, grey field, time since last contact. Grey reads as "expected", not "broken".</div>
+      </div>
+
+      <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Sync failed</div>
+        <div style="display: inline-flex; align-items: center; gap: 8px; border: 1px solid #A83A2C; background: #F7E8E5; padding: 6px 12px; align-self: flex-start;">
+          <span style="width: 8px; height: 8px; background: #A83A2C;"></span>
+          <span style="font-family: var(--font-heading); font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: #75261C;">Failed · retry</span>
+        </div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">Square dot — the one shape break, so it is legible without color. Tapping opens the sync log.</div>
+      </div>
+    </div>
+
+    <div class="blueprint" style="padding: 0; overflow: hidden;">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div style="display: flex; align-items: center; gap: 14px; padding: 12px 20px; background: var(--color-neutral-200); border-bottom: 1px solid var(--color-divider);">
+        <span style="width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--color-neutral-700); flex: none;"></span>
+        <span style="font-family: var(--font-heading); font-size: 15px; letter-spacing: .04em; text-transform: uppercase;">Working offline</span>
+        <span style="font-size: 13px; color: var(--color-neutral-700);">18 attendance records held on this device. They will upload when signal returns.</span>
+        <button class="btn btn-secondary" style="margin-left: auto; min-height: 32px;">View queue</button>
+      </div>
+      <div style="padding: 14px 20px; font-size: 12px; color: var(--color-neutral-700);">Offline banner — full-width, pinned below the top bar on web and below the app bar on mobile. It stays up for the whole offline session; it is not dismissible.</div>
+    </div>
+  </section>
+
+  <!-- 04 WEB COMPONENTS -->
+  <section style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; align-items: baseline; gap: 16px;">
+      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">04 — Web components</h2>
+      <span style="font-size: 12px; color: var(--color-neutral-700);">React + TailwindCSS. Compact density; 32–36px controls, 44px minimum row hit area.</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 28px;">
+      <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 18px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Buttons</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+          <button class="btn btn-primary blueprint" style="white-space: nowrap; flex: none; min-height: 36px;"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Approve DTR</button>
+          <button class="btn btn-secondary" style="white-space: nowrap; flex: none; min-height: 36px;">Cancel</button>
+          <button class="btn btn-ghost" style="white-space: nowrap; flex: none; min-height: 36px;">Export CSV</button>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+          <button class="btn btn-primary" style="min-height: 36px; background: var(--color-accent-600);">Hover</button>
+          <button class="btn btn-primary" style="min-height: 36px; background: var(--color-accent-700);">Pressed</button>
+          <button class="btn btn-primary" style="min-height: 36px; opacity: .45;">Disabled</button>
+          <button class="btn btn-secondary" style="white-space: nowrap; flex: none; min-height: 36px; outline: 2px solid var(--color-accent); outline-offset: 2px;">Focus</button>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <button class="btn btn-secondary btn-icon" aria-label="Filter"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4-2v-4z"></path></svg></button>
+          <button class="btn btn-secondary btn-icon" aria-label="Download"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="M7 11l5 5 5-5"></path><path d="M4 20h16"></path></svg></button>
+          <span style="font-size: 11px; color: var(--color-neutral-700);">Icon buttons 36px · Lucide 1.5</span>
+        </div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">One primary per view. The solid accent fill is the only filled object on a screen.</div>
+      </div>
+
+      <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 16px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Inputs</div>
+        <div class="field">
+          <label>Employee name</label>
+          <input class="input" type="text" value="Reyes, Marilou A." readonly>
+        </div>
+        <div class="field">
+          <label>Employee ID</label>
+          <input class="input" type="text" placeholder="ADC-0000" readonly>
+        </div>
+        <div class="field">
+          <label>Daily rate (PHP)</label>
+          <input class="input" type="text" value="720.00" readonly style="border-color: var(--color-accent); font-variant-numeric: tabular-nums;">
+          <div style="font-size: 11px; color: var(--color-neutral-700); margin-top: 5px;">Focused — 1px accent border, no glow</div>
+        </div>
+        <div class="field">
+          <label>Cost centre</label>
+          <input class="input" type="text" value="Not assigned" readonly style="border-color: #A83A2C;">
+          <div style="font-size: 11px; color: #75261C; margin-top: 5px;">Required before payroll run</div>
+        </div>
+        <div class="field">
+          <label style="opacity: .45;">TIN (locked by HR)</label>
+          <input class="input" type="text" value="284-119-045" readonly style="opacity: .45;">
+        </div>
+      </div>
+
+      <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 16px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Select &amp; dropdown</div>
+        <div class="field">
+          <label>Project site</label>
+          <div class="input" style="display: flex; align-items: center; justify-content: space-between;">
+            <span>Site 04 — Cebu North</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+          </div>
+        </div>
+        <div style="border: 1px solid var(--color-divider); box-shadow: var(--shadow-md); background: var(--color-bg);">
+          <div style="padding: 8px 10px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700); border-bottom: 1px solid var(--color-neutral-200);">Active sites</div>
+          <div style="padding: 9px 10px; font-size: 14px; background: var(--color-accent-100); display: flex; justify-content: space-between; align-items: center;"><span>Site 04 — Cebu North</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#416180" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"></path></svg></div>
+          <div style="padding: 9px 10px; font-size: 14px;">Site 07 — Mandaue Viaduct</div>
+          <div style="padding: 9px 10px; font-size: 14px;">Site 11 — Talisay Housing</div>
+          <div style="padding: 9px 10px; font-size: 14px; color: var(--color-neutral-500);">Site 02 — Lapu-Lapu (closed)</div>
+        </div>
+        <div class="field">
+          <label>Shift</label>
+          <div class="seg">
+            <label class="seg-opt" style="white-space: nowrap;"><input type="radio" name="shift" checked>Day</label>
+            <label class="seg-opt" style="white-space: nowrap;"><input type="radio" name="shift">Night</label>
+            <label class="seg-opt" style="white-space: nowrap;"><input type="radio" name="shift">Split</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 28px;">
+      <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 16px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Status badges</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+          <span class="tag" style="background: #E6F1EA; color: #1F5334; gap: 6px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #2F7A4D;"></span>Present</span>
+          <span class="tag" style="background: #F7E8E5; color: #75261C; gap: 6px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #A83A2C;"></span>Absent</span>
+          <span class="tag" style="background: #FBF0E2; color: #8A5211; gap: 6px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #C9781B;"></span>Late</span>
+          <span class="tag" style="background: #FCECE0; color: #96420E; gap: 6px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #E2681C;"></span>Pending Sync</span>
+          <span class="tag" style="background: #E6F1EA; color: #1F5334; gap: 6px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"></path></svg>Synced</span>
+          <span class="tag" style="background: #EFE9F4; color: #4A3260; gap: 6px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#4A3260" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4h11l-1.5 4L16 12H5"></path></svg>Override Flagged</span>
+          <span class="tag" style="background: var(--color-neutral-200); color: var(--color-neutral-900); gap: 6px;"><span style="width: 6px; height: 6px; border-radius: 50%; border: 1.5px solid var(--color-neutral-700);"></span>Offline record</span>
+        </div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">11px uppercase, 2px radius, tint fill with deep-step ink for 4.5:1. Every badge pairs color with a dot or glyph so it survives grayscale printing and sunlight.</div>
+        <div style="border-top: 1px solid var(--color-neutral-200); padding-top: 16px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Role badges</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+          <span class="tag" style="border: 1px solid var(--color-accent-700); color: var(--color-accent-800); background: transparent;">HR</span>
+          <span class="tag" style="border: 1px solid var(--color-accent-700); color: var(--color-accent-800); background: transparent;">Foreman</span>
+          <span class="tag" style="border: 1px solid var(--color-accent-700); color: var(--color-accent-800); background: transparent;">Site Engineer</span>
+          <span class="tag" style="border: 1px solid var(--color-accent-700); color: var(--color-accent-800); background: transparent;">Admin</span>
+          <span class="tag" style="background: var(--color-accent-900); color: var(--color-bg);">Executive</span>
+        </div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">Roles are outlined, not tinted — so they never compete with a status. Executive reverses to the deep steel field to mark full-org visibility.</div>
+      </div>
+
+      <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 16px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Data table row</div>
+        <table class="table" style="font-variant-numeric: tabular-nums;">
+          <thead>
+            <tr><th style="width: 34px;"></th><th>Employee</th><th>Role</th><th>Time in</th><th>Time out</th><th>Hrs</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span style="display: block; width: 14px; height: 14px; border: 1px solid var(--color-divider);"></span></td>
+              <td>Reyes, Marilou A.<div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0142</div></td>
+              <td><span class="tag" style="border: 1px solid var(--color-accent-700); color: var(--color-accent-800); background: transparent;">HR</span></td>
+              <td>07:02</td><td>17:04</td><td>10.0</td>
+              <td><span class="tag" style="background: #E6F1EA; color: #1F5334; gap: 6px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #2F7A4D;"></span>Present</span></td>
+            </tr>
+            <tr style="background: color-mix(in srgb, var(--color-text) 4%, transparent);">
+              <td><span style="display: block; width: 14px; height: 14px; border: 1px solid var(--color-divider);"></span></td>
+              <td>Dela Cruz, Ronel B.<div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0387 · hover row</div></td>
+              <td><span class="tag" style="border: 1px solid var(--color-accent-700); color: var(--color-accent-800); background: transparent;">Foreman</span></td>
+              <td>08:41</td><td>17:00</td><td>8.3</td>
+              <td><span class="tag" style="background: #FBF0E2; color: #8A5211; gap: 6px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #C9781B;"></span>Late</span></td>
+            </tr>
+            <tr style="box-shadow: inset 3px 0 0 #E2681C;">
+              <td><span style="display: block; width: 14px; height: 14px; border: 1px solid var(--color-divider);"></span></td>
+              <td>Abainza, Jomar T.<div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0455 · captured offline</div></td>
+              <td><span class="tag" style="border: 1px solid var(--color-accent-700); color: var(--color-accent-800); background: transparent;">Site Engineer</span></td>
+              <td>06:58</td><td>—</td><td>—</td>
+              <td><span class="tag" style="background: #FCECE0; color: #96420E; gap: 6px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #E2681C;"></span>Pending Sync</span></td>
+            </tr>
+            <tr style="box-shadow: inset 3px 0 0 #6B4B8A;">
+              <td><span style="display: block; width: 14px; height: 14px; border: 1px solid var(--color-divider); background: var(--color-accent); box-shadow: inset 0 0 0 2px var(--color-bg);"></span></td>
+              <td>Bacus, Elmer P.<div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0509 · time-out set by foreman</div></td>
+              <td><span class="tag" style="border: 1px solid var(--color-accent-700); color: var(--color-accent-800); background: transparent;">Foreman</span></td>
+              <td>07:10</td><td>19:30</td><td>12.3</td>
+              <td><span class="tag" style="background: #EFE9F4; color: #4A3260; gap: 6px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#4A3260" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4h11l-1.5 4L16 12H5"></path></svg>Override Flagged</span></td>
+            </tr>
+            <tr>
+              <td><span style="display: block; width: 14px; height: 14px; border: 1px solid var(--color-divider);"></span></td>
+              <td>Villacruz, Anna Lyn<div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0611</div></td>
+              <td><span class="tag" style="border: 1px solid var(--color-accent-700); color: var(--color-accent-800); background: transparent;">Admin</span></td>
+              <td>—</td><td>—</td><td>0.0</td>
+              <td><span class="tag" style="background: #F7E8E5; color: #75261C; gap: 6px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #A83A2C;"></span>Absent</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">Rows carry a 3px left rule when a record needs attention — orange for unsynced, purple for a flagged override. Hairline rules only; no zebra striping.</div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1.25fr 1fr; gap: 28px;">
+      <div class="blueprint" style="padding: 0;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="padding: 22px 22px 0; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Top bar &amp; sidebar nav</div>
+        <div style="display: flex; margin: 18px 22px 22px; border: 1px solid var(--color-divider);">
+          <div style="width: 216px; background: var(--color-accent-900); color: var(--color-bg); padding: 16px 0; flex: none;">
+            <div style="padding: 0 16px 18px; font-family: var(--font-heading); font-size: 18px; letter-spacing: .02em;">ADC <span style="opacity: .6;">HRIS</span></div>
+            <div style="padding: 0 16px 8px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .5;">Workforce</div>
+            <div style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; min-height: 44px; background: var(--color-accent-800); box-shadow: inset 3px 0 0 var(--color-accent-300);">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20v-1a5 5 0 015-5h1"></path><circle cx="9" cy="8" r="3.5"></circle><path d="M15 20v-1a5 5 0 015-5"></path></svg>
+              <span style="font-size: 14px;">Employees</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; min-height: 44px; opacity: .8;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>
+              <span style="font-size: 14px;">Attendance</span>
+              <span style="margin-left: auto; font-size: 10px; background: #E2681C; color: #fff; padding: 1px 6px;">12</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; min-height: 44px; opacity: .8;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="13"></rect><path d="M3.5 10h17"></path></svg>
+              <span style="font-size: 14px;">Payroll</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; min-height: 44px; opacity: .8;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v6c0 4-3.5 7-8 8-4.5-1-8-4-8-8V7z"></path></svg>
+              <span style="font-size: 14px;">Compliance</span>
+            </div>
+            <div style="padding: 18px 16px 8px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .5;">Sites</div>
+            <div style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; min-height: 44px; opacity: .8;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"></path><path d="M6 20V9l6-4 6 4v11"></path></svg>
+              <span style="font-size: 14px;">Project sites</span>
+            </div>
+          </div>
+          <div style="flex: 1; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 16px; padding: 12px 18px; border-bottom: 1px solid var(--color-divider);">
+              <div>
+                <div style="font-family: var(--font-heading); font-size: 20px; line-height: 1.1;">Attendance</div>
+                <div style="font-size: 11px; color: var(--color-neutral-700);">Site 04 — Cebu North · 05 Sep 2026</div>
+              </div>
+              <div class="input" style="width: 220px; min-height: 32px; margin-left: 16px; display: flex; align-items: center; gap: 8px; color: var(--color-neutral-600); font-size: 13px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4 4"></path></svg>
+                Search employee or ID
+              </div>
+              <div style="margin-left: auto; display: flex; align-items: center; gap: 14px;">
+                <span style="display: inline-flex; align-items: center; gap: 7px; border: 1px solid #2F7A4D; padding: 4px 10px;">
+                  <span style="width: 7px; height: 7px; border-radius: 50%; background: #2F7A4D;"></span>
+                  <span style="font-family: var(--font-heading); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: #1F5334;">Online</span>
+                </span>
+                <span class="tag" style="border: 1px solid var(--color-accent-700); color: var(--color-accent-800); background: transparent;">HR</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="width: 28px; height: 28px; border: 1px solid var(--color-divider); display: grid; place-items: center; font-family: var(--font-heading); font-size: 12px;">MR</span>
+                  <span style="font-size: 13px;">M. Reyes</span>
+                </div>
+              </div>
+            </div>
+            <div style="padding: 18px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;">
+              <div class="blueprint" style="padding: 12px;">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div style="font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700);">On site</div>
+                <div style="font-family: var(--font-heading); font-size: 30px; font-variant-numeric: tabular-nums;">184</div>
+              </div>
+              <div class="blueprint" style="padding: 12px;">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div style="font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700);">Late</div>
+                <div style="font-family: var(--font-heading); font-size: 30px; font-variant-numeric: tabular-nums; color: #8A5211;">9</div>
+              </div>
+              <div class="blueprint" style="padding: 12px;">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div style="font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700);">Unsynced</div>
+                <div style="font-family: var(--font-heading); font-size: 30px; font-variant-numeric: tabular-nums; color: #96420E;">12</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="padding: 0 22px 22px; font-size: 12px; color: var(--color-neutral-700);">Nav items are 44px tall with a 3px light-steel active rule on the deep steel field. Section labels group by domain; a count chip on Attendance carries the unsynced total.</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 28px;">
+        <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Card</div>
+          <div class="blueprint card" style="padding: 16px;">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div class="card-kicker">Site 04 — Cebu North</div>
+            <div class="card-title">Dela Cruz, Ronel B.</div>
+            <p class="card-body">Foreman · Structural crew B · hired 12 Mar 2021. Daily rate PHP 980.00.</p>
+            <div class="card-meta" style="justify-content: space-between;">
+              <span>Last sync 05 Sep, 06:12</span>
+              <span class="tag" style="background: #E6F1EA; color: #1F5334; gap: 6px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #2F7A4D;"></span>Present</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Toasts</div>
+          <div style="display: flex; align-items: center; gap: 12px; border: 1px solid var(--color-divider); border-left: 3px solid #2F7A4D; background: var(--color-bg); box-shadow: var(--shadow-md); padding: 12px 14px;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M8.5 12.5l2.5 2.5 4.5-5"></path></svg>
+            <div style="font-size: 13px;">DTR approved for 184 workers.</div>
+            <button class="btn btn-ghost" style="white-space: nowrap; flex: none; margin-left: auto; min-height: 28px;">Undo</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; border: 1px solid var(--color-divider); border-left: 3px solid #E2681C; background: var(--color-bg); box-shadow: var(--shadow-md); padding: 12px 14px;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#96420E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 018-8 8 8 0 015.7 2.4"></path><path d="M20 12a8 8 0 01-8 8 8 8 0 01-5.7-2.4"></path><path d="M18 3v4h-4"></path><path d="M6 21v-4h4"></path></svg>
+            <div style="font-size: 13px;">12 records queued. Will upload when online.</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; border: 1px solid var(--color-divider); border-left: 3px solid #A83A2C; background: var(--color-bg); box-shadow: var(--shadow-md); padding: 12px 14px;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#75261C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l8 15H4z"></path><path d="M12 10v4"></path><path d="M12 16.5v.5"></path></svg>
+            <div style="font-size: 13px;">Sync failed — 3 records rejected.</div>
+            <button class="btn btn-ghost" style="white-space: nowrap; flex: none; margin-left: auto; min-height: 28px;">View log</button>
+          </div>
+          <div style="font-size: 12px; color: var(--color-neutral-700);">Bottom-right on web, bottom-centre above the tab bar on mobile. 3px status rule; body copy stays ink, never colored.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="blueprint" style="padding: 22px;">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 18px;">Modal</div>
+      <div style="background: var(--color-neutral-300); padding: 40px; display: grid; place-items: center;">
+        <div class="blueprint dialog" style="background: var(--color-bg); width: min(460px, 100%);">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="dialog-title">Override time-out?</div>
+          <div class="dialog-body">
+            Bacus, Elmer P. has no time-out for 05 Sep. Setting it manually flags the record for HR review and is written to the audit log with your name.
+          </div>
+          <div class="field">
+            <label>Reason for override</label>
+            <input class="input" type="text" value="Biometric device offline at gate 2" readonly>
+          </div>
+          <div class="dialog-actions">
+            <button class="btn btn-secondary" style="white-space: nowrap; flex: none; min-height: 36px;">Cancel</button>
+            <button class="btn btn-primary blueprint" style="white-space: nowrap; flex: none; min-height: 36px;"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Save override</button>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top: 14px; font-size: 12px; color: var(--color-neutral-700);">Backdrop is neutral-900 at 50%. Destructive or audited actions state the consequence in the body before the buttons.</div>
+    </div>
+  </section>
+
+  <!-- 05 MOBILE -->
+  <section style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; align-items: baseline; gap: 16px;">
+      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">05 — Mobile components</h2>
+      <span style="font-size: 12px; color: var(--color-neutral-700);">React Native, glove-friendly: 56px minimum targets, 17px body, 12px gaps so a wet or gloved thumb cannot hit two things at once.</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 380px 1fr 1fr; gap: 28px;">
+      <div class="blueprint" style="padding: 22px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 16px;">Field screen — foreman</div>
+        <div style="width: 334px; border: 1px solid var(--color-divider); background: var(--color-bg); margin: 0 auto;">
+          <div style="background: var(--color-accent-900); color: var(--color-bg); padding: 14px 16px; display: flex; align-items: center; gap: 12px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg>
+            <div>
+              <div style="font-family: var(--font-heading); font-size: 20px; line-height: 1.1;">Roll Call</div>
+              <div style="font-size: 12px; opacity: .7;">Site 04 · 05 Sep · Crew B</div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--color-neutral-200); border-bottom: 1px solid var(--color-divider);">
+            <span style="width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--color-neutral-700);"></span>
+            <span style="font-family: var(--font-heading); font-size: 14px; letter-spacing: .04em; text-transform: uppercase;">Offline · 3h 12m</span>
+            <span style="margin-left: auto; font-size: 12px; color: var(--color-neutral-800);">18 held</span>
+          </div>
+          <div style="padding: 12px; display: flex; flex-direction: column; gap: 12px;">
+            <div style="border: 1px solid var(--color-divider); padding: 14px; display: flex; align-items: center; gap: 12px; min-height: 76px;">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 17px;">Abainza, Jomar T.</div>
+                <div style="font-size: 15px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">ADC-0455 · in 06:58</div>
+              </div>
+              <span class="tag" style="background: #FCECE0; color: #96420E; font-size: 13px; padding: 6px 12px; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #E2681C;"></span>Pending</span>
+            </div>
+            <div style="border: 1px solid var(--color-divider); padding: 14px; display: flex; align-items: center; gap: 12px; min-height: 76px;">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 17px;">Bacus, Elmer P.</div>
+                <div style="font-size: 15px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">ADC-0509 · in 07:10</div>
+              </div>
+              <span class="tag" style="background: #E6F1EA; color: #1F5334; font-size: 13px; padding: 6px 12px; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #2F7A4D;"></span>Present</span>
+            </div>
+            <div style="display: flex; gap: 12px;">
+              <button class="btn btn-primary blueprint" style="flex: 1; min-height: 56px; font-size: 17px;"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Mark present</button>
+              <button class="btn btn-secondary" style="width: 56px; min-height: 56px; padding: 0;" aria-label="Absent">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+              </button>
+            </div>
+          </div>
+          <div style="display: flex; border-top: 1px solid var(--color-divider);">
+            <div style="flex: 1; padding: 12px 0 14px; text-align: center; color: var(--color-accent-800); box-shadow: inset 0 2px 0 var(--color-accent);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20v-1a5 5 0 015-5h6a5 5 0 015 5v1"></path><circle cx="12" cy="8" r="3.5"></circle></svg>
+              <div style="font-size: 12px; margin-top: 2px;">Roll call</div>
+            </div>
+            <div style="flex: 1; padding: 12px 0 14px; text-align: center; color: var(--color-neutral-700);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>
+              <div style="font-size: 12px; margin-top: 2px;">Timesheet</div>
+            </div>
+            <div style="flex: 1; padding: 12px 0 14px; text-align: center; color: var(--color-neutral-700); position: relative;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 018-8 8 8 0 015.7 2.4"></path><path d="M20 12a8 8 0 01-8 8 8 8 0 01-5.7-2.4"></path><path d="M18 3v4h-4"></path><path d="M6 21v-4h4"></path></svg>
+              <div style="font-size: 12px; margin-top: 2px;">Sync</div>
+              <span style="position: absolute; top: 8px; right: 26px; font-size: 11px; background: #E2681C; color: #fff; padding: 0 5px;">18</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 18px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Touch targets</div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <button class="btn btn-primary blueprint" style="white-space: nowrap; flex: none; min-height: 56px; font-size: 18px;"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Submit roll call</button>
+          <button class="btn btn-secondary" style="white-space: nowrap; flex: none; min-height: 56px; font-size: 18px;">Save as draft</button>
+        </div>
+        <div class="field">
+          <label style="font-size: 14px;">Hours worked</label>
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <button class="btn btn-secondary" style="width: 56px; min-height: 56px; font-size: 22px; padding: 0;">−</button>
+            <div class="input" style="min-height: 56px; font-size: 20px; display: grid; place-items: center; font-variant-numeric: tabular-nums;">10.0</div>
+            <button class="btn btn-secondary" style="width: 56px; min-height: 56px; font-size: 22px; padding: 0;">+</button>
+          </div>
+          <div style="font-size: 13px; color: var(--color-neutral-700); margin-top: 6px;">Steppers replace keypads wherever the value is bounded — gloves cannot type.</div>
+        </div>
+        <div class="field">
+          <label style="font-size: 14px;">Crew</label>
+          <div class="input" style="min-height: 56px; font-size: 17px; display: flex; align-items: center; justify-content: space-between;">
+            <span>Structural crew B</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+          </div>
+          <div style="font-size: 13px; color: var(--color-neutral-700); margin-top: 6px;">Selects open a bottom sheet with 56px rows, not a native picker wheel.</div>
+        </div>
+      </div>
+
+      <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 18px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Mobile badges &amp; sheet</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+          <span class="tag" style="background: #E6F1EA; color: #1F5334; font-size: 13px; padding: 6px 12px; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #2F7A4D;"></span>Present</span>
+          <span class="tag" style="background: #F7E8E5; color: #75261C; font-size: 13px; padding: 6px 12px; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #A83A2C;"></span>Absent</span>
+          <span class="tag" style="background: #FBF0E2; color: #8A5211; font-size: 13px; padding: 6px 12px; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #C9781B;"></span>Late</span>
+          <span class="tag" style="background: #FCECE0; color: #96420E; font-size: 13px; padding: 6px 12px; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #E2681C;"></span>Pending Sync</span>
+        </div>
+        <div style="border: 1px solid var(--color-divider); border-radius: 7px 7px 0 0; box-shadow: var(--shadow-lg); background: var(--color-bg); overflow: hidden;">
+          <div style="display: grid; place-items: center; padding: 10px;"><span style="width: 44px; height: 4px; background: var(--color-neutral-400);"></span></div>
+          <div style="padding: 0 16px 8px; font-family: var(--font-heading); font-size: 20px;">Set status</div>
+          <div style="padding: 16px; min-height: 56px; font-size: 17px; border-top: 1px solid var(--color-neutral-200); display: flex; align-items: center; gap: 12px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #2F7A4D;"></span>Present</div>
+          <div style="padding: 16px; min-height: 56px; font-size: 17px; border-top: 1px solid var(--color-neutral-200); display: flex; align-items: center; gap: 12px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #C9781B;"></span>Late</div>
+          <div style="padding: 16px; min-height: 56px; font-size: 17px; border-top: 1px solid var(--color-neutral-200); display: flex; align-items: center; gap: 12px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #A83A2C;"></span>Absent</div>
+          <div style="padding: 16px; min-height: 56px; font-size: 17px; border-top: 1px solid var(--color-neutral-200); display: flex; align-items: center; gap: 12px; color: var(--color-neutral-700);">Half day</div>
+        </div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">The sheet is the one place radius appears on mobile (lg / 7px on the top corners) — everything else stays square.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 RULES -->
+  <section style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; align-items: baseline; gap: 16px;">
+      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">06 — Rules of the system</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 28px;">
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Colour is never the only signal</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">Every status carries a dot shape, glyph or word. Screens are read in direct sunlight through scratched glass.</div>
+      </div>
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Offline is a state, not an error</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">Grey and orange, never red. Red is reserved for a record that was rejected or a worker who was absent.</div>
+      </div>
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">One primary per view</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">The solid accent button is the only filled object on a screen. Everything else is a line drawing.</div>
+      </div>
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Audited actions say so</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">Overrides, approvals and payroll edits name the consequence and the log before the confirm button.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/industry-65011e00-df34-4f6b-95ef-8d3ce1c921d0/styles.css">
+<script src="_ds/industry-65011e00-df34-4f6b-95ef-8d3ce1c921d0/_ds_bundle.js"></script>
+<style>
+body { margin: 0; background: var(--color-bg); }
+a { color: var(--color-accent-700); }
+a:hover { color: var(--color-accent-900); }
+</style>
+</helmet>
+
+<div style="width: 1720px; font-family: var(--font-body); color: var(--color-text); padding: 56px 56px 96px; display: flex; flex-direction: column; gap: 56px;">
+
+  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; border-bottom: 1px solid var(--color-divider); padding-bottom: 24px;">
+    <div>
+      <div style="font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 10px;">Arcenas Development Corporation · HRIS · Executive</div>
+      <h1 style="font-size: 52px; margin: 0 0 10px; letter-spacing: -.02em;">Workforce &amp; compliance</h1>
+      <p style="margin: 0; font-size: 15px; max-width: 720px; color: var(--color-neutral-700);">Read-only, company-wide. Figures are aggregates — an executive sees cost per site and the integrity of the records behind it, never an individual payslip.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: auto auto; gap: 5px 24px; font-size: 12px; color: var(--color-neutral-700); text-align: right; flex: none;">
+      <span>Period</span><span style="color: var(--color-text);">August 2026, closed</span>
+      <span>Sites</span><span style="color: var(--color-text);">11 active, 2 closed</span>
+      <span>Access</span><span style="color: var(--color-text);">Read-only, aggregates</span>
+    </div>
+  </header>
+
+  <section style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; align-items: baseline; gap: 16px;">
+      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">01 — Dashboard</h2>
+      <span style="font-size: 12px; color: var(--color-neutral-700);">Filters at the top scope every panel below, including the audit feed.</span>
+    </div>
+
+    <div class="blueprint" style="display: flex; background: var(--color-bg); min-height: 1180px;">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+
+      <aside style="width: 220px; flex: none; background: var(--color-accent-900); color: var(--color-bg); display: flex; flex-direction: column;">
+        <div style="padding: 18px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(242,242,243,.14);">
+          <span style="width: 28px; height: 28px; border: 1px solid rgba(242,242,243,.5); display: grid; place-items: center; font-family: var(--font-heading); font-size: 14px;">A</span>
+          <div style="font-family: var(--font-heading); font-size: 17px;">ADC <span style="opacity: .55;">HRIS</span></div>
+        </div>
+        <div style="padding: 16px 18px; border-bottom: 1px solid rgba(242,242,243,.14);">
+          <div style="font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .5; margin-bottom: 8px;">Signed in as</div>
+          <div style="font-size: 14px;">Arcenas, Ma. Teresa</div>
+          <div style="font-size: 12px; opacity: .65; margin-bottom: 10px;">Executive Vice President</div>
+          <span class="tag" style="background: var(--color-bg); color: var(--color-accent-900);">Executive</span>
+        </div>
+        <nav style="flex: 1; padding: 12px 0;">
+          <div style="padding: 10px 18px 6px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .45;">Insight</div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; background: var(--color-accent-800); box-shadow: inset 3px 0 0 var(--color-accent-300);">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"></path><path d="M7 20v-6"></path><path d="M12 20V8"></path><path d="M17 20v-9"></path></svg>
+            <span style="font-size: 14px;">Reports &amp; Analytics</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; opacity: .85;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4l12 5V5z"></path><path d="M16 9a3 3 0 010 6"></path></svg>
+            <span style="font-size: 14px;">Announcements</span>
+          </div>
+          <div style="padding: 16px 18px 6px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .45;">Workforce</div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; opacity: .62;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20v-1a5 5 0 015-5h1"></path><circle cx="9" cy="8" r="3.5"></circle><path d="M15 20v-1a5 5 0 015-5"></path></svg>
+            <span style="font-size: 14px;">Employees</span>
+            <span style="margin-left: auto; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .6;">view</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; opacity: .62;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="13"></rect><path d="M3.5 10h17"></path></svg>
+            <span style="font-size: 14px;">Payroll Runs</span>
+            <span style="margin-left: auto; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .6;">view</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; opacity: .62;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v6c0 4-3.5 7-8 8-4.5-1-8-4-8-8V7z"></path></svg>
+            <span style="font-size: 14px;">Compliance &amp; Docs</span>
+            <span style="margin-left: auto; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .6;">view</span>
+          </div>
+        </nav>
+      </aside>
+
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+        <div style="display: flex; align-items: center; gap: 16px; padding: 14px 22px; border-bottom: 1px solid var(--color-divider);">
+          <div>
+            <div style="font-family: var(--font-heading); font-size: 22px; line-height: 1.1;">Reports &amp; Analytics</div>
+            <div style="font-size: 11px; color: var(--color-neutral-700);">Company-wide · August 2026 · closed 03 Sep</div>
+          </div>
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 14px;">
+            <span style="display: inline-flex; align-items: center; gap: 7px; border: 1px solid #2F7A4D; padding: 4px 10px;">
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: #2F7A4D;"></span>
+              <span style="font-family: var(--font-heading); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: #1F5334;">Online</span>
+            </span>
+            <span class="tag" style="background: var(--color-accent-900); color: var(--color-bg);">Executive</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="width: 28px; height: 28px; border: 1px solid var(--color-divider); display: grid; place-items: center; font-family: var(--font-heading); font-size: 12px;">MA</span>
+              <span style="font-size: 13px;">M.T. Arcenas</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: flex-end; gap: 12px; padding: 14px 22px; border-bottom: 1px solid var(--color-neutral-200); flex-wrap: wrap;">
+          <div class="field" style="width: 180px;">
+            <label>Period</label>
+            <div class="input" style="min-height: 34px; display: flex; align-items: center; justify-content: space-between; font-size: 13px;"><span>August 2026</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></div>
+          </div>
+          <div class="field" style="width: 200px;">
+            <label>Site</label>
+            <div class="input" style="min-height: 34px; display: flex; align-items: center; justify-content: space-between; font-size: 13px;"><span>All 11 active sites</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></div>
+          </div>
+          <div class="field" style="width: 180px;">
+            <label>Role</label>
+            <div class="input" style="min-height: 34px; display: flex; align-items: center; justify-content: space-between; font-size: 13px;"><span>All roles</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></div>
+          </div>
+          <div class="field" style="width: 190px;">
+            <label>Compare with</label>
+            <div class="input" style="min-height: 34px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; border-color: var(--color-accent);"><span>July 2026</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></div>
+          </div>
+          <div style="margin-left: auto; display: flex; gap: 10px;">
+            <button class="btn btn-secondary" style="white-space: nowrap; flex: none; min-height: 36px;">Export board pack</button>
+          </div>
+        </div>
+
+        <div style="padding: 20px 22px; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 18px;">
+          <div class="blueprint" style="padding: 16px;">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700);">Headcount</div>
+            <div style="font-family: var(--font-heading); font-size: 38px; font-variant-numeric: tabular-nums; line-height: 1.05;">201</div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+              <span class="tag" style="background: #E6F1EA; color: #1F5334;">+8</span>
+              <span style="font-size: 11px; color: var(--color-neutral-700);">vs July · 4.1%</span>
+            </div>
+            <div style="display: flex; gap: 3px; align-items: flex-end; height: 28px; margin-top: 12px;">
+              <span style="flex: 1; height: 62%; background: var(--color-neutral-300);"></span>
+              <span style="flex: 1; height: 68%; background: var(--color-neutral-300);"></span>
+              <span style="flex: 1; height: 64%; background: var(--color-neutral-300);"></span>
+              <span style="flex: 1; height: 74%; background: var(--color-neutral-300);"></span>
+              <span style="flex: 1; height: 80%; background: var(--color-neutral-300);"></span>
+              <span style="flex: 1; height: 88%; background: var(--color-neutral-300);"></span>
+              <span style="flex: 1; height: 100%; background: var(--color-accent);"></span>
+            </div>
+          </div>
+
+          <div class="blueprint" style="padding: 16px;">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700);">Attendance rate</div>
+            <div style="font-family: var(--font-heading); font-size: 38px; font-variant-numeric: tabular-nums; line-height: 1.05;">95.4%</div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+              <span class="tag" style="background: #E6F1EA; color: #1F5334;">+0.6 pt</span>
+              <span style="font-size: 11px; color: var(--color-neutral-700);">absence 4.6%, target &lt;5%</span>
+            </div>
+            <div style="height: 8px; background: var(--color-neutral-200); margin-top: 16px; position: relative;">
+              <div style="width: 95.4%; height: 8px; background: #2F7A4D;"></div>
+              <span style="position: absolute; left: 95%; top: -4px; width: 1px; height: 16px; background: var(--color-text);"></span>
+            </div>
+            <div style="font-size: 10px; color: var(--color-neutral-700); margin-top: 6px;">Marker = 95% board target</div>
+          </div>
+
+          <div class="blueprint" style="padding: 16px;">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700);">Overtime cost</div>
+            <div style="font-family: var(--font-heading); font-size: 38px; font-variant-numeric: tabular-nums; line-height: 1.05;">₱2.41M</div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+              <span class="tag" style="background: #FBF0E2; color: #8A5211;">+11.4%</span>
+              <span style="font-size: 11px; color: var(--color-neutral-700);">17% of labour cost</span>
+            </div>
+            <svg viewBox="0 0 200 40" preserveAspectRatio="none" style="width: 100%; height: 34px; margin-top: 10px; display: block;">
+              <polyline points="0,30 33,28 66,25 99,22 132,20 165,13 200,6" fill="none" stroke="#C9781B" stroke-width="2"></polyline>
+              <circle cx="200" cy="6" r="3" fill="#C9781B"></circle>
+            </svg>
+            <div style="font-size: 10px; color: var(--color-neutral-700);">Six straight months of increase</div>
+          </div>
+
+          <div class="blueprint" style="padding: 16px;">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700);">Sites active</div>
+            <div style="font-family: var(--font-heading); font-size: 38px; font-variant-numeric: tabular-nums; line-height: 1.05;">11</div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+              <span class="tag" style="background: var(--color-neutral-200); color: var(--color-neutral-900);">no change</span>
+              <span style="font-size: 11px; color: var(--color-neutral-700);">2 closed this year</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 14px; font-size: 11px;">
+              <div style="display: flex; justify-content: space-between;"><span style="color: var(--color-neutral-700);">Fully manned</span><span style="font-variant-numeric: tabular-nums;">8</span></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: var(--color-neutral-700);">Understaffed</span><span style="font-variant-numeric: tabular-nums; color: #8A5211;">3</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding: 0 22px 20px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 22px;">
+
+          <div class="blueprint" style="padding: 18px;">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px;">
+              <div style="font-family: var(--font-heading); font-size: 19px;">Labour cost and compliance by site</div>
+              <button class="btn btn-ghost" style="white-space: nowrap; flex: none; margin-left: auto; min-height: 28px;">Open report</button>
+            </div>
+            <div style="font-size: 12px; color: var(--color-neutral-700); margin-bottom: 18px;">August 2026 · bars are cost in ₱ thousands, split regular and overtime · the dot is the site's compliance score</div>
+
+            <div style="display: flex; gap: 22px; margin-bottom: 14px; font-size: 11px; color: var(--color-neutral-700); flex-wrap: wrap;">
+              <span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width: 14px; height: 10px; background: var(--color-accent-700);"></span>Regular</span>
+              <span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width: 14px; height: 10px; background: #C9781B;"></span>Overtime</span>
+              <span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--color-text);"></span>Compliance score</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="display: grid; grid-template-columns: 168px 1fr 96px 88px; gap: 14px; align-items: center;">
+                <div>
+                  <div style="font-size: 13px;">Site 04 — Cebu North</div>
+                  <div style="font-size: 11px; color: var(--color-neutral-700);">62 workers</div>
+                </div>
+                <div style="height: 22px; background: var(--color-neutral-200); display: flex; position: relative;">
+                  <span style="width: 62%; background: var(--color-accent-700);"></span>
+                  <span style="width: 12%; background: #C9781B;"></span>
+                  <span style="position: absolute; left: 92%; top: 50%; transform: translate(-50%,-50%); width: 11px; height: 11px; border-radius: 50%; background: var(--color-bg); border: 2px solid #1F5334;"></span>
+                </div>
+                <div style="font-size: 13px; text-align: right; font-variant-numeric: tabular-nums;">₱4,410</div>
+                <div style="text-align: right;"><span class="tag" style="background: #E6F1EA; color: #1F5334;">92 · Good</span></div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 168px 1fr 96px 88px; gap: 14px; align-items: center;">
+                <div>
+                  <div style="font-size: 13px;">Site 07 — Mandaue Viaduct</div>
+                  <div style="font-size: 11px; color: var(--color-neutral-700);">48 workers</div>
+                </div>
+                <div style="height: 22px; background: var(--color-neutral-200); display: flex; position: relative;">
+                  <span style="width: 44%; background: var(--color-accent-700);"></span>
+                  <span style="width: 27%; background: #C9781B;"></span>
+                  <span style="position: absolute; left: 67%; top: 50%; transform: translate(-50%,-50%); width: 11px; height: 11px; border-radius: 50%; background: var(--color-bg); border: 2px solid #75261C;"></span>
+                </div>
+                <div style="font-size: 13px; text-align: right; font-variant-numeric: tabular-nums;">₱3,920</div>
+                <div style="text-align: right;"><span class="tag" style="background: #F7E8E5; color: #75261C;">67 · Watch</span></div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 168px 1fr 96px 88px; gap: 14px; align-items: center;">
+                <div>
+                  <div style="font-size: 13px;">Site 11 — Talisay Housing</div>
+                  <div style="font-size: 11px; color: var(--color-neutral-700);">39 workers</div>
+                </div>
+                <div style="height: 22px; background: var(--color-neutral-200); display: flex; position: relative;">
+                  <span style="width: 36%; background: var(--color-accent-700);"></span>
+                  <span style="width: 11%; background: #C9781B;"></span>
+                  <span style="position: absolute; left: 81%; top: 50%; transform: translate(-50%,-50%); width: 11px; height: 11px; border-radius: 50%; background: var(--color-bg); border: 2px solid #8A5211;"></span>
+                </div>
+                <div style="font-size: 13px; text-align: right; font-variant-numeric: tabular-nums;">₱2,640</div>
+                <div style="text-align: right;"><span class="tag" style="background: #FBF0E2; color: #8A5211;">81 · Fair</span></div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 168px 1fr 96px 88px; gap: 14px; align-items: center;">
+                <div>
+                  <div style="font-size: 13px;">Site 02 — Lapu-Lapu</div>
+                  <div style="font-size: 11px; color: var(--color-neutral-700);">28 workers</div>
+                </div>
+                <div style="height: 22px; background: var(--color-neutral-200); display: flex; position: relative;">
+                  <span style="width: 26%; background: var(--color-accent-700);"></span>
+                  <span style="width: 6%; background: #C9781B;"></span>
+                  <span style="position: absolute; left: 95%; top: 50%; transform: translate(-50%,-50%); width: 11px; height: 11px; border-radius: 50%; background: var(--color-bg); border: 2px solid #1F5334;"></span>
+                </div>
+                <div style="font-size: 13px; text-align: right; font-variant-numeric: tabular-nums;">₱1,780</div>
+                <div style="text-align: right;"><span class="tag" style="background: #E6F1EA; color: #1F5334;">95 · Good</span></div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 168px 1fr 96px 88px; gap: 14px; align-items: center;">
+                <div>
+                  <div style="font-size: 13px;">Site 09 — Danao Bypass</div>
+                  <div style="font-size: 11px; color: var(--color-neutral-700);">24 workers</div>
+                </div>
+                <div style="height: 22px; background: var(--color-neutral-200); display: flex; position: relative;">
+                  <span style="width: 21%; background: var(--color-accent-700);"></span>
+                  <span style="width: 5%; background: #C9781B;"></span>
+                  <span style="position: absolute; left: 88%; top: 50%; transform: translate(-50%,-50%); width: 11px; height: 11px; border-radius: 50%; background: var(--color-bg); border: 2px solid #1F5334;"></span>
+                </div>
+                <div style="font-size: 13px; text-align: right; font-variant-numeric: tabular-nums;">₱1,450</div>
+                <div style="text-align: right;"><span class="tag" style="background: #E6F1EA; color: #1F5334;">88 · Good</span></div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 168px 1fr 96px 88px; gap: 14px; align-items: center; opacity: .7;">
+                <div>
+                  <div style="font-size: 13px;">Other 7 sites</div>
+                  <div style="font-size: 11px; color: var(--color-neutral-700);">aggregate</div>
+                </div>
+                <div style="height: 22px; background: var(--color-neutral-200); display: flex;">
+                  <span style="width: 31%; background: var(--color-accent-700);"></span>
+                  <span style="width: 8%; background: #C9781B;"></span>
+                </div>
+                <div style="font-size: 13px; text-align: right; font-variant-numeric: tabular-nums;">₱2,180</div>
+                <div style="text-align: right;"><span class="tag" style="background: var(--color-neutral-200); color: var(--color-neutral-900);">86 avg</span></div>
+              </div>
+            </div>
+
+            <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--color-neutral-200); font-size: 12px; color: var(--color-neutral-700);">Compliance score combines certification validity, sign-off timeliness and override rate. Site 07 sits at 67 — its overtime share is also the highest in the company at 27%.</div>
+          </div>
+
+          <div class="blueprint" style="padding: 18px; display: flex; flex-direction: column;">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px;">
+              <div style="font-family: var(--font-heading); font-size: 19px;">Audit feed</div>
+              <span class="tag" style="background: #F7E8E5; color: #75261C;">1 integrity alert</span>
+            </div>
+            <div style="font-size: 12px; color: var(--color-neutral-700); margin-bottom: 16px;">Flagged events, last 7 days</div>
+
+            <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+              <span class="tag" style="background: var(--color-accent-100); color: var(--color-accent-800);">Flagged only</span>
+              <span class="tag" style="border: 1px solid var(--color-divider); background: transparent; color: var(--color-neutral-800);">All events</span>
+              <span class="tag" style="border: 1px solid var(--color-divider); background: transparent; color: var(--color-neutral-800);">Integrity</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="border: 1px solid var(--color-divider); border-left: 3px solid #A83A2C; padding: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#75261C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><rect x="4" y="10" width="16" height="10"></rect><path d="M8 10V7a4 4 0 018 0v3"></path></svg>
+                  <span style="font-family: ui-monospace, monospace; font-size: 11px; color: #75261C;">HASH_CHAIN_BREAK</span>
+                  <span style="margin-left: auto; font-size: 11px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">05 Sep 02:14</span>
+                </div>
+                <div style="font-size: 13px; line-height: 1.4;">Attendance record ADC-0742 · 03 Sep does not match its stored signature. Record quarantined; payroll row blocked.</div>
+                <div style="font-size: 11px; color: var(--color-neutral-700); margin-top: 6px;">Site 04 · detected by integrity engine · IT and HR notified</div>
+              </div>
+
+              <div style="border: 1px solid var(--color-divider); border-left: 3px solid #6B4B8A; padding: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4A3260" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M5 21V4h11l-1.5 4L16 12H5"></path></svg>
+                  <span style="font-family: ui-monospace, monospace; font-size: 11px; color: #4A3260;">FOREMAN_LATE_OVERRIDE</span>
+                  <span style="margin-left: auto; font-size: 11px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">05 Sep 09:41</span>
+                </div>
+                <div style="font-size: 13px; line-height: 1.4;">21 records credited a 07:00 default after the foreman opened roll call late.</div>
+                <div style="font-size: 11px; color: var(--color-neutral-700); margin-top: 6px;">Site 07 · R. Dela Cruz · awaiting HR review</div>
+              </div>
+
+              <div style="border: 1px solid var(--color-divider); border-left: 3px solid #6B4B8A; padding: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4A3260" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M4 12a8 8 0 018-8 8 8 0 015.7 2.4"></path><path d="M20 12a8 8 0 01-8 8 8 8 0 01-5.7-2.4"></path><path d="M18 3v4h-4"></path><path d="M6 21v-4h4"></path></svg>
+                  <span style="font-family: ui-monospace, monospace; font-size: 11px; color: #4A3260;">RETROACTIVE_SIGNOFF</span>
+                  <span style="margin-left: auto; font-size: 11px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">04 Sep 16:22</span>
+                </div>
+                <div style="font-size: 13px; line-height: 1.4;">Crew-day reconstructed 3 days after the fact and signed by two officers. 189.0 hours, ₱153,720.</div>
+                <div style="font-size: 11px; color: var(--color-neutral-700); margin-top: 6px;">Site 07 · G. Tabotabo, then M. Reyes · case #REC-2026-0088</div>
+              </div>
+
+              <div style="border: 1px solid var(--color-divider); border-left: 3px solid #C9781B; padding: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A5211" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg>
+                  <span style="font-family: ui-monospace, monospace; font-size: 11px; color: #8A5211;">OT_THRESHOLD_EXCEEDED</span>
+                  <span style="margin-left: auto; font-size: 11px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">03 Sep 18:00</span>
+                </div>
+                <div style="font-size: 13px; line-height: 1.4;">Site 07 overtime reached 27% of site labour cost, past the 20% board ceiling.</div>
+                <div style="font-size: 11px; color: var(--color-neutral-700); margin-top: 6px;">Site 07 · third consecutive month</div>
+              </div>
+
+              <div style="border: 1px solid var(--color-divider); border-left: 3px solid #C9781B; padding: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A5211" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M12 3l8 4v6c0 4-3.5 7-8 8-4.5-1-8-4-8-8V7z"></path></svg>
+                  <span style="font-family: ui-monospace, monospace; font-size: 11px; color: #8A5211;">CERT_EXPIRED_ON_DUTY</span>
+                  <span style="margin-left: auto; font-size: 11px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">02 Sep 07:02</span>
+                </div>
+                <div style="font-size: 13px; line-height: 1.4;">2 workers assigned to scaffolding with lapsed TESDA certification.</div>
+                <div style="font-size: 11px; color: var(--color-neutral-700); margin-top: 6px;">Site 04 · resolved 02 Sep 11:30 — reassigned</div>
+              </div>
+            </div>
+
+            <div style="margin-top: auto; padding-top: 16px;">
+              <button class="btn btn-secondary btn-block" style="white-space: nowrap; min-height: 38px; margin-top: 0;">Open full audit log — 41 events</button>
+              <div style="font-size: 11px; color: var(--color-neutral-700); text-align: center; margin-top: 10px;">Executives can read the log. Only HR and IT can act on an entry.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 28px;">
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Cost and integrity on one row</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">The compliance dot sits on the cost bar, so a site that looks cheap because its records are thin cannot hide.</div>
+      </div>
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Tampering is red, process is purple</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">A broken hash chain is a different class of event from a legitimate override. The feed never colours them alike.</div>
+      </div>
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Aggregates only</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">Drill-down stops at site level. Individual pay is out of scope for this role, and the sidebar shows read-only access explicitly.</div>
+      </div>
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Every KPI carries its comparison</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">A number with no baseline is not a decision. Each card states the change, the target, or the trend behind it.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+</x-dc>
+</body>
+</html>

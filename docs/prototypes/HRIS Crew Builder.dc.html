@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/industry-65011e00-df34-4f6b-95ef-8d3ce1c921d0/styles.css">
+<script src="_ds/industry-65011e00-df34-4f6b-95ef-8d3ce1c921d0/_ds_bundle.js"></script>
+<style>
+body { margin: 0; background: var(--color-bg); }
+a { color: var(--color-accent-700); }
+a:hover { color: var(--color-accent-900); }
+</style>
+</helmet>
+
+<div style="width: 1720px; font-family: var(--font-body); color: var(--color-text); padding: 56px 56px 96px; display: flex; flex-direction: column; gap: 60px;">
+
+  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; border-bottom: 1px solid var(--color-divider); padding-bottom: 24px;">
+    <div>
+      <div style="font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 10px;">Arcenas Development Corporation · HRIS · Site Engineer / Construction Manager</div>
+      <h1 style="font-size: 52px; margin: 0 0 10px; letter-spacing: -.02em;">Crew builder &amp; deployment</h1>
+      <p style="margin: 0; font-size: 15px; max-width: 700px; color: var(--color-neutral-700);">Two jobs on one screen: fill a crew from the available pool, then see every crew across your sites for the day. A crew without a foreman cannot be deployed — that rule is visible at every level, from the roster header to the site overview.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: auto auto; gap: 5px 24px; font-size: 12px; color: var(--color-neutral-700); text-align: right; flex: none;">
+      <span>Scope</span><span style="color: var(--color-text);">Sites 04, 07, 11</span>
+      <span>Date</span><span style="color: var(--color-text);">Mon 07 Sep 2026</span>
+      <span>Interaction</span><span style="color: var(--color-text);">Drag or select-and-assign</span>
+    </div>
+  </header>
+
+  <!-- BUILDER -->
+  <section style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; align-items: baseline; gap: 16px;">
+      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">01 — Crew builder</h2>
+      <span style="font-size: 12px; color: var(--color-neutral-700);">Drag a worker across, or tick several and use Assign. Both paths exist — a mouse-free clerk should never be blocked by drag.</span>
+    </div>
+
+    <div class="blueprint" style="display: flex; background: var(--color-bg); min-height: 900px;">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+
+      <aside style="width: 220px; flex: none; background: var(--color-accent-900); color: var(--color-bg); display: flex; flex-direction: column;">
+        <div style="padding: 18px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(242,242,243,.14);">
+          <span style="width: 28px; height: 28px; border: 1px solid rgba(242,242,243,.5); display: grid; place-items: center; font-family: var(--font-heading); font-size: 14px;">A</span>
+          <div style="font-family: var(--font-heading); font-size: 17px;">ADC <span style="opacity: .55;">HRIS</span></div>
+        </div>
+        <div style="padding: 16px 18px; border-bottom: 1px solid rgba(242,242,243,.14);">
+          <div style="font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .5; margin-bottom: 8px;">Signed in as</div>
+          <div style="font-size: 14px;">Tabotabo, Grace M.</div>
+          <div style="font-size: 12px; opacity: .65; margin-bottom: 10px;">Construction Manager</div>
+          <span class="tag" style="border: 1px solid rgba(242,242,243,.45); color: var(--color-bg); background: transparent;">Site Engineer</span>
+        </div>
+        <nav style="flex: 1; padding: 12px 0;">
+          <div style="padding: 10px 18px 6px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .45;">Workforce</div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; opacity: .85;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>
+            <span style="font-size: 14px;">Attendance &amp; DTR</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; opacity: .85;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15"></rect><path d="M3.5 10h17"></path><path d="M8 3v4"></path><path d="M16 3v4"></path></svg>
+            <span style="font-size: 14px;">Leave Requests</span>
+          </div>
+          <div style="padding: 16px 18px 6px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .45;">Sites</div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; opacity: .85;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"></path><path d="M6 20V9l6-4 6 4v11"></path></svg>
+            <span style="font-size: 14px;">Project Sites</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; background: var(--color-accent-800); box-shadow: inset 3px 0 0 var(--color-accent-300);">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20v-1a4 4 0 014-4h2"></path><circle cx="8" cy="9" r="3"></circle><path d="M13 20v-1a4 4 0 014-4h1"></path><circle cx="17" cy="9" r="3"></circle></svg>
+            <span style="font-size: 14px;">Manpower Allocation</span>
+            <span style="margin-left: auto; font-size: 10px; background: #E2681C; color: #fff; padding: 1px 6px;">6</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; opacity: .85;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v6c0 4-3.5 7-8 8-4.5-1-8-4-8-8V7z"></path></svg>
+            <span style="font-size: 14px;">Compliance &amp; Docs</span>
+            <span style="margin-left: auto; font-size: 10px; background: #E2681C; color: #fff; padding: 1px 6px;">4</span>
+          </div>
+        </nav>
+      </aside>
+
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+        <div style="display: flex; align-items: center; gap: 16px; padding: 14px 22px; border-bottom: 1px solid var(--color-divider);">
+          <div>
+            <div style="font-family: var(--font-heading); font-size: 22px; line-height: 1.1;">Manpower Allocation</div>
+            <div style="font-size: 11px; color: var(--color-neutral-700);">Sites 04, 07, 11 · week of 07 Sep 2026</div>
+          </div>
+          <div style="display: flex; gap: 12px; margin-left: 14px;">
+            <div class="field" style="width: 230px;">
+              <label>Deploy to site</label>
+              <div class="input" style="min-height: 34px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; border-color: var(--color-accent);"><span>Site 07 — Mandaue Viaduct</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></div>
+            </div>
+            <div class="field" style="width: 170px;">
+              <label>Effective date</label>
+              <div class="input" style="min-height: 34px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-variant-numeric: tabular-nums;"><span>Mon 07 Sep</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15"></rect><path d="M3.5 10h17"></path></svg></div>
+            </div>
+          </div>
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 12px;">
+            <span style="display: inline-flex; align-items: center; gap: 7px; border: 1px solid #2F7A4D; padding: 4px 10px;">
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: #2F7A4D;"></span>
+              <span style="font-family: var(--font-heading); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: #1F5334;">Online</span>
+            </span>
+            <span class="tag" style="border: 1px solid var(--color-accent-700); color: var(--color-accent-800); background: transparent;">Site Engineer</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="width: 28px; height: 28px; border: 1px solid var(--color-divider); display: grid; place-items: center; font-family: var(--font-heading); font-size: 12px;">GT</span>
+              <span style="font-size: 13px;">G. Tabotabo</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex: 1; padding: 22px; display: grid; grid-template-columns: 1fr 64px 1.15fr; gap: 0; align-items: start;">
+
+          <!-- POOL -->
+          <div class="blueprint" style="padding: 0; display: flex; flex-direction: column;">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="padding: 16px 18px 14px; border-bottom: 1px solid var(--color-divider);">
+              <div style="display: flex; align-items: baseline; gap: 10px;">
+                <div style="font-family: var(--font-heading); font-size: 19px;">Available pool</div>
+                <span style="font-size: 12px; color: var(--color-neutral-700);">31 workers unassigned today</span>
+              </div>
+              <div style="display: flex; gap: 10px; margin-top: 12px;">
+                <div class="input" style="flex: 1; min-height: 34px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-neutral-600);">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4 4"></path></svg>
+                  Search name or trade
+                </div>
+                <div class="input" style="width: 130px; min-height: 34px; display: flex; align-items: center; justify-content: space-between; font-size: 13px;"><span>Rebar</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap;">
+                <span class="tag" style="background: var(--color-accent-100); color: var(--color-accent-800); gap: 8px;">Trade: Rebar<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></span>
+                <span class="tag" style="background: var(--color-accent-100); color: var(--color-accent-800); gap: 8px;">Certs valid<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></span>
+                <span style="font-size: 11px; color: var(--color-neutral-700); margin-left: auto;">9 shown</span>
+              </div>
+            </div>
+
+            <div style="padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid var(--color-divider); background: var(--color-bg); cursor: grab;">
+                <span style="width: 16px; height: 16px; border: 1.5px solid var(--color-accent); background: var(--color-accent); box-shadow: inset 0 0 0 2px var(--color-bg); flex: none;"></span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-500)" stroke-width="1.5" stroke-linecap="round" style="flex: none;"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"></path></svg>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 14px;">Ompad, Kevin R.</div>
+                  <div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0742 · Rebar · 2 yr</div>
+                </div>
+                <span class="tag" style="background: #FBF0E2; color: #8A5211; gap: 6px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#8A5211" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg>Cert 6 d</span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid var(--color-divider); background: var(--color-bg); cursor: grab;">
+                <span style="width: 16px; height: 16px; border: 1.5px solid var(--color-accent); background: var(--color-accent); box-shadow: inset 0 0 0 2px var(--color-bg); flex: none;"></span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-500)" stroke-width="1.5" stroke-linecap="round" style="flex: none;"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"></path></svg>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 14px;">Enriquez, Dante V.</div>
+                  <div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0666 · Rebar · 6 yr</div>
+                </div>
+                <span class="tag" style="background: #E6F1EA; color: #1F5334; gap: 6px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"></path></svg>Valid</span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid var(--color-divider); background: var(--color-bg); cursor: grab;">
+                <span style="width: 16px; height: 16px; border: 1.5px solid var(--color-accent); background: var(--color-accent); box-shadow: inset 0 0 0 2px var(--color-bg); flex: none;"></span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-500)" stroke-width="1.5" stroke-linecap="round" style="flex: none;"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"></path></svg>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 14px;">Yap, Ariel S.</div>
+                  <div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0713 · Rebar · 4 yr</div>
+                </div>
+                <span class="tag" style="background: #E6F1EA; color: #1F5334; gap: 6px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"></path></svg>Valid</span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 12px; padding: 11px 12px; border: 1px dashed var(--color-accent); background: var(--color-accent-100); opacity: .75;">
+                <span style="width: 16px; height: 16px; border: 1.5px solid var(--color-accent); background: var(--color-accent); box-shadow: inset 0 0 0 2px var(--color-bg); flex: none;"></span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" stroke-width="1.5" stroke-linecap="round" style="flex: none;"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"></path></svg>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 14px; color: var(--color-accent-800);">Sarmiento, Noel D.</div>
+                  <div style="font-size: 11px; color: var(--color-accent-700);">being dragged — drop into a roster</div>
+                </div>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid var(--color-divider); background: var(--color-bg); cursor: grab;">
+                <span style="width: 16px; height: 16px; border: 1.5px solid var(--color-divider); flex: none;"></span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-500)" stroke-width="1.5" stroke-linecap="round" style="flex: none;"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"></path></svg>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 14px;">Lumapas, Ferdie C.</div>
+                  <div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0788 · Rebar · 3 yr</div>
+                </div>
+                <span class="tag" style="background: #E6F1EA; color: #1F5334; gap: 6px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"></path></svg>Valid</span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid var(--color-divider); background: var(--color-bg); opacity: .5;">
+                <span style="width: 16px; height: 16px; border: 1.5px solid var(--color-neutral-300); background: var(--color-neutral-200); flex: none;"></span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-400)" stroke-width="1.5" stroke-linecap="round" style="flex: none;"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"></path></svg>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 14px;">Gantuangco, Rico A.</div>
+                  <div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0388 · Heavy equipment</div>
+                </div>
+                <span class="tag" style="background: #F7E8E5; color: #75261C; gap: 6px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#75261C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l8 15H4z"></path><path d="M12 10v3"></path><path d="M12 15.5v.5"></path></svg>2 expired</span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid var(--color-divider); background: var(--color-bg); opacity: .5;">
+                <span style="width: 16px; height: 16px; border: 1.5px solid var(--color-neutral-300); background: var(--color-neutral-200); flex: none;"></span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-400)" stroke-width="1.5" stroke-linecap="round" style="flex: none;"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"></path></svg>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 14px;">Villamor, Jun P.</div>
+                  <div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0821 · Rebar · on leave to 09 Sep</div>
+                </div>
+                <span class="tag" style="background: var(--color-neutral-200); color: var(--color-neutral-900);">On leave</span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid var(--color-divider); background: var(--color-bg); cursor: grab;">
+                <span style="width: 16px; height: 16px; border: 1.5px solid var(--color-divider); flex: none;"></span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-500)" stroke-width="1.5" stroke-linecap="round" style="flex: none;"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"></path></svg>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 14px;">Bongo, Michael A.</div>
+                  <div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0902 · Rebar · 1 yr</div>
+                </div>
+                <span class="tag" style="background: #E6F1EA; color: #1F5334; gap: 6px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"></path></svg>Valid</span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid var(--color-divider); background: var(--color-bg); cursor: grab;">
+                <span style="width: 16px; height: 16px; border: 1.5px solid var(--color-divider); flex: none;"></span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-500)" stroke-width="1.5" stroke-linecap="round" style="flex: none;"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"></path></svg>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 14px;">Tequillo, Alvin M.</div>
+                  <div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0955 · Rebar · 8 mo</div>
+                </div>
+                <span class="tag" style="background: #E6F1EA; color: #1F5334; gap: 6px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"></path></svg>Valid</span>
+              </div>
+            </div>
+
+            <div style="margin-top: auto; padding: 14px 18px; border-top: 1px solid var(--color-divider); display: flex; align-items: center; gap: 12px;">
+              <span style="font-size: 12px; color: var(--color-neutral-700);">3 selected</span>
+              <span style="font-size: 11px; color: var(--color-neutral-700);">Workers with expired certs or on leave cannot be selected.</span>
+            </div>
+          </div>
+
+          <!-- TRANSFER -->
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 200px;">
+            <button class="btn btn-primary blueprint" style="white-space: nowrap; flex: none; width: 44px; min-height: 44px; padding: 0;" aria-label="Assign to crew"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg>
+            </button>
+            <div style="font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-neutral-700); text-align: center;">Assign</div>
+            <button class="btn btn-secondary" style="white-space: nowrap; flex: none; width: 44px; min-height: 44px; padding: 0; margin-top: 8px;" aria-label="Remove from crew">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M11 6l-6 6 6 6"></path></svg>
+            </button>
+            <div style="font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-neutral-700); text-align: center;">Remove</div>
+          </div>
+
+          <!-- ROSTER -->
+          <div class="blueprint" style="padding: 0; display: flex; flex-direction: column;">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="padding: 16px 18px 14px; border-bottom: 1px solid var(--color-divider);">
+              <div style="display: flex; align-items: flex-start; gap: 12px;">
+                <div style="flex: 1; min-width: 0;">
+                  <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;">
+                    <div style="font-family: var(--font-heading); font-size: 19px;">Rebar crew D</div>
+                    <span class="tag" style="background: var(--color-accent-100); color: var(--color-accent-800);">Draft</span>
+                  </div>
+                  <div style="font-size: 12px; color: var(--color-neutral-700); margin-top: 2px;">Site 07 — Mandaue Viaduct · effective Mon 07 Sep</div>
+                </div>
+                <div style="text-align: right; flex: none;">
+                  <div style="font-family: var(--font-heading); font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums;">14<span style="font-size: 17px; color: var(--color-neutral-700);"> / 20</span></div>
+                  <div style="font-size: 11px; color: var(--color-neutral-700);">crew size · target 20</div>
+                </div>
+              </div>
+              <div style="height: 6px; background: var(--color-neutral-200); margin-top: 12px;">
+                <div style="width: 70%; height: 6px; background: var(--color-accent);"></div>
+              </div>
+              <div style="display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap;">
+                <span class="tag" style="background: #E6F1EA; color: #1F5334; gap: 6px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20v-1a5 5 0 015-5h1"></path><circle cx="9" cy="8" r="3.5"></circle><path d="M15 20v-1a5 5 0 015-5"></path></svg>Foreman assigned</span>
+                <span class="tag" style="background: #E6F1EA; color: #1F5334; gap: 6px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"></path></svg>All certs valid</span>
+                <span class="tag" style="background: #FBF0E2; color: #8A5211; gap: 6px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8A5211" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg>6 short of target</span>
+              </div>
+            </div>
+
+            <div style="padding: 14px 18px; border-bottom: 1px solid var(--color-neutral-200); background: color-mix(in srgb, var(--color-text) 3%, transparent);">
+              <div style="font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700); margin-bottom: 10px;">Foreman</div>
+              <div style="display: flex; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid var(--color-accent); background: var(--color-bg); box-shadow: inset 3px 0 0 var(--color-accent);">
+                <span style="width: 32px; height: 32px; border: 1px solid var(--color-divider); display: grid; place-items: center; font-family: var(--font-heading); font-size: 13px; flex: none;">RD</span>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 14px;">Dela Cruz, Ronel B.</div>
+                  <div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0387 · currently leads Formwork crew B</div>
+                </div>
+                <span class="tag" style="border: 1px solid var(--color-accent-700); color: var(--color-accent-800); background: transparent;">Foreman</span>
+                <button class="btn btn-ghost" style="white-space: nowrap; flex: none; min-height: 28px;">Change</button>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: flex-start; margin-top: 10px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A5211" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px;"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 11v6"></path><path d="M12 8v.5"></path></svg>
+                <div style="font-size: 11px; color: #8A5211;">R. Dela Cruz already leads a crew at Site 07. Assigning him here will move Formwork crew B to an acting foreman.</div>
+              </div>
+            </div>
+
+            <div style="padding: 12px 18px 6px; display: flex; align-items: baseline; gap: 10px;">
+              <div style="font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700);">Roster — 13 workers</div>
+              <span style="font-size: 11px; color: var(--color-neutral-700); margin-left: auto;">Sorted by trade</span>
+            </div>
+
+            <div style="padding: 6px 12px 12px; display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--color-divider);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-500)" stroke-width="1.5" stroke-linecap="round" style="flex: none;"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"></path></svg>
+                <div style="flex: 1; min-width: 0;"><div style="font-size: 14px;">Abainza, Jomar T.</div><div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0455 · Steelwork · lead hand</div></div>
+                <span class="tag" style="background: #E6F1EA; color: #1F5334;">Valid</span>
+                <button class="btn btn-secondary btn-icon" style="flex: none;" aria-label="Remove"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></button>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--color-divider);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-500)" stroke-width="1.5" stroke-linecap="round" style="flex: none;"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"></path></svg>
+                <div style="flex: 1; min-width: 0;"><div style="font-size: 14px;">Cabahug, Lito M.</div><div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0921 · Welding</div></div>
+                <span class="tag" style="background: #FBF0E2; color: #8A5211;">Cert 28 d</span>
+                <button class="btn btn-secondary btn-icon" style="flex: none;" aria-label="Remove"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></button>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--color-divider);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-500)" stroke-width="1.5" stroke-linecap="round" style="flex: none;"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"></path></svg>
+                <div style="flex: 1; min-width: 0;"><div style="font-size: 14px;">Roska, Jeffrey L.</div><div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0640 · Rebar</div></div>
+                <span class="tag" style="background: #E6F1EA; color: #1F5334;">Valid</span>
+                <button class="btn btn-secondary btn-icon" style="flex: none;" aria-label="Remove"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></button>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--color-divider);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-500)" stroke-width="1.5" stroke-linecap="round" style="flex: none;"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"></path></svg>
+                <div style="flex: 1; min-width: 0;"><div style="font-size: 14px;">Manatad, Erwin B.</div><div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0705 · Rebar</div></div>
+                <span class="tag" style="background: #E6F1EA; color: #1F5334;">Valid</span>
+                <button class="btn btn-secondary btn-icon" style="flex: none;" aria-label="Remove"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></button>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--color-divider);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-500)" stroke-width="1.5" stroke-linecap="round" style="flex: none;"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"></path></svg>
+                <div style="flex: 1; min-width: 0;"><div style="font-size: 14px;">Suico, Bryan G.</div><div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0774 · Rebar</div></div>
+                <span class="tag" style="background: #E6F1EA; color: #1F5334;">Valid</span>
+                <button class="btn btn-secondary btn-icon" style="flex: none;" aria-label="Remove"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></button>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--color-divider); opacity: .55;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-500)" stroke-width="1.5" stroke-linecap="round" style="flex: none;"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"></path></svg>
+                <div style="flex: 1; min-width: 0;"><div style="font-size: 14px;">+ 8 more workers</div><div style="font-size: 11px; color: var(--color-neutral-700);">Masonry 3 · Formwork 3 · Rebar 2</div></div>
+              </div>
+
+              <div style="border: 1px dashed var(--color-accent); background: var(--color-accent-100); padding: 18px; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 68px;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+                <span style="font-size: 14px; color: var(--color-accent-800);">Drop worker here to add to Rebar crew D</span>
+              </div>
+            </div>
+
+            <div style="margin-top: auto; padding: 14px 18px; border-top: 1px solid var(--color-divider); display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 11px; color: var(--color-neutral-700);">Foremen are notified when the deployment is saved.</span>
+              <div style="margin-left: auto; display: flex; gap: 10px;">
+                <button class="btn btn-secondary" style="white-space: nowrap; flex: none; min-height: 36px;">Save draft</button>
+                <button class="btn btn-primary blueprint" style="white-space: nowrap; flex: none; min-height: 36px;"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Deploy crew</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEPLOYMENT OVERVIEW -->
+  <section style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; align-items: baseline; gap: 16px;">
+      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">02 — Site deployment today</h2>
+      <span style="font-size: 12px; color: var(--color-neutral-700);">Mon 07 Sep 2026 · every crew across the three sites in this engineer's scope.</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 16px;">
+      <div class="blueprint" style="padding: 14px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700);">Deployed today</div>
+        <div style="font-family: var(--font-heading); font-size: 32px; font-variant-numeric: tabular-nums;">117</div>
+        <div style="font-size: 11px; color: var(--color-neutral-700);">of 124 required</div>
+      </div>
+      <div class="blueprint" style="padding: 14px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700);">Active crews</div>
+        <div style="font-family: var(--font-heading); font-size: 32px; font-variant-numeric: tabular-nums;">9</div>
+        <div style="font-size: 11px; color: var(--color-neutral-700);">across 3 sites</div>
+      </div>
+      <div class="blueprint" style="padding: 14px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700);">Without foreman</div>
+        <div style="font-family: var(--font-heading); font-size: 32px; font-variant-numeric: tabular-nums; color: #75261C;">2</div>
+        <div style="font-size: 11px; color: var(--color-neutral-700);">cannot start work</div>
+      </div>
+      <div class="blueprint" style="padding: 14px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700);">Unassigned pool</div>
+        <div style="font-family: var(--font-heading); font-size: 32px; font-variant-numeric: tabular-nums; color: #96420E;">31</div>
+        <div style="font-size: 11px; color: var(--color-neutral-700);">available to deploy</div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 28px;">
+
+      <div class="blueprint" style="padding: 0; display: flex; flex-direction: column;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="padding: 18px; border-bottom: 1px solid var(--color-divider);">
+          <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-family: var(--font-heading); font-size: 22px;">Site 04 — Cebu North</div>
+              <div style="font-size: 12px; color: var(--color-neutral-700);">Structural, phase 2 · Engr. G. Tabotabo</div>
+            </div>
+            <span class="tag" style="background: #E6F1EA; color: #1F5334; gap: 6px; flex: none;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #2F7A4D;"></span>Fully manned</span>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 14px;">
+            <span style="font-family: var(--font-heading); font-size: 26px; font-variant-numeric: tabular-nums;">62</span>
+            <span style="font-size: 12px; color: var(--color-neutral-700);">workers · 4 crews · target 62</span>
+          </div>
+          <div style="height: 6px; background: var(--color-neutral-200); margin-top: 10px;"><div style="width: 100%; height: 6px; background: #2F7A4D;"></div></div>
+        </div>
+        <div style="padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="border: 1px solid var(--color-divider); padding: 12px;">
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+              <div style="font-size: 14px;">Structural crew B</div>
+              <span style="margin-left: auto; font-family: var(--font-heading); font-size: 17px; font-variant-numeric: tabular-nums;">18</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M4 20v-1a5 5 0 015-5h1"></path><circle cx="9" cy="8" r="3.5"></circle><path d="M15 20v-1a5 5 0 015-5"></path></svg>
+              <span style="font-size: 12px; color: var(--color-neutral-700);">Bacus, Elmer P.</span>
+            </div>
+          </div>
+          <div style="border: 1px solid var(--color-divider); padding: 12px;">
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+              <div style="font-size: 14px;">Formwork crew A</div>
+              <span style="margin-left: auto; font-family: var(--font-heading); font-size: 17px; font-variant-numeric: tabular-nums;">16</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M4 20v-1a5 5 0 015-5h1"></path><circle cx="9" cy="8" r="3.5"></circle><path d="M15 20v-1a5 5 0 015-5"></path></svg>
+              <span style="font-size: 12px; color: var(--color-neutral-700);">Lim, Joseph A.</span>
+            </div>
+          </div>
+          <div style="border: 1px solid var(--color-divider); padding: 12px;">
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+              <div style="font-size: 14px;">Masonry crew C</div>
+              <span style="margin-left: auto; font-family: var(--font-heading); font-size: 17px; font-variant-numeric: tabular-nums;">15</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M4 20v-1a5 5 0 015-5h1"></path><circle cx="9" cy="8" r="3.5"></circle><path d="M15 20v-1a5 5 0 015-5"></path></svg>
+              <span style="font-size: 12px; color: var(--color-neutral-700);">Ybañez, Marlon D.</span>
+            </div>
+          </div>
+          <div style="border: 1px solid var(--color-divider); padding: 12px;">
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+              <div style="font-size: 14px;">Finishing crew E</div>
+              <span style="margin-left: auto; font-family: var(--font-heading); font-size: 17px; font-variant-numeric: tabular-nums;">13</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M4 20v-1a5 5 0 015-5h1"></path><circle cx="9" cy="8" r="3.5"></circle><path d="M15 20v-1a5 5 0 015-5"></path></svg>
+              <span style="font-size: 12px; color: var(--color-neutral-700);">Panerio, Allan S.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="blueprint" style="padding: 0; display: flex; flex-direction: column;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="padding: 18px; border-bottom: 1px solid var(--color-divider);">
+          <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-family: var(--font-heading); font-size: 22px;">Site 07 — Mandaue Viaduct</div>
+              <div style="font-size: 12px; color: var(--color-neutral-700);">Deck pour, span 3 · Engr. G. Tabotabo</div>
+            </div>
+            <span class="tag" style="background: #F7E8E5; color: #75261C; gap: 6px; flex: none;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#75261C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l8 15H4z"></path><path d="M12 10v3"></path><path d="M12 15.5v.5"></path></svg>No foreman</span>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 14px;">
+            <span style="font-family: var(--font-heading); font-size: 26px; font-variant-numeric: tabular-nums;">48</span>
+            <span style="font-size: 12px; color: var(--color-neutral-700);">workers · 3 crews · target 54</span>
+          </div>
+          <div style="height: 6px; background: var(--color-neutral-200); margin-top: 10px;"><div style="width: 89%; height: 6px; background: #C9781B;"></div></div>
+        </div>
+        <div style="padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="border: 1px solid var(--color-divider); padding: 12px;">
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+              <div style="font-size: 14px;">Formwork crew B</div>
+              <span style="margin-left: auto; font-family: var(--font-heading); font-size: 17px; font-variant-numeric: tabular-nums;">21</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M4 20v-1a5 5 0 015-5h1"></path><circle cx="9" cy="8" r="3.5"></circle><path d="M15 20v-1a5 5 0 015-5"></path></svg>
+              <span style="font-size: 12px; color: var(--color-neutral-700);">Dela Cruz, Ronel B.</span>
+            </div>
+          </div>
+          <div style="border: 1px solid var(--color-divider); border-left: 3px solid #A83A2C; padding: 12px;">
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+              <div style="font-size: 14px;">Steelwork crew F</div>
+              <span style="margin-left: auto; font-family: var(--font-heading); font-size: 17px; font-variant-numeric: tabular-nums;">14</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#75261C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M12 4l8 15H4z"></path><path d="M12 10v3"></path><path d="M12 15.5v.5"></path></svg>
+              <span style="font-size: 12px; color: #75261C;">No foreman assigned</span>
+              <button class="btn btn-ghost" style="white-space: nowrap; flex: none; margin-left: auto; min-height: 26px; font-size: 12px;">Assign</button>
+            </div>
+          </div>
+          <div style="border: 1px solid var(--color-divider); padding: 12px;">
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+              <div style="font-size: 14px;">Rebar crew D</div>
+              <span class="tag" style="background: var(--color-accent-100); color: var(--color-accent-800);">Draft</span>
+              <span style="margin-left: auto; font-family: var(--font-heading); font-size: 17px; font-variant-numeric: tabular-nums;">14</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M4 20v-1a5 5 0 015-5h1"></path><circle cx="9" cy="8" r="3.5"></circle><path d="M15 20v-1a5 5 0 015-5"></path></svg>
+              <span style="font-size: 12px; color: var(--color-neutral-700);">Dela Cruz, Ronel B. — pending</span>
+            </div>
+          </div>
+          <div style="border: 1px dashed var(--color-divider); padding: 12px; display: flex; align-items: center; gap: 10px; color: var(--color-neutral-700);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+            <span style="font-size: 13px;">6 workers short — deploy from pool</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="blueprint" style="padding: 0; display: flex; flex-direction: column;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="padding: 18px; border-bottom: 1px solid var(--color-divider);">
+          <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-family: var(--font-heading); font-size: 22px;">Site 11 — Talisay Housing</div>
+              <div style="font-size: 12px; color: var(--color-neutral-700);">Blocks 1–4, ramping up · Engr. G. Tabotabo</div>
+            </div>
+            <span class="tag" style="background: #FBF0E2; color: #8A5211; gap: 6px; flex: none;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #C9781B;"></span>Understaffed</span>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 14px;">
+            <span style="font-family: var(--font-heading); font-size: 26px; font-variant-numeric: tabular-nums;">39</span>
+            <span style="font-size: 12px; color: var(--color-neutral-700);">workers · 2 crews · target 48</span>
+          </div>
+          <div style="height: 6px; background: var(--color-neutral-200); margin-top: 10px;"><div style="width: 81%; height: 6px; background: #C9781B;"></div></div>
+        </div>
+        <div style="padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="border: 1px solid var(--color-divider); padding: 12px;">
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+              <div style="font-size: 14px;">Masonry crew G</div>
+              <span style="margin-left: auto; font-family: var(--font-heading); font-size: 17px; font-variant-numeric: tabular-nums;">22</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M4 20v-1a5 5 0 015-5h1"></path><circle cx="9" cy="8" r="3.5"></circle><path d="M15 20v-1a5 5 0 015-5"></path></svg>
+              <span style="font-size: 12px; color: var(--color-neutral-700);">Escario, Boy T.</span>
+            </div>
+          </div>
+          <div style="border: 1px solid var(--color-divider); border-left: 3px solid #A83A2C; padding: 12px;">
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+              <div style="font-size: 14px;">Finishing crew H</div>
+              <span style="margin-left: auto; font-family: var(--font-heading); font-size: 17px; font-variant-numeric: tabular-nums;">17</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#75261C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M12 4l8 15H4z"></path><path d="M12 10v3"></path><path d="M12 15.5v.5"></path></svg>
+              <span style="font-size: 12px; color: #75261C;">Acting foreman — 3 days</span>
+              <button class="btn btn-ghost" style="white-space: nowrap; flex: none; margin-left: auto; min-height: 26px; font-size: 12px;">Assign</button>
+            </div>
+          </div>
+          <div style="border: 1px dashed var(--color-divider); padding: 12px; display: flex; align-items: center; gap: 10px; color: var(--color-neutral-700);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+            <span style="font-size: 13px;">9 workers short — deploy from pool</span>
+          </div>
+          <div style="border: 1px dashed var(--color-divider); padding: 12px; display: flex; align-items: center; gap: 10px; color: var(--color-neutral-700);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20v-1a4 4 0 014-4h2"></path><circle cx="8" cy="9" r="3"></circle><path d="M13 20v-1a4 4 0 014-4h1"></path><circle cx="17" cy="9" r="3"></circle></svg>
+            <span style="font-size: 13px;">New crew</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 28px;">
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">A crew with no foreman is an error</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">Red rule on the crew, red badge on the site header, and a count in the summary. Nobody can start a shift unsupervised without it being visible from the top of the screen.</div>
+      </div>
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Drag is a shortcut, not the only path</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">Checkboxes plus an Assign arrow do the same job. The same screen works on a tablet in a site office where drag is unreliable.</div>
+      </div>
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Certification blocks assignment</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">Expired certs and approved leave grey a worker out in the pool. HR's compliance data becomes an operational guardrail here.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+</x-dc>
+</body>
+</html>

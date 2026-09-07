@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/industry-65011e00-df34-4f6b-95ef-8d3ce1c921d0/styles.css">
+<script src="_ds/industry-65011e00-df34-4f6b-95ef-8d3ce1c921d0/_ds_bundle.js"></script>
+<style>
+@keyframes hris-pulse { 0%,100% { opacity: 1 } 50% { opacity: .2 } }
+body { margin: 0; background: var(--color-bg); }
+a { color: var(--color-accent-700); }
+a:hover { color: var(--color-accent-900); }
+</style>
+</helmet>
+
+<div style="width: 1720px; font-family: var(--font-body); color: var(--color-text); padding: 56px 56px 96px; display: flex; flex-direction: column; gap: 60px;">
+
+  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; border-bottom: 1px solid var(--color-divider); padding-bottom: 24px;">
+    <div>
+      <div style="font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 10px;">Arcenas Development Corporation · HRIS</div>
+      <h1 style="font-size: 52px; margin: 0 0 10px; letter-spacing: -.02em;">Login &amp; role-based shell</h1>
+      <p style="margin: 0; font-size: 15px; max-width: 680px; color: var(--color-neutral-700);">React + TailwindCSS web app. Access is admin-provisioned — there is no self-registration path. The shell is one layout; the sidebar is the only thing that changes by role.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: auto auto; gap: 5px 24px; font-size: 12px; color: var(--color-neutral-700); text-align: right; flex: none;">
+      <span>Roles</span><span style="color: var(--color-text);">5, admin-assigned</span>
+      <span>Auth</span><span style="color: var(--color-text);">Email or Employee ID + password</span>
+      <span>Sign-up</span><span style="color: var(--color-text);">None — provisioned only</span>
+    </div>
+  </header>
+
+  <!-- LOGIN -->
+  <section style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; align-items: baseline; gap: 16px;">
+      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">01 — Login</h2>
+      <span style="font-size: 12px; color: var(--color-neutral-700);">Two-panel: identity plate on the deep steel field, the form on paper ground.</span>
+    </div>
+
+    <div class="blueprint" style="display: grid; grid-template-columns: 1fr 1fr; min-height: 620px;">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div style="background: var(--color-accent-900); color: var(--color-bg); padding: 48px; display: flex; flex-direction: column; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span style="width: 40px; height: 40px; border: 1px solid rgba(242,242,243,.5); display: grid; place-items: center; font-family: var(--font-heading); font-size: 18px; letter-spacing: .02em;">A</span>
+          <div>
+            <div style="font-family: var(--font-heading); font-size: 19px; letter-spacing: .04em;">ARCENAS</div>
+            <div style="font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .6;">Development Corporation</div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .6; margin-bottom: 14px;">Human Resource Information System</div>
+          <div style="font-family: var(--font-heading); font-size: 46px; line-height: 1.06; max-width: 380px;">One record of every worker, on every site.</div>
+          <p style="margin: 18px 0 0; font-size: 14px; opacity: .75; max-width: 400px;">Attendance, payroll and compliance for eleven project sites in Cebu and Bohol. The field app keeps working when the signal does not.</p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; font-size: 12px; opacity: .7;">
+          <span style="width: 7px; height: 7px; border-radius: 50%; background: #6FBF8E;"></span>
+          <span>Server reachable · v2.4.1</span>
+          <span style="margin-left: auto;">© 2026 ADC</span>
+        </div>
+      </div>
+
+      <div style="padding: 48px 64px; display: flex; flex-direction: column; justify-content: center;">
+        <div style="max-width: 400px; width: 100%;">
+          <h3 style="font-size: 32px; margin: 0 0 6px;">Sign in</h3>
+          <p style="font-size: 14px; color: var(--color-neutral-700); margin: 0 0 28px;">Use the credentials issued by HR. Accounts are created by an administrator.</p>
+
+          <div class="field" style="margin-bottom: 16px;">
+            <label>Email or Employee ID</label>
+            <input class="input" type="text" style="min-height: 44px;" value="mreyes@arcenasdev.ph" readonly>
+          </div>
+
+          <div class="field" style="margin-bottom: 10px;">
+            <label>Password</label>
+            <div class="input" style="min-height: 44px; display: flex; align-items: center; gap: 10px;">
+              <span style="letter-spacing: .3em; color: var(--color-neutral-800);">••••••••••</span>
+              <button class="btn btn-ghost" style="white-space: nowrap; flex: none; margin-left: auto; min-height: 28px; font-size: 12px;">Show</button>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 26px;">
+            <label class="radio" style="gap: 9px;"><input type="checkbox" style="position: absolute; opacity: 0; width: 0; height: 0;"><span style="width: 16px; height: 16px; border: 1.5px solid var(--color-divider); display: block;"></span>Keep me signed in</label>
+            <a href="#forgot" style="font-size: 13px;">Forgot password</a>
+          </div>
+
+          <button class="btn btn-primary btn-block blueprint" style="white-space: nowrap; min-height: 48px; font-size: 16px; margin-top: 0;"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Sign in</button>
+
+          <div style="margin-top: 26px; border-top: 1px solid var(--color-neutral-200); padding-top: 18px; display: flex; gap: 12px; align-items: flex-start;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px;"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 11v6"></path><path d="M12 8v.5"></path></svg>
+            <div style="font-size: 12px; color: var(--color-neutral-700);">No account? HRIS access is provisioned by an administrator. Contact HR at <a href="#hr">hr@arcenasdev.ph</a> or local 214.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 28px;">
+      <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Failed sign-in</div>
+        <div class="field">
+          <label>Email or Employee ID</label>
+          <input class="input" type="text" style="min-height: 44px; border-color: #A83A2C;" value="ADC-0455" readonly>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: flex-start; border-left: 3px solid #A83A2C; padding: 10px 12px; background: #F7E8E5;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#75261C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px;"><path d="M12 4l8 15H4z"></path><path d="M12 10v4"></path><path d="M12 16.5v.5"></path></svg>
+          <div style="font-size: 13px; color: #75261C;">Incorrect ID or password. 2 attempts left before the account locks for 15 minutes.</div>
+        </div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">The message never says which field was wrong.</div>
+      </div>
+
+      <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Forgot password</div>
+        <p style="font-size: 13px; color: var(--color-neutral-700); margin: 0;">Enter your Employee ID. HR receives the reset request — no self-serve reset link, since most field workers have no company email.</p>
+        <div class="field">
+          <label>Employee ID</label>
+          <input class="input" type="text" style="min-height: 44px;" placeholder="ADC-0000" readonly>
+        </div>
+        <button class="btn btn-primary blueprint" style="white-space: nowrap; flex: none; min-height: 44px; align-self: flex-start;"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Request reset</button>
+      </div>
+
+      <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Offline sign-in — field app</div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--color-neutral-200); border: 1px solid var(--color-divider);">
+          <span style="width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--color-neutral-700);"></span>
+          <span style="font-family: var(--font-heading); font-size: 14px; letter-spacing: .04em; text-transform: uppercase;">No connection</span>
+        </div>
+        <p style="font-size: 13px; color: var(--color-neutral-700); margin: 0;">A foreman who signed in on this device within 7 days can unlock with a 6-digit PIN and keep recording. Web sign-in always requires the server.</p>
+        <div style="display: flex; gap: 10px;">
+          <div class="input" style="width: 44px; min-height: 52px; display: grid; place-items: center; font-size: 20px;">•</div>
+          <div class="input" style="width: 44px; min-height: 52px; display: grid; place-items: center; font-size: 20px;">•</div>
+          <div class="input" style="width: 44px; min-height: 52px; display: grid; place-items: center; font-size: 20px;">•</div>
+          <div class="input" style="width: 44px; min-height: 52px; display: grid; place-items: center; font-size: 20px; border-color: var(--color-accent);"></div>
+          <div class="input" style="width: 44px; min-height: 52px;"></div>
+          <div class="input" style="width: 44px; min-height: 52px;"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SHELL -->
+  <section style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;">
+      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">02 — Post-login shell</h2>
+      <span style="font-size: 12px; color: var(--color-neutral-700);">Pick a role to see its sidebar and landing dashboard. Same chrome, different nav.</span>
+    </div>
+
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <sc-for list="{{ roleTabs }}" as="tab" hint-placeholder-count="5">
+        <button class="btn" style="{{ tab.style }}" onClick="{{ tab.onClick }}">{{ tab.label }}</button>
+      </sc-for>
+    </div>
+
+    <div class="blueprint" style="display: flex; min-height: 760px; background: var(--color-bg);">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+
+      <aside style="width: 252px; flex: none; background: var(--color-accent-900); color: var(--color-bg); display: flex; flex-direction: column;">
+        <div style="padding: 18px 18px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(242,242,243,.14);">
+          <span style="width: 28px; height: 28px; border: 1px solid rgba(242,242,243,.5); display: grid; place-items: center; font-family: var(--font-heading); font-size: 14px;">A</span>
+          <div style="font-family: var(--font-heading); font-size: 17px; letter-spacing: .02em;">ADC <span style="opacity: .55;">HRIS</span></div>
+        </div>
+
+        <div style="padding: 16px 18px; border-bottom: 1px solid rgba(242,242,243,.14);">
+          <div style="font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .5; margin-bottom: 8px;">Signed in as</div>
+          <div style="font-size: 14px;">{{ user.name }}</div>
+          <div style="font-size: 12px; opacity: .65; margin-bottom: 10px;">{{ user.detail }}</div>
+          <span class="tag" style="border: 1px solid rgba(242,242,243,.45); color: var(--color-bg); background: transparent;">{{ user.role }}</span>
+        </div>
+
+        <nav style="flex: 1; padding: 12px 0; overflow: hidden;">
+          <sc-for list="{{ navGroups }}" as="group" hint-placeholder-count="3">
+            <div style="padding: 0 0 10px;">
+              <div style="padding: 10px 18px 6px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .45;">{{ group.label }}</div>
+              <sc-for list="{{ group.items }}" as="item" hint-placeholder-count="4">
+                <div style="{{ item.rowStyle }}">
+                  <span style="{{ item.iconStyle }}" dangerouslySetInnerHTML="{{ item.icon }}"></span>
+                  <span style="font-size: 14px;">{{ item.label }}</span>
+                  <span style="{{ item.badgeStyle }}">{{ item.badge }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </nav>
+
+        <div style="padding: 14px 18px; border-top: 1px solid rgba(242,242,243,.14); display: flex; align-items: center; gap: 10px; font-size: 13px; opacity: .8;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h4v16h-4"></path><path d="M10 8l-4 4 4 4"></path><path d="M6 12h8"></path></svg>
+          Sign out
+        </div>
+      </aside>
+
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+        <div style="display: flex; align-items: center; gap: 18px; padding: 14px 22px; border-bottom: 1px solid var(--color-divider);">
+          <div>
+            <div style="font-family: var(--font-heading); font-size: 22px; line-height: 1.1;">{{ page.title }}</div>
+            <div style="font-size: 11px; color: var(--color-neutral-700);">{{ page.subtitle }}</div>
+          </div>
+          <div class="input" style="width: 240px; min-height: 34px; margin-left: 12px; display: flex; align-items: center; gap: 8px; color: var(--color-neutral-600); font-size: 13px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4 4"></path></svg>
+            {{ page.searchHint }}
+          </div>
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 14px;">
+            <span style="display: inline-flex; align-items: center; gap: 7px; border: 1px solid #2F7A4D; padding: 4px 10px;">
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: #2F7A4D;"></span>
+              <span style="font-family: var(--font-heading); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: #1F5334;">Online</span>
+            </span>
+            <button class="btn btn-secondary btn-icon" aria-label="Notifications"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10a6 6 0 1112 0c0 4 1.5 5.5 1.5 5.5H4.5S6 14 6 10z"></path><path d="M10 19a2 2 0 004 0"></path></svg></button>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="width: 28px; height: 28px; border: 1px solid var(--color-divider); display: grid; place-items: center; font-family: var(--font-heading); font-size: 12px;">{{ user.initials }}</span>
+              <span style="font-size: 13px;">{{ user.short }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding: 22px; display: flex; flex-direction: column; gap: 22px;">
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 16px;">
+            <sc-for list="{{ page.stats }}" as="stat" hint-placeholder-count="4">
+              <div class="blueprint" style="padding: 14px;">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div style="font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700);">{{ stat.label }}</div>
+                <div style="font-family: var(--font-heading); font-size: 32px; font-variant-numeric: tabular-nums; color: {{ stat.color }};">{{ stat.value }}</div>
+                <div style="font-size: 11px; color: var(--color-neutral-700);">{{ stat.note }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1.6fr 1fr; gap: 22px;">
+            <div class="blueprint" style="padding: 18px;">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px;">
+                <div style="font-family: var(--font-heading); font-size: 18px;">{{ page.panelTitle }}</div>
+                <span style="font-size: 11px; color: var(--color-neutral-700);">{{ page.panelNote }}</span>
+                <button class="btn btn-ghost" style="white-space: nowrap; flex: none; margin-left: auto; min-height: 28px;">{{ page.panelAction }}</button>
+              </div>
+              <table class="table" style="font-variant-numeric: tabular-nums;">
+                <thead>
+                  <tr>
+                    <sc-for list="{{ page.tableHead }}" as="h" hint-placeholder-count="4"><th>{{ h }}</th></sc-for>
+                  </tr>
+                </thead>
+                <tbody>
+                  <sc-for list="{{ page.tableRows }}" as="row" hint-placeholder-count="4">
+                    <tr>
+                      <td>{{ row.a }}<div style="font-size: 11px; color: var(--color-neutral-700);">{{ row.aSub }}</div></td>
+                      <td>{{ row.b }}</td>
+                      <td>{{ row.c }}</td>
+                      <td><span class="tag" style="{{ row.badgeStyle }}">{{ row.badge }}</span></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 22px;">
+              <div class="blueprint" style="padding: 18px;">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 12px;">Your actions</div>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                  <button class="btn btn-primary btn-block blueprint" style="white-space: nowrap; min-height: 40px; margin-top: 0;"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>{{ page.primaryAction }}</button>
+                  <button class="btn btn-secondary btn-block" style="white-space: nowrap; min-height: 40px; margin-top: 0;">{{ page.secondaryAction }}</button>
+                </div>
+                <div style="margin-top: 14px; font-size: 12px; color: var(--color-neutral-700);">{{ page.actionNote }}</div>
+              </div>
+
+              <div class="blueprint" style="padding: 18px;">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 12px;">Scope of this account</div>
+                <div style="display: flex; flex-direction: column; gap: 9px; font-size: 13px;">
+                  <sc-for list="{{ page.scope }}" as="s" hint-placeholder-count="3">
+                    <div style="display: flex; gap: 10px; align-items: flex-start;">
+                      <span style="width: 6px; height: 6px; background: var(--color-accent); flex: none; margin-top: 6px;"></span>
+                      <span>{{ s }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MATRIX -->
+  <section style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; align-items: baseline; gap: 16px;">
+      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">03 — Nav visibility by role</h2>
+      <span style="font-size: 12px; color: var(--color-neutral-700);">Hidden means absent from the sidebar, not disabled — a role never sees a door it cannot open.</span>
+    </div>
+
+    <div class="blueprint" style="padding: 22px;">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div style="display: flex; gap: 22px; margin-bottom: 16px; font-size: 12px; color: var(--color-neutral-700); flex-wrap: wrap;">
+        <span style="display: inline-flex; align-items: center; gap: 8px;"><span class="tag" style="background: var(--color-accent-900); color: var(--color-bg);">Full</span> create, edit, approve</span>
+        <span style="display: inline-flex; align-items: center; gap: 8px;"><span class="tag" style="border: 1px solid var(--color-accent-700); color: var(--color-accent-800); background: transparent;">View</span> read-only, scoped</span>
+        <span style="display: inline-flex; align-items: center; gap: 8px;"><span style="color: var(--color-neutral-400); font-size: 14px;">—</span> not in sidebar</span>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width: 260px;">Nav item</th>
+            <th>HR Personnel</th>
+            <th>Site Foreman</th>
+            <th>Site Engineer / CM</th>
+            <th>System Administrator</th>
+            <th>Executive</th>
+          </tr>
+        </thead>
+        <tbody>
+          <sc-for list="{{ matrix }}" as="row" hint-placeholder-count="14">
+            <tr>
+              <td>{{ row.label }}<div style="font-size: 11px; color: var(--color-neutral-700);">{{ row.note }}</div></td>
+              <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="5">
+                <td><span style="{{ cell.style }}">{{ cell.text }}</span></td>
+              </sc-for>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 28px;">
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Scope narrows before it hides</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">A foreman sees Attendance, but only his crew. An engineer sees his sites. Same screen, filtered server-side — not a different build.</div>
+      </div>
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Money is HR and Admin only</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">Rates and payroll runs never appear for site roles. Executives see totals and cost per site, never an individual payslip.</div>
+      </div>
+      <div class="blueprint" style="padding: 20px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Admin manages access, not records</div>
+        <div style="font-size: 12px; color: var(--color-neutral-700);">System Administrator provisions users, roles and sync health. It has no approval authority over attendance or payroll.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 1720}}">
+const ICONS = {
+  dash: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7"></rect><rect x="13.5" y="3.5" width="7" height="7"></rect><rect x="3.5" y="13.5" width="7" height="7"></rect><rect x="13.5" y="13.5" width="7" height="7"></rect></svg>',
+  people: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20v-1a5 5 0 015-5h1"></path><circle cx="9" cy="8" r="3.5"></circle><path d="M15 20v-1a5 5 0 015-5"></path></svg>',
+  clock: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>',
+  leave: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15"></rect><path d="M3.5 10h17"></path><path d="M8 3v4"></path><path d="M16 3v4"></path></svg>',
+  card: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="13"></rect><path d="M3.5 10h17"></path></svg>',
+  shield: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v6c0 4-3.5 7-8 8-4.5-1-8-4-8-8V7z"></path></svg>',
+  site: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"></path><path d="M6 20V9l6-4 6 4v11"></path></svg>',
+  crew: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20v-1a4 4 0 014-4h2"></path><circle cx="8" cy="9" r="3"></circle><path d="M13 20v-1a4 4 0 014-4h1"></path><circle cx="17" cy="9" r="3"></circle></svg>',
+  flag: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4h11l-1.5 4L16 12H5"></path></svg>',
+  chart: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"></path><path d="M7 20v-6"></path><path d="M12 20V8"></path><path d="M17 20v-9"></path></svg>',
+  users: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20v-1a7 7 0 0114 0v1"></path></svg>',
+  gear: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"></path></svg>',
+  sync: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 018-8 8 8 0 015.7 2.4"></path><path d="M20 12a8 8 0 01-8 8 8 8 0 01-5.7-2.4"></path><path d="M18 3v4h-4"></path><path d="M6 21v-4h4"></path></svg>',
+  megaphone: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4l12 5V5z"></path><path d="M16 9a3 3 0 010 6"></path></svg>',
+  doc: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v4h4"></path></svg>'
+};
+
+const NAV = [
+  { key: 'dash',       label: 'Dashboard',            icon: 'dash',      group: 'Overview',   note: 'Role-specific landing' ,   access: { hr: 'full', foreman: 'full', engineer: 'full', admin: 'full', exec: 'full' } },
+  { key: 'employees',  label: 'Employees',            icon: 'people',    group: 'Workforce',  note: '201 files, contracts, rates', access: { hr: 'full', foreman: 'none', engineer: 'view', admin: 'full', exec: 'view' } },
+  { key: 'attendance', label: 'Attendance & DTR',     icon: 'clock',     group: 'Workforce',  note: 'Daily time records',        access: { hr: 'full', foreman: 'full', engineer: 'full', admin: 'view', exec: 'view' } },
+  { key: 'rollcall',   label: 'Roll Call',            icon: 'crew',      group: 'Workforce',  note: 'Crew capture, offline-first', access: { hr: 'none', foreman: 'full', engineer: 'view', admin: 'none', exec: 'none' } },
+  { key: 'leave',      label: 'Leave Requests',       icon: 'leave',     group: 'Workforce',  note: 'File, endorse, approve',    access: { hr: 'full', foreman: 'full', engineer: 'full', admin: 'none', exec: 'view' } },
+  { key: 'overrides',  label: 'Overrides & Audit',    icon: 'flag',      group: 'Workforce',  note: 'Manual time edits for review', access: { hr: 'full', foreman: 'view', engineer: 'view', admin: 'view', exec: 'none' } },
+  { key: 'payroll',    label: 'Payroll Runs',         icon: 'card',      group: 'Payroll',    note: 'Cut-off, computation, release', access: { hr: 'full', foreman: 'none', engineer: 'none', admin: 'none', exec: 'view' } },
+  { key: 'gov',        label: 'Gov’t Remittances',    icon: 'doc',       group: 'Payroll',    note: 'SSS, PhilHealth, Pag-IBIG, BIR', access: { hr: 'full', foreman: 'none', engineer: 'none', admin: 'none', exec: 'view' } },
+  { key: 'sites',      label: 'Project Sites',        icon: 'site',      group: 'Sites',      note: '11 sites, Cebu & Bohol',    access: { hr: 'view', foreman: 'none', engineer: 'full', admin: 'full', exec: 'view' } },
+  { key: 'manpower',   label: 'Manpower Allocation',  icon: 'crew',      group: 'Sites',      note: 'Assign crews to sites',     access: { hr: 'view', foreman: 'none', engineer: 'full', admin: 'none', exec: 'view' } },
+  { key: 'compliance', label: 'Compliance & Docs',    icon: 'shield',    group: 'Sites',      note: 'Clearances, DOLE, safety certs', access: { hr: 'full', foreman: 'view', engineer: 'full', admin: 'none', exec: 'view' } },
+  { key: 'reports',    label: 'Reports & Analytics',  icon: 'chart',     group: 'Insight',    note: 'Cost, headcount, absence',  access: { hr: 'full', foreman: 'none', engineer: 'view', admin: 'none', exec: 'full' } },
+  { key: 'announce',   label: 'Announcements',        icon: 'megaphone', group: 'Insight',    note: 'Company-wide notices',      access: { hr: 'full', foreman: 'view', engineer: 'view', admin: 'full', exec: 'view' } },
+  { key: 'users',      label: 'Users & Roles',        icon: 'users',     group: 'System',     note: 'Provisioning, RBAC',        access: { hr: 'none', foreman: 'none', engineer: 'none', admin: 'full', exec: 'none' } },
+  { key: 'synchealth', label: 'Device & Sync Health', icon: 'sync',      group: 'System',     note: 'Biometrics, field devices', access: { hr: 'view', foreman: 'none', engineer: 'none', admin: 'full', exec: 'none' } },
+  { key: 'settings',   label: 'System Settings',      icon: 'gear',      group: 'System',     note: 'Cut-offs, holidays, integrations', access: { hr: 'none', foreman: 'none', engineer: 'none', admin: 'full', exec: 'none' } }
+];
+
+const GROUP_ORDER = ['Overview', 'Workforce', 'Payroll', 'Sites', 'Insight', 'System'];
+
+const BADGE = {
+  present: 'background: #E6F1EA; color: #1F5334;',
+  late: 'background: #FBF0E2; color: #8A5211;',
+  absent: 'background: #F7E8E5; color: #75261C;',
+  pending: 'background: #FCECE0; color: #96420E;',
+  flagged: 'background: #EFE9F4; color: #4A3260;',
+  neutral: 'background: var(--color-neutral-200); color: var(--color-neutral-900);'
+};
+
+const ROLES = {
+  hr: {
+    label: 'HR Personnel',
+    user: { name: 'Reyes, Marilou A.', detail: 'HR Office · Head Office', role: 'HR', initials: 'MR', short: 'M. Reyes' },
+    active: 'attendance',
+    badges: { attendance: '12', leave: '5', overrides: '3' },
+    page: {
+      title: 'Attendance & DTR',
+      subtitle: 'All sites · cut-off 21 Aug – 05 Sep 2026',
+      searchHint: 'Search employee or ID',
+      stats: [
+        { label: 'Active employees', value: '201', note: 'across 11 sites', color: 'var(--color-text)' },
+        { label: 'Present today', value: '184', note: '91.5%', color: 'var(--color-text)' },
+        { label: 'Late', value: '9', note: 'needs no action', color: '#8A5211' },
+        { label: 'Unsynced records', value: '12', note: 'from 3 field devices', color: '#96420E' }
+      ],
+      panelTitle: 'Records needing HR action',
+      panelNote: 'before payroll lock on 06 Sep, 12:00',
+      panelAction: 'Open full DTR',
+      tableHead: ['Employee', 'Site', 'Issue', 'Status'],
+      tableRows: [
+        { a: 'Bacus, Elmer P.', aSub: 'ADC-0509 · Foreman', b: 'Site 04', c: 'Time-out set manually', badge: 'Override Flagged', badgeStyle: BADGE.flagged },
+        { a: 'Abainza, Jomar T.', aSub: 'ADC-0455 · Site Engineer', b: 'Site 04', c: 'No time-out recorded', badge: 'Pending Sync', badgeStyle: BADGE.pending },
+        { a: 'Villacruz, Anna Lyn', aSub: 'ADC-0611 · Admin', b: 'Head Office', c: 'No record for 04 Sep', badge: 'Absent', badgeStyle: BADGE.absent },
+        { a: 'Dela Cruz, Ronel B.', aSub: 'ADC-0387 · Foreman', b: 'Site 07', c: 'In at 08:41', badge: 'Late', badgeStyle: BADGE.late }
+      ],
+      primaryAction: 'Approve DTR batch',
+      secondaryAction: 'Export for payroll',
+      actionNote: 'Approving writes to the audit log under your name.',
+      scope: ['All 201 employee files, contracts and rates', 'Payroll runs and government remittances', 'Override review for every site', 'Cannot assign crews or change system settings']
+    }
+  },
+  foreman: {
+    label: 'Site Foreman',
+    user: { name: 'Dela Cruz, Ronel B.', detail: 'Site 07 · Structural crew B', role: 'Foreman', initials: 'RD', short: 'R. Dela Cruz' },
+    active: 'rollcall',
+    badges: { rollcall: '18', leave: '2' },
+    page: {
+      title: 'Roll Call',
+      subtitle: 'Site 07 — Mandaue Viaduct · Crew B · 05 Sep 2026',
+      searchHint: 'Search my crew',
+      stats: [
+        { label: 'My crew', value: '38', note: 'assigned today', color: 'var(--color-text)' },
+        { label: 'Marked present', value: '34', note: 'by 07:30', color: 'var(--color-text)' },
+        { label: 'Not yet marked', value: '4', note: 'gate 2 device down', color: '#8A5211' },
+        { label: 'Held on device', value: '18', note: 'uploads when online', color: '#96420E' }
+      ],
+      panelTitle: 'Crew B — today',
+      panelNote: 'tap a worker to set status',
+      panelAction: 'Submit roll call',
+      tableHead: ['Worker', 'Trade', 'Time in', 'Status'],
+      tableRows: [
+        { a: 'Abainza, Jomar T.', aSub: 'ADC-0455', b: 'Steelwork', c: '06:58', badge: 'Pending Sync', badgeStyle: BADGE.pending },
+        { a: 'Bacus, Elmer P.', aSub: 'ADC-0509', b: 'Formwork', c: '07:10', badge: 'Present', badgeStyle: BADGE.present },
+        { a: 'Ompad, Kevin R.', aSub: 'ADC-0742', b: 'Rebar', c: '08:22', badge: 'Late', badgeStyle: BADGE.late },
+        { a: 'Sarmiento, Noel', aSub: 'ADC-0810', b: 'Masonry', c: '—', badge: 'Not marked', badgeStyle: BADGE.neutral }
+      ],
+      primaryAction: 'Submit roll call',
+      secondaryAction: 'Request manpower',
+      actionNote: 'Works offline. Records queue and upload on signal.',
+      scope: ['Only Crew B at Site 07 — no other crew or site', 'Can set attendance and endorse leave for his crew', 'Manual time edits are flagged for HR review', 'No rates, payroll or employee files']
+    }
+  },
+  engineer: {
+    label: 'Site Engineer / CM',
+    user: { name: 'Tabotabo, Grace M.', detail: 'Sites 04, 07, 11 · Construction Manager', role: 'Site Engineer', initials: 'GT', short: 'G. Tabotabo' },
+    active: 'manpower',
+    badges: { manpower: '6', compliance: '4', attendance: '12' },
+    page: {
+      title: 'Manpower Allocation',
+      subtitle: 'Sites 04, 07, 11 · week of 31 Aug 2026',
+      searchHint: 'Search crew or trade',
+      stats: [
+        { label: 'Manpower on site', value: '117', note: 'across 3 sites', color: 'var(--color-text)' },
+        { label: 'Required', value: '124', note: 'per schedule', color: 'var(--color-text)' },
+        { label: 'Short', value: '7', note: 'rebar and masonry', color: '#8A5211' },
+        { label: 'Expiring certs', value: '4', note: 'within 14 days', color: '#96420E' }
+      ],
+      panelTitle: 'Crew requests awaiting my approval',
+      panelNote: 'raised by foremen',
+      panelAction: 'Open allocation board',
+      tableHead: ['Request', 'Site', 'Need', 'Status'],
+      tableRows: [
+        { a: '6 rebar workers', aSub: 'raised by R. Dela Cruz', b: 'Site 07', c: 'Mon 07 Sep', badge: 'Pending', badgeStyle: BADGE.pending },
+        { a: '2 formwork carpenters', aSub: 'raised by J. Lim', b: 'Site 11', c: 'Wed 09 Sep', badge: 'Pending', badgeStyle: BADGE.pending },
+        { a: 'Transfer — 3 masons', aSub: 'Site 04 → Site 11', b: 'Site 04', c: 'Fri 11 Sep', badge: 'Approved', badgeStyle: BADGE.present },
+        { a: 'Safety cert renewal', aSub: '4 workers, scaffolding', b: 'Site 07', c: 'in 14 days', badge: 'Late', badgeStyle: BADGE.late }
+      ],
+      primaryAction: 'Approve allocation',
+      secondaryAction: 'View site attendance',
+      actionNote: 'Approval reassigns crews and notifies both foremen.',
+      scope: ['Attendance and compliance for his three sites', 'Assigns and transfers crews between those sites', 'Reads employee files, cannot edit rates or contracts', 'No payroll, no user provisioning']
+    }
+  },
+  admin: {
+    label: 'System Administrator',
+    user: { name: 'Uy, Francis L.', detail: 'IT · Head Office', role: 'Admin', initials: 'FU', short: 'F. Uy' },
+    active: 'users',
+    badges: { users: '3', synchealth: '2' },
+    page: {
+      title: 'Users & Roles',
+      subtitle: 'Provisioning and access · 47 accounts',
+      searchHint: 'Search account or role',
+      stats: [
+        { label: 'Active accounts', value: '47', note: 'of 201 employees', color: 'var(--color-text)' },
+        { label: 'Pending provisioning', value: '3', note: 'requested by HR', color: '#96420E' },
+        { label: 'Locked out', value: '1', note: 'failed attempts', color: '#75261C' },
+        { label: 'Field devices offline', value: '2', note: 'over 4 hours', color: '#8A5211' }
+      ],
+      panelTitle: 'Access requests',
+      panelNote: 'no self-registration — every account starts here',
+      panelAction: 'Open user list',
+      tableHead: ['Account', 'Requested role', 'Requested by', 'Status'],
+      tableRows: [
+        { a: 'Lim, Joseph A.', aSub: 'ADC-0904 · Site 11', b: 'Site Foreman', c: 'M. Reyes, HR', badge: 'Pending', badgeStyle: BADGE.pending },
+        { a: 'Cortes, Divina', aSub: 'ADC-0177 · Head Office', b: 'HR Personnel', c: 'M. Reyes, HR', badge: 'Pending', badgeStyle: BADGE.pending },
+        { a: 'Abainza, Jomar T.', aSub: 'ADC-0455 · Site 04', b: 'Site Engineer', c: 'G. Tabotabo', badge: 'Pending', badgeStyle: BADGE.pending },
+        { a: 'Ompad, Kevin R.', aSub: 'ADC-0742 · locked 15 min', b: 'Site Foreman', c: '—', badge: 'Absent', badgeStyle: BADGE.absent }
+      ],
+      primaryAction: 'Provision account',
+      secondaryAction: 'Reset password',
+      actionNote: 'Roles are assigned here and nowhere else.',
+      scope: ['Creates accounts, assigns roles, resets credentials', 'Monitors biometric devices and field-app sync', 'Owns cut-off dates, holidays and integrations', 'No approval authority over attendance or payroll']
+    }
+  },
+  exec: {
+    label: 'Executive',
+    user: { name: 'Arcenas, Ma. Teresa', detail: 'Executive Vice President', role: 'Executive', initials: 'MA', short: 'M.T. Arcenas' },
+    active: 'reports',
+    badges: {},
+    page: {
+      title: 'Reports & Analytics',
+      subtitle: 'Company-wide · August 2026',
+      searchHint: 'Search a site or report',
+      stats: [
+        { label: 'Total headcount', value: '201', note: '+8 vs July', color: 'var(--color-text)' },
+        { label: 'Labour cost, Aug', value: '₱14.2M', note: '+3.1% vs July', color: 'var(--color-text)' },
+        { label: 'Absence rate', value: '4.6%', note: 'target under 5%', color: 'var(--color-text)' },
+        { label: 'Overtime hours', value: '3,180', note: 'Site 07 leads', color: '#8A5211' }
+      ],
+      panelTitle: 'Labour cost by site',
+      panelNote: 'August 2026, ₱ thousands',
+      panelAction: 'Open report',
+      tableHead: ['Site', 'Headcount', 'Cost', 'Trend'],
+      tableRows: [
+        { a: 'Site 04 — Cebu North', aSub: 'Structural, phase 2', b: '62', c: '₱4,410', badge: 'On budget', badgeStyle: BADGE.present },
+        { a: 'Site 07 — Mandaue Viaduct', aSub: 'Overtime heavy', b: '48', c: '₱3,920', badge: 'Watch', badgeStyle: BADGE.late },
+        { a: 'Site 11 — Talisay Housing', aSub: 'Ramping up', b: '39', c: '₱2,640', badge: 'On budget', badgeStyle: BADGE.present },
+        { a: 'Other 8 sites', aSub: 'aggregate', b: '52', c: '₱3,230', badge: 'On budget', badgeStyle: BADGE.present }
+      ],
+      primaryAction: 'Export board pack',
+      secondaryAction: 'Compare sites',
+      actionNote: 'Read-only. Figures are aggregates, never individual pay.',
+      scope: ['Company-wide totals: cost, headcount, absence, overtime', 'Drill down to site level, never to a payslip', 'Read-only throughout — no approvals, no edits', 'No user provisioning or system settings']
+    }
+  }
+};
+
+const ORDER = ['hr', 'foreman', 'engineer', 'admin', 'exec'];
+
+class Component extends DCLogic {
+  state = { role: 'hr' };
+
+  renderVals() {
+    const key = this.state.role;
+    const role = ROLES[key];
+
+    const roleTabs = ORDER.map(k => {
+      const on = k === key;
+      return {
+        label: ROLES[k].label,
+        onClick: () => this.setState({ role: k }),
+        style: 'min-height: 38px; cursor: pointer; white-space: nowrap; flex: none; ' + (on
+          ? 'background: var(--color-accent); border-color: var(--color-accent); color: var(--color-bg);'
+          : 'border-color: var(--color-divider);')
+      };
+    });
+
+    const visible = NAV.filter(n => role.page && ROLES[key] && n.access[key] !== 'none');
+    const navGroups = GROUP_ORDER
+      .map(g => ({ label: g, items: visible.filter(n => n.group === g) }))
+      .filter(g => g.items.length)
+      .map(g => ({
+        label: g.label,
+        items: g.items.map(n => {
+          const active = n.key === role.active;
+          const view = n.access[key] === 'view';
+          const badge = role.badges[n.key];
+          return {
+            label: n.label,
+            icon: { __html: ICONS[n.icon] },
+            rowStyle: 'display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; '
+              + (active
+                ? 'background: var(--color-accent-800); box-shadow: inset 3px 0 0 var(--color-accent-300);'
+                : (view ? 'opacity: .62;' : 'opacity: .85;')),
+            iconStyle: 'display: inline-flex; flex: none;',
+            badge: badge || (view ? 'view' : ''),
+            badgeStyle: badge
+              ? 'margin-left: auto; font-size: 10px; background: #E2681C; color: #fff; padding: 1px 6px;'
+              : (view
+                ? 'margin-left: auto; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .6;'
+                : 'display: none;')
+          };
+        })
+      }));
+
+    const matrix = NAV.map(n => ({
+      label: n.label,
+      note: n.note,
+      cells: ORDER.map(r => {
+        const a = n.access[r];
+        if (a === 'full') return { text: 'Full', style: 'display: inline-flex; align-items: center; font-size: 11px; padding: 3px 10px; background: var(--color-accent-900); color: var(--color-bg);' };
+        if (a === 'view') return { text: 'View', style: 'display: inline-flex; align-items: center; font-size: 11px; padding: 3px 10px; border: 1px solid var(--color-accent-700); color: var(--color-accent-800);' };
+        return { text: '—', style: 'color: var(--color-neutral-400);' };
+      })
+    }));
+
+    return { roleTabs, navGroups, matrix, user: role.user, page: role.page };
+  }
+}
+
+</script>
+</body>
+</html>

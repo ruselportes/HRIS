@@ -1,0 +1,24 @@
+# Laravel
+backend/vendor/
+backend/storage/logs/*.log
+backend/.env
+backend/.env.backup
+
+# React / web
+web/node_modules/
+web/dist/
+web/.env.local
+
+# React Native / mobile
+mobile/node_modules/
+mobile/android/build/
+mobile/android/.gradle/
+mobile/ios/build/
+mobile/ios/Pods/
+mobile/.env
+
+# IDE / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
