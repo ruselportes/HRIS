@@ -1,7 +1,7 @@
 /**
- * SQLite-backed repository. Thin wrapper around database.ts + the pure
- * state machine in attendanceLogic.ts — no business logic lives here beyond
- * translating rows <-> the AttendanceRecord shape.
+ * SQLite-backed repository (op-sqlite). Thin wrapper around database.ts +
+ * the pure state machine in attendanceLogic.ts — no business logic lives
+ * here beyond translating rows <-> the AttendanceRecord shape.
  *
  * @format
  */
@@ -42,11 +42,11 @@ export async function saveRosterCache(
   const db = await getDatabase();
   const cachedAt = Date.now();
 
-  await db.transaction(async (tx: any) => {
-    await tx.executeSql('DELETE FROM crew_roster_cache;');
+  await db.transaction(async tx => {
+    await tx.execute('DELETE FROM crew_roster_cache;');
 
     for (const member of members) {
-      await tx.executeSql(
+      await tx.execute(
         `INSERT INTO crew_roster_cache
           (employee_id, employee_code, first_name, last_name, trade_skill, crew_id, crew_name, site_name, cached_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
@@ -68,34 +68,29 @@ export async function saveRosterCache(
 
 export async function getCachedCrew(): Promise<CachedCrew | null> {
   const db = await getDatabase();
-  const [result] = await db.executeSql('SELECT * FROM crew_roster_cache ORDER BY last_name;');
+  const result = await db.execute('SELECT * FROM crew_roster_cache ORDER BY last_name;');
 
   if (result.rows.length === 0) {
     return null;
   }
 
-  const members: RosterMember[] = [];
-  let crewId = 0;
-  let crewName = '';
-  let siteName: string | null = null;
-  let cachedAt = 0;
+  const members: RosterMember[] = result.rows.map((row: any) => ({
+    employeeId: row.employee_id,
+    employeeCode: row.employee_code,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    tradeSkill: row.trade_skill,
+  }));
 
-  for (let i = 0; i < result.rows.length; i++) {
-    const row = result.rows.item(i);
-    crewId = row.crew_id;
-    crewName = row.crew_name;
-    siteName = row.site_name;
-    cachedAt = row.cached_at;
-    members.push({
-      employeeId: row.employee_id,
-      employeeCode: row.employee_code,
-      firstName: row.first_name,
-      lastName: row.last_name,
-      tradeSkill: row.trade_skill,
-    });
-  }
+  const first = result.rows[0] as any;
 
-  return {crewId, crewName, siteName, cachedAt, members};
+  return {
+    crewId: first.crew_id,
+    crewName: first.crew_name,
+    siteName: first.site_name,
+    cachedAt: first.cached_at,
+    members,
+  };
 }
 
 function rowToRecord(row: any): AttendanceRecord {
@@ -110,7 +105,7 @@ function rowToRecord(row: any): AttendanceRecord {
 
 async function loadRecord(employeeId: number, date: string): Promise<AttendanceRecord> {
   const db = await getDatabase();
-  const [result] = await db.executeSql(
+  const result = await db.execute(
     'SELECT * FROM attendance WHERE employee_id = ? AND date = ?;',
     [employeeId, date],
   );
@@ -119,7 +114,7 @@ async function loadRecord(employeeId: number, date: string): Promise<AttendanceR
     return blankRecordFor(employeeId, date);
   }
 
-  return rowToRecord(result.rows.item(0));
+  return rowToRecord(result.rows[0]);
 }
 
 export async function getTodayAttendance(employeeId: number): Promise<AttendanceRecord> {
@@ -129,11 +124,10 @@ export async function getTodayAttendance(employeeId: number): Promise<Attendance
 export async function listTodayAttendance(): Promise<Map<number, AttendanceRecord>> {
   const db = await getDatabase();
   const date = todayLocalDate();
-  const [result] = await db.executeSql('SELECT * FROM attendance WHERE date = ?;', [date]);
+  const result = await db.execute('SELECT * FROM attendance WHERE date = ?;', [date]);
 
   const map = new Map<number, AttendanceRecord>();
-  for (let i = 0; i < result.rows.length; i++) {
-    const row = result.rows.item(i);
+  for (const row of result.rows as any[]) {
     map.set(row.employee_id, rowToRecord(row));
   }
 
@@ -145,7 +139,7 @@ async function persist(
   record: AttendanceRecord,
   crewId: number,
 ): Promise<void> {
-  await db.executeSql(
+  await db.execute(
     `INSERT INTO attendance (employee_id, crew_id, date, status, time_in, monotonic_timestamp, override_flag, sync_status)
      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
      ON CONFLICT(employee_id, date) DO UPDATE SET
@@ -174,13 +168,13 @@ async function enqueueSync(
   date: string,
   deviceId: string,
 ): Promise<void> {
-  const [row] = await db.executeSql(
+  const result = await db.execute(
     'SELECT local_id FROM attendance WHERE employee_id = ? AND date = ?;',
     [employeeId, date],
   );
-  const localId = row.rows.item(0).local_id;
+  const localId = (result.rows[0] as any).local_id;
 
-  await db.executeSql(
+  await db.execute(
     `INSERT INTO attendance_sync_queue (local_attendance_id, device_id, queued_at, sync_status)
      VALUES (?, ?, ?, 'pending');`,
     [localId, deviceId, Date.now()],

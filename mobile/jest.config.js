@@ -1,12 +1,11 @@
 module.exports = {
   preset: '@react-native/jest-preset',
   // Default preset excludes node_modules from transform except react-native
-  // core packages. @react-native-async-storage and @react-navigation (added
-  // Phase 1/4) both ship ESM and need the same treatment, or their imports
-  // fail under Jest — this was latent since Phase 1's scaffold never had a
-  // test that actually imported AppNavigator until now.
+  // core packages. @react-native-async-storage, @react-navigation (Phase
+  // 1/4), and @op-engineering/op-sqlite (Phase 4, swapped in for
+  // react-native-sqlite-storage) all ship ESM and need the same treatment.
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-native-async-storage|@react-navigation)/)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-native-async-storage|@react-navigation|@op-engineering)/)',
   ],
   // Native module — no real bridge under Jest, so redirect to the package's
   // own official mock (ForemanHomeScreen reads network status via NetInfo).

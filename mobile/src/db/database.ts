@@ -1,8 +1,13 @@
 /**
- * Local SQLite schema (UC-04). Deliberately NOT part of the 13-table ERD —
- * this is a device-local cache/capture layer, documented here rather than
- * silently extending the central schema (same pattern as Phase 3's
- * crews.status/deployed_at extension).
+ * Local SQLite schema (UC-04), via @op-engineering/op-sqlite (JSI-based,
+ * New Architecture compatible — swapped in from react-native-sqlite-storage
+ * after that package's Android build proved incompatible with this
+ * project's toolchain: an embedded, unmaintained AGP 3.1.4/jcenter()
+ * buildscript block, and no support for newArchEnabled=true at all).
+ *
+ * NOT part of the 13-table ERD — this is a device-local cache/capture
+ * layer, documented here rather than silently extending the central schema
+ * (same pattern as Phase 3's crews.status/deployed_at extension).
  *
  * Tables:
  *  - crew_roster_cache: last-fetched roster for the signed-in foreman's
@@ -18,34 +23,33 @@
  *    row is created for every local attendance write; Phase 6 builds the
  *    engine that actually drains this queue to the server.
  *
+ * Phase 5 hook point: op-sqlite supports SQLCipher via the
+ * `OP_SQLITE_USE_SQLCIPHER` native build flag (package.json config) plus an
+ * `encryptionKey` passed to open() — neither is enabled here, per the
+ * Phase 1 decision to defer SQLCipher until the crypto engine phase.
+ *
  * @format
  */
 
-import SQLite from 'react-native-sqlite-storage';
-
-// react-native-sqlite-storage ships no types (declared as an untyped ambient
-// module in src/types/) — SQLiteDb is `any` on purpose, not a shortcut.
-type SQLiteDb = any;
-
-SQLite.enablePromise(true);
+import {open, type DB} from '@op-engineering/op-sqlite';
 
 const DB_NAME = 'hris_offline.db';
 
-let dbInstance: SQLiteDb | null = null;
+let dbInstance: DB | null = null;
 
-export async function getDatabase(): Promise<SQLiteDb> {
+export async function getDatabase(): Promise<DB> {
   if (dbInstance) {
     return dbInstance;
   }
 
-  dbInstance = await SQLite.openDatabase({name: DB_NAME, location: 'default'});
+  dbInstance = open({name: DB_NAME});
   await initSchema(dbInstance);
 
   return dbInstance;
 }
 
-async function initSchema(db: SQLiteDb): Promise<void> {
-  await db.executeSql(`
+async function initSchema(db: DB): Promise<void> {
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS crew_roster_cache (
       employee_id INTEGER PRIMARY KEY NOT NULL,
       employee_code TEXT,
@@ -59,7 +63,7 @@ async function initSchema(db: SQLiteDb): Promise<void> {
     );
   `);
 
-  await db.executeSql(`
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS attendance (
       local_id INTEGER PRIMARY KEY AUTOINCREMENT,
       employee_id INTEGER NOT NULL,
@@ -75,7 +79,7 @@ async function initSchema(db: SQLiteDb): Promise<void> {
     );
   `);
 
-  await db.executeSql(`
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS attendance_sync_queue (
       queue_id INTEGER PRIMARY KEY AUTOINCREMENT,
       local_attendance_id INTEGER NOT NULL,
@@ -87,7 +91,7 @@ async function initSchema(db: SQLiteDb): Promise<void> {
     );
   `);
 
-  await db.executeSql(`
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS app_settings (
       key TEXT PRIMARY KEY NOT NULL,
       value TEXT NOT NULL
@@ -95,7 +99,7 @@ async function initSchema(db: SQLiteDb): Promise<void> {
   `);
 }
 
-/** Test/dev-only escape hatch to force a fresh openDatabase() next call. */
+/** Test/dev-only escape hatch to force a fresh open() next call. */
 export function resetDatabaseInstanceForTests(): void {
   dbInstance = null;
 }
