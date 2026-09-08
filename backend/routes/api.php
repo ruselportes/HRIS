@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CrewController;
 use App\Http\Controllers\Api\EmployeeController;
+use App\Http\Controllers\Api\ForemanController;
 use App\Http\Controllers\Api\ReferenceController;
 use Illuminate\Support\Facades\Route;
 
@@ -50,6 +51,9 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::get('deployment', [CrewController::class, 'deployment'])->middleware('role:hr,engineer,executive');
+
+    // Mobile roster fetch (UC-04) — foreman's own deployed crew only.
+    Route::get('me/crew', [ForemanController::class, 'myCrew'])->middleware('role:foreman');
 
     // Must precede apiResource so 'next-code' isn't captured as {employee}.
     Route::middleware('role:hr,admin')->get('employees/next-code', [EmployeeController::class, 'nextCode']);
