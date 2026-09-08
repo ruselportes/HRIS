@@ -8,6 +8,7 @@
 import React from 'react';
 import {StatusBar, useColorScheme} from 'react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
+import {AuthProvider} from './src/auth/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
 function App() {
@@ -16,7 +17,9 @@ function App() {
   return (
     <SafeAreaProvider>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppNavigator />
+      <AuthProvider>
+        <AppNavigator />
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }
