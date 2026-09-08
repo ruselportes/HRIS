@@ -14,7 +14,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('attendances', function (Blueprint $table) {
-            $table->unsignedBigInteger('attendance_id')->autoIncrement()->primary();
+            $table->bigIncrements('attendance_id');
             $table->foreignId('employee_id')->constrained('employees', 'employee_id');
             $table->foreignId('crew_id')->constrained('crews', 'crew_id');
             $table->timestamp('time_in')->nullable();

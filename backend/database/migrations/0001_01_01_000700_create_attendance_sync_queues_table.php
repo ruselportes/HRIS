@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('attendance_sync_queues', function (Blueprint $table) {
-            $table->unsignedBigInteger('queue_id')->autoIncrement()->primary();
+            $table->bigIncrements('queue_id');
             $table->foreignId('attendance_id')->constrained('attendances', 'attendance_id');
             $table->string('device_id')->nullable();
             $table->timestamp('queued_at')->nullable();

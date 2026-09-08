@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('payrolls', function (Blueprint $table) {
-            $table->unsignedBigInteger('payroll_id')->autoIncrement()->primary();
+            $table->bigIncrements('payroll_id');
             $table->foreignId('employee_id')->constrained('employees', 'employee_id');
             $table->date('pay_period_start')->nullable();
             $table->date('pay_period_end')->nullable();

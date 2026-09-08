@@ -14,7 +14,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('overtime_requests', function (Blueprint $table) {
-            $table->unsignedBigInteger('ot_id')->autoIncrement()->primary();
+            $table->bigIncrements('ot_id');
             $table->foreignId('employee_id')->constrained('employees', 'employee_id');
             $table->foreignId('approved_by')->nullable()->constrained('employees', 'employee_id');
             $table->date('ot_date')->nullable();

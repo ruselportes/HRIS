@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('crews', function (Blueprint $table) {
-            $table->unsignedBigInteger('crew_id')->autoIncrement()->primary();
+            $table->bigIncrements('crew_id');
             $table->foreignId('site_id')->constrained('sites', 'site_id');
             $table->foreignId('foreman_id')->nullable()->constrained('employees', 'employee_id');
             $table->string('crew_name');

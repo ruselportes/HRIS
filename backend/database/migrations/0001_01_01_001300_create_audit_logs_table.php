@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('audit_logs', function (Blueprint $table) {
-            $table->unsignedBigInteger('audit_id')->autoIncrement()->primary();
+            $table->bigIncrements('audit_id');
             $table->foreignId('actor_id')->constrained('employees', 'employee_id');
             $table->string('action_type');
             $table->text('description')->nullable();

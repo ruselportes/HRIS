@@ -18,7 +18,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('employees', function (Blueprint $table) {
-            $table->unsignedBigInteger('employee_id')->autoIncrement()->primary();
+            $table->bigIncrements('employee_id');
             $table->foreignId('role_id')->constrained('roles', 'role_id');
 
             $table->string('first_name');

@@ -14,7 +14,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('leave_requests', function (Blueprint $table) {
-            $table->unsignedBigInteger('leave_id')->autoIncrement()->primary();
+            $table->bigIncrements('leave_id');
             $table->foreignId('employee_id')->constrained('employees', 'employee_id');
             $table->foreignId('approved_by')->nullable()->constrained('employees', 'employee_id');
             $table->string('leave_type')->nullable();

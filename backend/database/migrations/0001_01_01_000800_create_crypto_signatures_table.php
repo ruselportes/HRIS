@@ -15,7 +15,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('crypto_signatures', function (Blueprint $table) {
-            $table->unsignedBigInteger('signature_id')->autoIncrement()->primary();
+            $table->bigIncrements('signature_id');
             $table->foreignId('attendance_id')->unique()->constrained('attendances', 'attendance_id');
             $table->string('hmac_hash')->nullable();
             $table->string('prev_hash')->nullable();

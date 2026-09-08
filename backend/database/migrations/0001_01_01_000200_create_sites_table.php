@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('sites', function (Blueprint $table) {
-            $table->unsignedBigInteger('site_id')->autoIncrement()->primary();
+            $table->bigIncrements('site_id');
             $table->string('site_name');
             $table->string('location')->nullable();
             $table->string('status')->default('active');

@@ -15,7 +15,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('payroll_details', function (Blueprint $table) {
-            $table->unsignedBigInteger('detail_id')->autoIncrement()->primary();
+            $table->bigIncrements('detail_id');
             $table->foreignId('payroll_id')->unique()->constrained('payrolls', 'payroll_id');
             $table->decimal('regular_hours', 8, 2)->default(0);
             $table->decimal('overtime_hours', 8, 2)->default(0);
