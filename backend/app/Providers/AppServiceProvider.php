@@ -27,5 +27,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-employees', fn (Employee $employee) => in_array($employee->role?->slug, ['hr', 'admin'], true));
 
         Gate::define('view-employees', fn (Employee $employee) => in_array($employee->role?->slug, ['hr', 'admin', 'engineer', 'executive'], true));
+
+        Gate::define('manage-crews', fn (Employee $employee) => in_array($employee->role?->slug, ['engineer'], true));
+
+        Gate::define('view-crews', fn (Employee $employee) => in_array($employee->role?->slug, ['hr', 'engineer', 'executive'], true));
     }
 }

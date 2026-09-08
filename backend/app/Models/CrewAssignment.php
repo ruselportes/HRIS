@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class CrewAssignment extends Model
 {
+    use HasFactory;
+
     protected $primaryKey = 'assignment_id';
 
     protected $fillable = [
@@ -25,6 +28,11 @@ class CrewAssignment extends Model
         return [
             'date_assigned' => 'date',
         ];
+    }
+
+    public function crew(): BelongsTo
+    {
+        return $this->belongsTo(Crew::class, 'crew_id', 'crew_id');
     }
 
     public function employee(): BelongsTo

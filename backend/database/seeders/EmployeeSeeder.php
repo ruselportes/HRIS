@@ -146,5 +146,49 @@ class EmployeeSeeder extends Seeder
                 ]
             );
         }
+
+        // Certification entries exercise the Crew Builder pool's cert-status
+        // guardrails (valid / expiring soon / expired → unselectable).
+        // Shape matches the web form's emptyCert(): name/issuer/certificate_no/issued_at/expires_at.
+        $certs = [
+            'ADC-0810' => [
+                [
+                    'name' => 'BCWS — Basic Construction Safety',
+                    'issuer' => 'DOLE Accredited Training Org',
+                    'certificate_no' => 'BCWS-2024-0182',
+                    'issued_at' => '2024-06-15',
+                    'expires_at' => '2027-06-15',
+                ],
+            ],
+            'ADC-0388' => [
+                [
+                    'name' => 'Heavy Equipment Operator License',
+                    'issuer' => 'TESDA',
+                    'certificate_no' => 'NCII-2204-1147',
+                    'issued_at' => '2024-05-01',
+                    'expires_at' => '2026-05-01',
+                ],
+                [
+                    'name' => 'Forklift Operation Safety',
+                    'issuer' => 'Company In-house',
+                    'certificate_no' => 'FLT-2023-0902',
+                    'issued_at' => '2023-11-30',
+                    'expires_at' => '2025-11-30',
+                ],
+            ],
+            'ADC-0906' => [
+                [
+                    'name' => 'Scaffold Erection & Inspection',
+                    'issuer' => 'DOLE Accredited Training Org',
+                    'certificate_no' => 'SCF-2025-0410',
+                    'issued_at' => '2025-09-18',
+                    'expires_at' => '2026-09-18',
+                ],
+            ],
+        ];
+
+        foreach ($certs as $code => $certifications) {
+            Employee::query()->where('employee_code', $code)->update(['certification' => $certifications]);
+        }
     }
 }
