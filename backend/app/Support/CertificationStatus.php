@@ -29,9 +29,13 @@ class CertificationStatus
                 continue;
             }
 
-            $total++;
+            try {
+                $expiry = Carbon::parse($expiresAt)->startOfDay();
+            } catch (\Exception) {
+                continue;
+            }
 
-            $expiry = Carbon::parse($expiresAt)->startOfDay();
+            $total++;
 
             if ($expiry->lt($today)) {
                 $expired++;
