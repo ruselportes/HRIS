@@ -3,7 +3,7 @@
 Each phase below is weighted **10%** of total project completion (10 phases = 100%).
 Check off tasks as they're completed; a phase counts as done once every task under it is checked.
 
-**Overall progress: ~9% (Phase 1: 12/14 items — only SDD & STD deliverables pending, all scaffolding functionally verified)**
+**Overall progress: ~19% (Phase 1: 12/14 items — only SDD & STD deliverables pending; Phase 2: 7/7 complete, verified by lint-clean web build + 33 backend API tests + live smoke)**
 
 ---
 
@@ -26,13 +26,13 @@ Check off tasks as they're completed; a phase counts as done once every task und
 
 ## Phase 2 — Employee & Workforce Management (UC-01, UC-02) (10%)
 
-- [ ] Migrations: `Role`, `Employee`
-- [ ] RBAC middleware/policies off `Employee.role_id`
-- [ ] Authentication (login, session/token handling)
-- [ ] Employee CRUD API — skills, certifications, pay rate, emergency contact, employment status
-- [ ] Web: Login & Role Shell screen (from prototype)
-- [ ] Web: Employee Records screen (from prototype)
-- [ ] Unit tests: RBAC role enforcement
+- [x] Migrations: `Role`, `Employee`
+- [x] RBAC middleware/policies off `Employee.role_id`
+- [x] Authentication (login, session/token handling)
+- [x] Employee CRUD API — skills, certifications, pay rate, emergency contact, employment status
+- [x] Web: Login & Role Shell screen (from prototype)
+- [x] Web: Employee Records screen (from prototype)
+- [x] Unit tests: RBAC role enforcement
 
 ## Phase 3 — Crew Assignment & Site Deployment (UC-03) (10%)
 

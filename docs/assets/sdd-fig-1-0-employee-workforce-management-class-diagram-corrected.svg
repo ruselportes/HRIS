@@ -1,0 +1,35 @@
+<svg viewBox="0 0 1000 480" width="1000" height="480" xmlns="http://www.w3.org/2000/svg">
+<rect x="0" y="0" width="1000" height="480" fill="#ffffff"/>
+<line x1="470" y1="60.0" x2="620" y2="60.0" stroke="#555555" stroke-width="1.3"/>
+<text x="484" y="50.0" font-size="14" fill="#444444" font-family="Segoe UI, Helvetica, Arial, sans-serif">*</text>
+<text x="545.0" y="50.0" text-anchor="middle" font-size="14" font-style="italic" fill="#444444" font-family="Segoe UI, Helvetica, Arial, sans-serif">has</text>
+<text x="598" y="50.0" font-size="14" fill="#444444" font-family="Segoe UI, Helvetica, Arial, sans-serif">1</text>
+<g font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="40" y="40" width="430" height="380" fill="#ffffff" stroke="#1F3864" stroke-width="1.5"/>
+<rect x="40" y="40" width="430" height="40" fill="#1F3864"/>
+<text x="255.0" y="67.0" text-anchor="middle" font-weight="bold" font-size="19" fill="#ffffff">Employee</text>
+<text x="56" y="108" font-size="15" fill="#222222">- employeeId: int</text>
+<text x="56" y="134" font-size="15" fill="#222222">- roleId: int</text>
+<text x="56" y="160" font-size="15" fill="#222222">- firstName: string</text>
+<text x="56" y="186" font-size="15" fill="#222222">- lastName: string</text>
+<text x="56" y="212" font-size="15" fill="#222222">- tradeSkill: string</text>
+<text x="56" y="238" font-size="15" fill="#222222">- dailyRate: decimal</text>
+<text x="56" y="264" font-size="15" fill="#222222">- certification: string</text>
+<text x="56" y="290" font-size="15" fill="#222222">- emergencyContact: string</text>
+<text x="56" y="316" font-size="15" fill="#222222">- employmentStatus: string</text>
+<line x1="40" y1="328" x2="470" y2="328" stroke="#1F3864" stroke-width="1"/>
+<text x="56" y="356" font-size="15" fill="#222222">+ addEmployee()</text>
+<text x="56" y="382" font-size="15" fill="#222222">+ updateProfile()</text>
+<text x="56" y="408" font-size="15" fill="#222222">+ getEmploymentStatus()</text>
+</g>
+<g font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="620" y="40" width="340" height="172" fill="#ffffff" stroke="#1F3864" stroke-width="1.5"/>
+<rect x="620" y="40" width="340" height="40" fill="#1F3864"/>
+<text x="790.0" y="67.0" text-anchor="middle" font-weight="bold" font-size="19" fill="#ffffff">Role</text>
+<text x="636" y="108" font-size="15" fill="#222222">- roleId: int</text>
+<text x="636" y="134" font-size="15" fill="#222222">- roleName: string</text>
+<text x="636" y="160" font-size="15" fill="#222222">- description: string</text>
+<line x1="620" y1="172" x2="960" y2="172" stroke="#1F3864" stroke-width="1"/>
+<text x="636" y="200" font-size="15" fill="#222222">+ assignPermissions()</text>
+</g>
+</svg>

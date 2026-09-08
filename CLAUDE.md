@@ -62,17 +62,30 @@ Per SDD Section 3.1 data dictionary (see `/docs/HRIS_ERD.drawio` and
 
 ## 5. User roles
 
+As finalized in Phase 2 (`backend/database/seeders/RoleSeeder.php`), `Role` has
+7 rows; only 5 are login-capable (`Employee.password` set), Worker/Operator are
+record-only classifications with no HRIS access:
+
 - **HR Personnel** — employee records, attendance, leave, payroll
-- **Site Foremen** — mobile attendance logging (primary offline users)
-- **Site Engineers / Construction Managers** — crew assignment, site monitoring
+- **Site Foreman** — mobile attendance logging (primary offline users)
+- **Site Engineer / Construction Manager** — crew assignment, site monitoring
 - **System Administrator** — accounts, permissions, config
-- **Executives** — analytics dashboards, audit review
+- **Executive** — analytics dashboards, audit review (read-only)
+- **Worker** — field worker on a crew; record-only, no HRIS login
+- **Operator** — heavy equipment operator; record-only, no HRIS login
 
 ## 6. Where the docs live
 
 - `/docs/SPMP.md` — Software Project Management Plan
 - `/docs/SRS.md` — Software Requirements Specification
-- `/docs/SDD.docx` — Software Design Description *(add once finalized)*
+- `/docs/SDD.md` — Software Design Description (all 5 sections written, 26
+  figures in `/docs/assets/`). Note: Figures 1.0 and 9.0 (class diagram and
+  ERD for Employee & Workforce Management) predate the finalized data
+  dictionary — they're missing `certification`/`emergency_contact` on
+  Employee (Fig 1.0 also shows a separate `Certification` table that doesn't
+  exist in the real schema). Per this file's own §4 note, the data dictionary
+  (and `backend/database/migrations/`) win; those two figures should be
+  redrawn to match before final submission.
 - `/docs/STD.docx` — Software Test Document *(add once finalized)*
 - `/docs/HRIS_ERD.drawio` — entity-relationship diagram (editable in draw.io)
 - `/docs/HRIS_ERD_reference.md` — ERD design/formatting notes
