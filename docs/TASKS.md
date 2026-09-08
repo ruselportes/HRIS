@@ -3,7 +3,7 @@
 Each phase below is weighted **10%** of total project completion (10 phases = 100%).
 Check off tasks as they're completed; a phase counts as done once every task under it is checked.
 
-**Overall progress: ~19% (Phase 1: 12/14 items — only SDD & STD deliverables pending; Phase 2: 7/7 complete, verified by lint-clean web build + 33 backend API tests + live smoke)**
+**Overall progress: ~29% (Phase 1: 12/14 items — only SDD & STD deliverables pending; Phase 2: 7/7 complete; Phase 3: 3/3 complete, verified by lint-clean build + 46 backend API tests + live proxy smoke)**
 
 ---
 
@@ -36,9 +36,9 @@ Check off tasks as they're completed; a phase counts as done once every task und
 
 ## Phase 3 — Crew Assignment & Site Deployment (UC-03) (10%)
 
-- [ ] Migrations: `Site`, `Crew`, `Crew Assignment`
-- [ ] API: crew formation, site deployment assignment, foreman designation
-- [ ] Web: Crew Builder screen
+- [x] Migrations: `Site`, `Crew`, `Crew Assignment` (+ deployment-state migration on `crews.status` / `crews.deployed_at`)
+- [x] API: crew formation, site deployment assignment, foreman designation
+- [x] Web: Crew Builder screen
 
 ## Phase 4 — Offline-Capable Mobile Attendance Checklist (UC-04) (10%)
 

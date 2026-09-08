@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { EmployeesPage } from './pages/EmployeesPage'
+import { ManpowerPage } from './pages/ManpowerPage'
 import { ComingSoonPage } from './pages/ComingSoonPage'
 import { NAV, ROLES } from './config/nav'
 
@@ -69,6 +70,15 @@ function EmployeeRoute() {
   return <EmployeesPage />
 }
 
+function ManpowerRoute() {
+  const { user } = useAuth()
+  const access = NAV.find((n) => n.key === 'manpower').access[roleKey(user?.role?.slug)]
+  if (access === 'none') {
+    return <Navigate to="/" replace />
+  }
+  return <ManpowerPage />
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -80,6 +90,7 @@ function App() {
             <Route element={<Shell />}>
               <Route index element={<DashboardPage />} />
               <Route path="employees" element={<EmployeeRoute />} />
+              <Route path="manpower" element={<ManpowerRoute />} />
               <Route path=":page" element={<ComingSoonPageShell />} />
             </Route>
           </Route>

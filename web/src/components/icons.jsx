@@ -185,6 +185,36 @@ const ICON_MAP = {
       <circle cx="12" cy="12" r="3" />
     </Svg>
   ),
+  arrowRight: (p) => (
+    <Svg {...p}>
+      <path d="M5 12h14" />
+      <path d="M13 6l6 6-6 6" />
+    </Svg>
+  ),
+  arrowLeft: (p) => (
+    <Svg {...p}>
+      <path d="M19 12H5" />
+      <path d="M11 6l-6 6 6 6" />
+    </Svg>
+  ),
+  grip: (p) => (
+    <Svg {...p}>
+      <path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" />
+    </Svg>
+  ),
+  check: (p) => (
+    <Svg {...p}>
+      <path d="M4 12l5 5L20 6" />
+    </Svg>
+  ),
+  calendar: (p) => (
+    <Svg {...p}>
+      <rect x="3.5" y="5" width="17" height="15" />
+      <path d="M3.5 10h17" />
+      <path d="M8 3v4" />
+      <path d="M16 3v4" />
+    </Svg>
+  ),
 }
 
 export function Icon({ name, ...rest }) {
