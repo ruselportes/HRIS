@@ -132,7 +132,7 @@ Represents the classes that manage employee profiles, trade skills, certificatio
 
 > **Note:** This figure predates the finalized data dictionary: it shows `certification` split out into a separate `Certification` class/table and omits `emergencyContact` from `Employee`. The actual schema (§3.1.1, and `backend/database/migrations/..._create_employees_table.php`) stores both `certification` and `emergency_contact` as columns directly on `tbl_employee` — no separate certifications table. Per this document's own convention, **the data dictionary wins**; this figure should be redrawn to match.
 >
-> A draft corrected version is available for review: [sdd-fig-1-0-employee-workforce-management-class-diagram-corrected.svg](assets/sdd-fig-1-0-employee-workforce-management-class-diagram-corrected.svg) — `Certification` removed, `certification` and `emergencyContact` restored as `Employee` attributes. Swap it in once whoever owns this figure has reviewed it.
+> A draft corrected version is available for review: [sdd-fig-1-0-employee-workforce-management-class-diagram-corrected.svg](assets/sdd-fig-1-0-employee-workforce-management-class-diagram-corrected.svg) — `Certification` removed, `certification` and `emergencyContact` restored as `Employee` attributes, and `employeeCode`/`email`/`siteId` added to reflect the Phase 2 auth/site-link additions. Following this document's ERD convention (§3.2), it deliberately still omits `password` (sensitive) and the long tail of HR-profile-only fields (`dateOfBirth`, `mobile`, `civilStatus`, `dependents`, `address`, `bloodType`, `tin`, `sss`, `philhealth`, `pagIbig`, `dateHired`, `costCentre`) that don't participate in relationships or business logic — see §3.1.1 for the exhaustive field list. Swap it in once whoever owns this figure has reviewed it.
 
 #### 2.1.2 Crew Assignment & Site Deployment
 
@@ -200,31 +200,50 @@ This section describes the database tables used in the Human Resource Informatio
 
 Table Name: tbl_employee
 
-Table Description: Table where employee profile, trade skill, and pay rate information is stored.
+Table Description: Table where employee profile, trade skill, pay rate, and login credential information is stored.
 
 Primary Key: employee_id
 
-Foreign Key: role_id
+Foreign Key: role_id, site_id
 
 | Fieldname | Data Type | Length | Description |
 |---|---|---|---|
 | employee_id | int | 11 | Unique identifier for the employee |
+| employee_code | varchar | 255 | ADC-NNNN identifier; used alongside email as a login identifier (Phase 2) |
+| email | varchar | 255 | Login identifier; nullable — most field workers have no company email (Phase 2) |
+| password | varchar | 255 | Hashed login secret; null means the account cannot sign in (Worker/Operator records never get one) (Phase 2) |
 | first_name | varchar | 100 | Employee's first name |
+| middle_name | varchar | 255 | Employee's middle name (nullable) |
 | last_name | varchar | 100 | Employee's last name |
 | trade_skill | varchar | 100 | Employee's construction trade skill (e.g., Mason, Electrician) |
 | daily_rate | decimal | 10,2 | Employee's daily pay rate |
-| certification | varchar | 255 | Field that stores skill certification details |
-| emergency_contact | varchar | 150 | Emergency contact name and number |
-| employment_status | varchar | 50 | Active, On Leave, or Terminated |
+| certification | json | - | Field that stores skill certification details (array of certification records) |
+| emergency_contact | json | - | Emergency contact name and number (structured object) |
+| employment_status | varchar | 50 | Probationary, Active, On Leave, or Terminated |
+| date_of_birth | date | - | Employee's date of birth |
+| mobile | varchar | 255 | Employee's mobile number |
+| civil_status | varchar | 255 | Employee's civil status |
+| dependents | tinyint | 3 | Number of declared dependents |
+| address | varchar | 255 | Employee's home address |
+| blood_type | varchar | 255 | Employee's blood type |
+| tin | varchar | 255 | Tax Identification Number |
+| sss | varchar | 255 | Social Security System number |
+| philhealth | varchar | 255 | PhilHealth number |
+| pag_ibig | varchar | 255 | Pag-IBIG (HDMF) number |
+| date_hired | date | - | Date the employee was hired |
+| cost_centre | varchar | 255 | Cost centre code the employee's pay is charged to |
 | role_id | int | 11 | Field that links to the employee's system role |
+| site_id | int | 11 | Field that links to the employee's primary/current project site (nullable; denormalized ahead of crew assignment being authoritative — see `backend/database/migrations/0002_01_01_000100_add_site_to_employees_table.php`) |
 
 *Table 2.0 Employee*
+
+> **Phase 2/3 note:** `employee_code`, `email`, `password`, and `site_id` were added in Phase 2 (`0002_01_01_000000_add_auth_fields_to_roles_and_employees_table.php`, `0002_01_01_000100_add_site_to_employees_table.php`); `middle_name`, `date_of_birth`, `mobile`, `civil_status`, `dependents`, `address`, `blood_type`, `tin`, `sss`, `philhealth`, `pag_ibig`, `date_hired`, and `cost_centre` were part of the original Phase 1 migration but sourced from the Employee Records prototype rather than the Phase 1 ERD sketch (see `docs/HRIS_ERD_reference.md`). `certification` and `emergency_contact` are stored as `json`, not `varchar` as earlier drafts of this table showed.
 
 #### 3.1.2 Role
 
 Table Name: tbl_role
 
-Table Description: Table where RBAC roles are stored (Admin, HR, Engineer, Foreman).
+Table Description: Table where RBAC roles are stored (HR Personnel, Site Foreman, Site Engineer / Construction Manager, System Administrator, Executive, Worker, Operator — per `backend/database/seeders/RoleSeeder.php`; only the first five are login-capable).
 
 Primary Key: role_id
 
@@ -233,7 +252,8 @@ Foreign Key: None
 | Fieldname | Data Type | Length | Description |
 |---|---|---|---|
 | role_id | int | 11 | Unique identifier for the role |
-| role_name | varchar | 50 | Name of the role (Admin, HR, Engineer, Foreman) |
+| role_name | varchar | 50 | Display name of the role |
+| slug | varchar | 255 | Machine key used by RBAC gate/middleware checks (e.g., `hr`, `foreman`, `engineer`, `worker`, `operator`, `admin`, `executive`) — added Phase 2 |
 | description | varchar | 255 | Field that describes the role's access scope |
 
 *Table 3.0 Role*
@@ -271,10 +291,14 @@ Foreign Key: site_id, foreman_id
 |---|---|---|---|
 | crew_id | int | 11 | Unique identifier for the crew |
 | crew_name | varchar | 100 | Name or code of the crew |
+| status | varchar | 20 | Deployment state: `draft` (default), `deployed`, or `archived` (reserved for a future disband flow, Phase 7) — added Phase 3 |
+| deployed_at | datetime | - | Date and time the crew was deployed (set by the deploy action); null while in `draft` — added Phase 3 |
 | site_id | int | 11 | Field that links to the assigned site |
 | foreman_id | int | 11 | Field that links to the employee designated as foreman |
 
 *Table 5.0 Crew*
+
+> **Phase 3 note:** `status` and `deployed_at` were added in `0003_01_01_000000_add_deployment_state_to_crews_table.php` to persist the Crew Builder prototype's Draft / Deploy states; the Phase 1 ERD sketch only had `crew_id, site_id, foreman_id, crew_name`.
 
 #### 3.1.5 Crew Assignment
 
@@ -479,7 +503,7 @@ The Entity-Relationship Diagram below illustrates the relationships among Employ
 
 > **Note:** This ERD predates the finalized data dictionary: it omits both `certification` and `emergencyContact` from `Employee`. See §3.1.1 and `backend/database/migrations/..._create_employees_table.php` for the authoritative field list — **the data dictionary wins** per this document's own convention. The maintained, up-to-date ERD source is `docs/HRIS_ERD.drawio` / `docs/HRIS_ERD_reference.md`.
 >
-> A draft corrected version, redrawn directly from the §3.1 data dictionary (all 13 entities, PK/FK preserved), is available for review: [sdd-fig-9-0-entity-relationship-diagram-corrected.svg](assets/sdd-fig-9-0-entity-relationship-diagram-corrected.svg). Swap it in once whoever owns this figure has reviewed it.
+> A draft corrected version, redrawn directly from the §3.1 data dictionary (all 13 entities, PK/FK preserved), is available for review: [sdd-fig-9-0-entity-relationship-diagram-corrected.svg](assets/sdd-fig-9-0-entity-relationship-diagram-corrected.svg). It also adds `Role.slug` and `Crew.status`/`deployedAt` (Phase 2/3 structural additions — see §3.1.2, §3.1.4), and adds `employeeCode`/`email`/`siteId` to `Employee`. Same scoping as `docs/HRIS_ERD_reference.md`: this stays a logical/structural ERD, so `Employee.password` and the non-relational HR-profile fields (`dateOfBirth`, `mobile`, `civilStatus`, etc.) are left out — see §3.1.1 for the exhaustive list. Swap it in once whoever owns this figure has reviewed it.
 
 ## 4. Detailed Design
 

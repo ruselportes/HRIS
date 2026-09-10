@@ -79,13 +79,19 @@ record-only classifications with no HRIS access:
 - `/docs/SPMP.md` — Software Project Management Plan
 - `/docs/SRS.md` — Software Requirements Specification
 - `/docs/SDD.md` — Software Design Description (all 5 sections written, 26
-  figures in `/docs/assets/`). Note: Figures 1.0 and 9.0 (class diagram and
-  ERD for Employee & Workforce Management) predate the finalized data
-  dictionary — they're missing `certification`/`emergency_contact` on
-  Employee (Fig 1.0 also shows a separate `Certification` table that doesn't
-  exist in the real schema). Per this file's own §4 note, the data dictionary
-  (and `backend/database/migrations/`) win; those two figures should be
-  redrawn to match before final submission.
+  figures in `/docs/assets/`). §3.1's data dictionary is kept current with
+  `backend/database/migrations/` — including Phase 2 auth fields
+  (`employee_code`, `email`, `password` on Employee; `slug` on Role) and
+  Phase 3 crew deployment state (`status`, `deployed_at` on Crew). Note:
+  Figures 1.0 and 9.0 (class diagram and ERD for Employee & Workforce
+  Management) still predate this — they're missing `certification`/
+  `emergency_contact` on Employee (Fig 1.0 also shows a separate
+  `Certification` table that doesn't exist in the real schema) and the
+  Phase 2/3 fields above. Draft corrected replacements exist at
+  `docs/assets/sdd-fig-1-0-...-corrected.svg` and
+  `docs/assets/sdd-fig-9-0-...-corrected.svg` (linked from the notes next to
+  each figure in SDD.md) — swap them in once whoever owns those figures has
+  reviewed them.
 - `/docs/STD.docx` — Software Test Document *(add once finalized)*
 - `/docs/HRIS_ERD.drawio` — entity-relationship diagram (editable in draw.io)
 - `/docs/HRIS_ERD_reference.md` — ERD design/formatting notes
