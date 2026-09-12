@@ -14,8 +14,9 @@ class MainApplication : Application(), ReactApplication {
       context = applicationContext,
       packageList =
         PackageList(this).packages.apply {
-          // Packages that cannot be autolinked yet can be added manually here, for example:
-          // add(MyReactNativePackage())
+          // Autolinking only covers node_modules packages; modules that live
+          // inside this app have to be registered by hand.
+          add(HrisNativePackage())
         },
     )
   }

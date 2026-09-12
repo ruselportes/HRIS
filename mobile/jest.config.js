@@ -15,5 +15,10 @@ module.exports = {
   moduleNameMapper: {
     '^@react-native-community/netinfo$':
       '<rootDir>/node_modules/@react-native-community/netinfo/jest/netinfo-mock.js',
+    // This project's own TurboModules. getEnforcing() throws at import time
+    // with no native runtime, so mapping them globally keeps any screen that
+    // reaches the clock from breaking the App render smoke test.
+    '^.*/native/NativeHrisMonotonicClock$':
+      '<rootDir>/src/native/__mocks__/NativeHrisMonotonicClock.ts',
   },
 };
