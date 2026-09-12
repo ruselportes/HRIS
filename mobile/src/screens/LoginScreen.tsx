@@ -18,6 +18,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import {useAuth} from '../auth/AuthContext';
+import {apiClient} from '../api/client';
 
 export function LoginScreen() {
   const {signIn} = useAuth();
@@ -31,8 +32,18 @@ export function LoginScreen() {
     setBusy(true);
     try {
       await signIn(identifier.trim(), password);
-    } catch {
-      setError('Unable to sign in. Check your ID/email and password, or your connection.');
+    } catch (err: any) {
+      // Distinguish "server unreachable" from "server said no" — collapsing
+      // both into one message made a wrong API port look like bad credentials.
+      if (!err?.response) {
+        setError(
+          `Can't reach the server at ${apiClient.defaults.baseURL}. Is the backend running?`,
+        );
+      } else if (err.response.status === 429) {
+        setError(err.response.data?.message ?? 'Too many attempts. Try again later.');
+      } else {
+        setError('Incorrect ID/email or password.');
+      }
     } finally {
       setBusy(false);
     }
