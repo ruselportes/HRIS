@@ -7,12 +7,19 @@
 
 - **Document Version:** 1.0
 - **Date:** July 27, 2026
-- **Prepared By:** Jay Mark A. Reños, Liza Mae C. Sugala, Rusel R. Portes, Efren S. Cabudbud Jr., Rayla G. Lanaza
-- **Project Title Reviewer:** Engr. Clark Kevin V. Villamor
+- **Prepared By:** Jay Mark A. Reños, Liza Mae C. Sugala, Rusel R. Portes, Efren S. Cabudbud Jr., CarlVey Sente, Rayla G. Lanaza
+- **Technical Adviser:** Eric Bulala
+- **Subject Adviser:** Engr. Clark Kevin V. Villamor — Head, College of Computer Studies
 
 ---
 
 ## Section 1: Overview
+
+This Software Project Management Plan (SPMP) defines how the Human Resource Information System (HRIS) for Arcenas Development Corporation will be planned, organized, executed, monitored, and delivered. It is the governing management document for the project: it identifies the deliverables and their acceptance criteria, assigns roles and responsibilities across the development team, establishes the schedule and the work breakdown structure, and sets out the plans by which requirements, schedule, budget, quality, and risk are controlled for the duration of development. Where the Software Requirements Specification (SRS) states what the system must do, and the Software Design Description (SDD) states how it is structured, this document states how the work of building it is managed and tracked.
+
+The project exists to solve a specific operational problem. Arcenas Development Corporation currently records the daily attendance of its construction crews on paper at each project site. Many of these sites are remote and have little or no internet connectivity, so attendance sheets are gathered and encoded manually, often several days after the work was performed. This delays payroll preparation, introduces transcription errors, and leaves recorded working time open to alteration — whether accidental or deliberate — with no dependable means of detecting it afterwards. Payroll must also apply the premium rates mandated by the Philippine Labor Code, which is difficult to compute consistently by hand across several sites and pay periods.
+
+The HRIS addresses these problems by capturing attendance on a mobile application that continues to work without connectivity, protecting every record with hardware-backed cryptographic signing so that tampering can be detected, synchronizing records automatically once a connection is restored, and computing payroll directly from verified attendance data. This plan covers the management of that work from requirements gathering, through development and testing, to the capstone defense.
 
 ### 1.1. Project Summary
 
@@ -140,7 +147,8 @@ All plan revisions shall be documented with a new version number, date, and desc
 | Stakeholder | Role in Project |
 |---|---|
 | **Arcenas Development Corporation** | Client / End-User Organization — HR Officers, Site Engineers, Executives, and Site Foremen will use the system. |
-| **Engr. Clark Kevin V. Villamor** | Project Title Reviewer / Capstone Adviser — Reviews and approves project scope and documentation. |
+| **Eric Bulala** | Technical Adviser — Provides technical guidance on architecture and implementation; receives milestone completion reports. |
+| **Engr. Clark Kevin V. Villamor** | Subject Adviser / Head, College of Computer Studies — Reviews and approves project scope, title, and documentation. |
 | **Capstone Academic Institution** | Defines submission deadlines, defense evaluation criteria, and grading standards. |
 
 ### 2.2. Internal Structure
@@ -151,17 +159,19 @@ All plan revisions shall be documented with a new version number, date, and desc
 | Liza Mae C. Sugala | Systems Analyst |
 | Rusel R. Portes | Lead Developer / Programmer |
 | Efren S. Cabudbud Jr. | Database & QA Lead |
-| Rayla G. Lanaza | UI/UX & Documentation Lead |
+| CarlVey Sente | UI/UX Designer |
+| Rayla G. Lanaza | Documentation Lead |
 
 ### 2.3. Roles and Responsibilities
 
 | Role | Member | Responsibilities |
 |---|---|---|
 | Project Manager | Jay Mark A. Reños | Overall project coordination, timeline management, milestone tracking, stakeholder communication, risk management, resource allocation, meeting facilitation. |
-| Systems Analyst | Liza Mae C. Sugala | Requirements gathering, use case specifications (UC-01 to UC-15), SRS drafting, stakeholder interviews, functional requirement validation. |
+| Systems Analyst | Liza Mae C. Sugala | Requirements gathering, use case specifications (UC-01 to UC-10), SRS drafting, stakeholder interviews, functional requirement validation. |
 | Lead Developer / Programmer | Rusel R. Portes | Laravel backend API, React.js web frontend, React Native mobile app, cryptographic engine (Monotonic Clock, HMAC, TEE Signing), background sync engine. |
 | Database & QA Lead | Efren S. Cabudbud Jr. | MySQL database schema, ERD, data dictionary, SQLCipher implementation, test case execution, defect tracking, STD preparation. |
-| UI/UX & Documentation Lead | Rayla G. Lanaza | UI/UX wireframes, prototypes (PR-01 to PR-15), all SPMP/SRS/SDD/STD document formatting and packaging, presentation preparation. |
+| UI/UX Designer | CarlVey Sente | User interface design, user experience planning, wireframe and prototype development (PR-01 to PR-10), design consistency across web and mobile, usability improvement and user feedback integration. |
+| Documentation Lead | Rayla G. Lanaza | SPMP/SRS/SDD/STD preparation, technical documentation, user manual preparation, documentation maintenance, all document formatting and packaging, presentation preparation. |
 
 ---
 
@@ -176,28 +186,28 @@ All plan revisions shall be documented with a new version number, date, and desc
 | Central Web HRIS (Laravel API + React.js) | High — 15 modules: RBAC, Payroll Engine, Leave Management, Crew Assignment, Analytics | Rusel R. Portes |
 | Mobile Attendance App (React Native + SQLite/SQLCipher) | High — Offline digital checklist, local encrypted storage, background sync | Rusel R. Portes |
 | Cryptographic Validation Engine (Monotonic Clock + HMAC + TEE) | Very High — Hardware-level cryptographic integration | Rusel R. Portes |
-| Database Schema & ERD (MySQL, 10+ tables) | Medium | Efren S. Cabudbud Jr. |
-| UI/UX Prototypes (15 screen designs) | Medium | Rayla G. Lanaza |
+| Database Schema & ERD (MySQL, 13 tables) | Medium | Efren S. Cabudbud Jr. |
+| UI/UX Prototypes (10 screen designs, PR-01 to PR-10) | Medium | CarlVey Sente |
 | Full Documentation Package (SPMP, SRS, SDD, STD) | Medium | Rayla G. Lanaza + All Members |
 
 #### 3.1.2. Staffing Plan
 
-| Phase | Jay Mark (PM) | Liza Mae (Analyst) | Rusel (Dev) | Efren (DB/QA) | Rayla (UI/Docs) |
-|---|---|---|---|---|---|
-| Requirements Gathering | Lead | Lead | Support | Support | Support |
-| System Design | Oversight | Lead | Lead | Lead | Lead |
-| Web Development | Oversight | Review | Lead | Support | Support |
-| Mobile Development | Oversight | Review | Lead | Support | Support |
-| Crypto Integration | Oversight | Review | Lead | Support | — |
-| Testing & QA | Oversight | Review | Support | Lead | — |
-| Documentation Finalization | Review | Support | Support | Support | Lead |
-| Defense Preparation | Lead | Support | Support | Support | Lead |
+| Phase | Jay Mark (PM) | Liza Mae (Analyst) | Rusel (Dev) | Efren (DB/QA) | CarlVey (UI/UX) | Rayla (Docs) |
+|---|---|---|---|---|---|---|
+| Requirements Gathering | Lead | Lead | Support | Support | Support | Support |
+| System Design | Oversight | Lead | Lead | Lead | Lead | Lead |
+| Web Development | Oversight | Review | Lead | Support | Support | Support |
+| Mobile Development | Oversight | Review | Lead | Support | Support | Support |
+| Crypto Integration | Oversight | Review | Lead | Support | — | — |
+| Testing & QA | Oversight | Review | Support | Lead | — | — |
+| Documentation Finalization | Review | Support | Support | Support | Support | Lead |
+| Defense Preparation | Lead | Support | Support | Support | Support | Lead |
 
 #### 3.1.3. Resource Acquisition Plan
 
 | Resource | Type | Purpose |
 |---|---|---|
-| Developer Workstations (5x) | Hardware | Individual development and documentation machines. |
+| Developer Workstations (6x) | Hardware | Individual development and documentation machines. |
 | Android Test Smartphone(s) | Hardware | Real-device testing for React Native, SQLCipher, TEE Keystore signing, and offline attendance capture. |
 | Local Development Server | Software/Hardware | Running Laravel API locally via Docker or XAMPP. |
 | Node.js + npm | Software | React.js and React Native build environment. |
@@ -219,7 +229,7 @@ All plan revisions shall be documented with a new version number, date, and desc
 | MySQL Database Design & Management | Efren S. Cabudbud Jr. |
 | Software Quality Assurance & Test Case Execution | Efren S. Cabudbud Jr. |
 | Requirements Analysis & Use Case Modeling | Liza Mae C. Sugala |
-| UI/UX Design & Prototyping | Rayla G. Lanaza |
+| UI/UX Design & Prototyping | CarlVey Sente |
 | Technical Documentation & Report Writing | Rayla G. Lanaza |
 | Project Coordination & Risk Management | Jay Mark A. Reños |
 
@@ -235,15 +245,15 @@ All plan revisions shall be documented with a new version number, date, and desc
 
 **2.0 Requirements Engineering**
 2.1 Stakeholder interviews with Arcenas Development Corp
-2.2 Functional requirements identification (FR-01 to FR-15)
-2.3 Use Case Specification writing (UC-01 to UC-15)
+2.2 Functional requirements identification (FR-01 to FR-10)
+2.3 Use Case Specification writing (UC-01 to UC-10)
 2.4 SRS document drafting and review
 
 **3.0 System Design**
 3.1 High-level architecture design (Web + Mobile + Crypto layers)
-3.2 Database ERD design (10+ tables)
+3.2 Database ERD design (13 tables)
 3.3 Complete data dictionary
-3.4 UI/UX wireframing and prototyping (PR-01 to PR-15)
+3.4 UI/UX wireframing and prototyping (PR-01 to PR-10)
 3.5 Sequence diagrams, state transition diagrams, and process flowcharts
 3.6 SDD document drafting and review
 
@@ -252,23 +262,23 @@ All plan revisions shall be documented with a new version number, date, and desc
 4.2 Laravel API — RBAC and authentication module (UC-01)
 4.3 Laravel API — Worker Registry module (UC-02)
 4.4 Laravel API — Crew Assignment module (UC-03)
-4.5 Laravel API — Payroll Computation Engine (UC-13, Philippine Labor Code)
-4.6 Laravel API — Leave and Overtime workflow (UC-14)
+4.5 Laravel API — Payroll Computation Engine (UC-08, Philippine Labor Code)
+4.6 Laravel API — Leave and Overtime workflow (UC-10)
 4.7 React.js — Web admin portal frontend for all modules
-4.8 React.js — Executive analytics dashboard (UC-15)
+4.8 React.js — Executive analytics dashboard (UC-09)
 
 **5.0 Mobile Application Development**
 5.1 React Native — Project setup and navigation
 5.2 React Native — Offline digital attendance checklist (UC-04)
-5.3 React Native — Local SQLite/SQLCipher storage (UC-05)
-5.4 React Native — Background sync engine (UC-09)
-5.5 React Native — Late Foreman Override workflow (UC-10)
+5.3 React Native — Local SQLite/SQLCipher storage (supports UC-04)
+5.4 React Native — Background sync engine (supports UC-04)
+5.5 React Native — Late Foreman Override workflow (UC-05)
 
 **6.0 Cryptographic Engine Development**
-6.1 Monotonic hardware clock capture module (UC-06)
-6.2 HMAC-SHA256 hash chaining ledger (UC-07)
-6.3 TEE / Secure Enclave ECDSA payload signing (UC-08)
-6.4 Server-side signature verification and chain integrity check
+6.1 Monotonic hardware clock capture module (supports UC-04)
+6.2 HMAC-SHA256 hash chaining ledger (supports UC-04)
+6.3 TEE / Secure Enclave ECDSA payload signing (supports UC-04)
+6.4 Server-side signature verification and chain integrity check (supports UC-04)
 
 **7.0 Integration & Testing**
 7.1 Web and Mobile API integration testing
@@ -286,6 +296,8 @@ All plan revisions shall be documented with a new version number, date, and desc
 9.2 System live demonstration setup
 9.3 Q&A preparation
 9.4 Capstone defense execution
+
+> **Note:** The `UC-xx`/`FR-xx`/`PR-xx` IDs above are cross-referenced to SRS §3.2.1/§3.2.2, which previously had no formal ID scheme (use cases were identified only by figure number, e.g. "Fig. 5.0") and only 9 use cases — 6 short of the "UC-01 to UC-15" this WBS originally claimed. SRS has since been given explicit UC-01 to UC-10 / PR-01 to PR-10 IDs, including a new UC-10 (Leave & Overtime Filing and Approval) that covers work item 4.6 below, which previously had no matching SRS use case at all. Items 5.3, 5.4, and 6.1-6.4 are internal/technical tasks with no standalone SRS use case of their own — they're tagged "supports UC-04" (Mobile Digital Attendance Checklist) since that's the user-facing use case they implement underneath. Note also that this WBS's 15-item estimate for `FR-xx`/`UC-xx` was aspirational; the SRS itself only defines 10 of each.
 
 #### 3.2.2. Schedule Allocation
 
@@ -307,7 +319,7 @@ All plan revisions shall be documented with a new version number, date, and desc
 | Android Smartphone (Test Device) | Rusel R. Portes / Efren S. Cabudbud Jr. | Mobile Dev + Testing |
 | Local Laravel Dev Server (Docker/XAMPP) | Rusel R. Portes | Web + API Development |
 | GitHub Repository | All Team Members | All Phases |
-| Figma Account | Rayla G. Lanaza | Design Phase |
+| Figma Account | CarlVey Sente | Design Phase |
 | Postman | Rusel R. Portes + Efren S. Cabudbud Jr. | Integration & Testing |
 
 #### 3.2.4. Budget Allocation
@@ -325,7 +337,7 @@ All plan revisions shall be documented with a new version number, date, and desc
 
 #### 3.3.1. Requirements Control Plan
 
-- Any change to FR-01 to FR-15 or UC-01 to UC-15 must be reviewed in a team meeting.
+- Any change to FR-01 to FR-10 or UC-01 to UC-10 must be reviewed in a team meeting.
 - Approved changes are documented in the SRS with a version increment.
 - Changes affecting the mobile offline behavior or cryptographic engine require Lead Developer review and adviser notification.
 
@@ -351,7 +363,7 @@ All plan revisions shall be documented with a new version number, date, and desc
 
 - **Daily:** Informal status updates via group chat (Messenger / Discord).
 - **Weekly:** Formal Friday stand-up meeting (30–60 minutes) with progress report to Project Manager.
-- **Per Milestone:** Written milestone completion report submitted to Engr. Villamor upon each phase completion.
+- **Per Milestone:** Written milestone completion report submitted to the Technical Adviser (Eric Bulala) upon each phase completion, copied to the Subject Adviser.
 
 #### 3.3.6. Metrics Collection Plan
 
@@ -423,7 +435,7 @@ The project follows an **Agile-Waterfall Hybrid Development Model**:
 
 The system is considered accepted when:
 
-- All 15 functional requirements (FR-01 to FR-15) are fully implemented and verified.
+- All 10 functional requirements (FR-01 to FR-10) are fully implemented and verified.
 - All 6 STD test cases (TC-01 to TC-06) pass, including clock rollback attack, database tampering, and TEE signature validation tests.
 - The mobile offline attendance checklist successfully records and syncs attendance without data loss across at least 3 consecutive offline-then-online simulation cycles.
 - The payroll engine produces accurate computations verified against manual calculations for OT, Night Differential, Rest Day, and Holiday scenarios.

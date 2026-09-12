@@ -76,23 +76,99 @@ record-only classifications with no HRIS access:
 
 ## 6. Where the docs live
 
-- `/docs/SPMP.md` — Software Project Management Plan
-- `/docs/SRS.md` — Software Requirements Specification
+**Team and advisers** (as carried on the title page of all four documents):
+Jay Mark A. Reños (Project Manager), Liza Mae C. Sugala (Systems Analyst),
+Rusel R. Portes (Lead Developer — also Team Leader; Team Leader and Project
+Manager are *different roles*, do not substitute one for the other),
+Efren S. Cabudbud Jr. (Database & QA Lead), CarlVey Sente (UI/UX Designer),
+Rayla G. Lanaza (Documentation Lead) — 6 members, spelled **CarlVey** (one
+word). Advisers: **Eric Bulala = Technical Adviser** (the adviser to name when
+a form or document asks for one); Engr. Clark Kevin V. Villamor = Subject
+Adviser / Head, College of Computer Studies, and Project Title Reviewer.
+Both are named per `C:\capstone\internal\Request-Letter-to-Conduct-a-Study.docx`.
+
+- `/docs/SPMP.md` — Software Project Management Plan. Its WBS (§3.2.1) tags
+  work items with `UC-xx`/`FR-xx`/`PR-xx` IDs that are cross-referenced to
+  SRS §3.2.1/§3.2.2 — keep these two in sync if either changes.
+  **This markdown and `/docs/SPMP.docx` are different plans, not two copies
+  of one** — see the SPMP.docx entry below before syncing either direction.
+- `/docs/SPMP.docx` — the Word SPMP, for submission (source copy lives in the
+  user's Downloads). Corrected 2026-09-11: stale `UC-01 to UC-15` → `UC-01 to
+  UC-10`, and the UI/UX row of Table 3.0 had literal `<br>` markup and a stray
+  markdown `|` showing as body text — rebuilt as real line breaks with
+  `PR-01 to PR-10` added. It still diverges from `SPMP.md` in substance: it
+  schedules by calendar date (Jul 2026 - Mar 2027, 3 iterations) where
+  SPMP.md uses abstract Week 1-18/8 phases, and its WBS is a labor-hour
+  table rather than SPMP.md's 9 UC-tagged groups. Do not overwrite either
+  from the other without asking — that divergence is unresolved. (The team
+  mismatch is resolved: **CarlVey Sente (UI/UX Designer)** was missing from
+  SPMP.md and was added there on 2026-09-11, splitting the former combined
+  "UI/UX & Documentation Lead" into UI/UX Designer (Sente) and Documentation
+  Lead (Lanaza), matching the docx. The team is 6, not 5.) A title-page block
+  (version, date, prepared-by, both advisers) was added 2026-09-12 — it had
+  none at all before.
+- `/docs/SRS.md` — Software Requirements Specification. §3.2.1/§3.2.2 define
+  the canonical `UC-01`–`UC-10` / `FR-01`–`FR-10` / `PR-01`–`PR-10` IDs (10
+  each, not 15 — an earlier SPMP draft assumed 15 before the IDs existed).
+  UC-10 (Leave & Overtime Filing and Approval) was added late since the
+  module already existed elsewhere (SDD §2.1.7/§3.1.11-12/§4.6, SPMP WBS
+  4.6) but had no SRS use case of its own until then. §2.3 lists all 7
+  roles per `RoleSeeder.php` (Executive/Worker/Operator were missing until
+  reconciled against CLAUDE.md's §5 role list).
+- `/docs/SRS.docx` — the Word SRS, for submission (source copy lives in the
+  user's Downloads). **It holds the only copies of the 18 use-case and
+  prototype images** — `SRS.md` has never had them, so for figures the docx
+  is the richer artifact. Synced 2026-09-11: FR-01..FR-10 IDs added to §2.2,
+  Executive/Worker/Operator added to §2.3, and UC-10/PR-10 (Leave & Overtime
+  Filing and Approval) added as §3.2.1.10/§3.2.2.10 with Figures 19.0/20.0 —
+  **both carry a "to be attached" placeholder, since those two diagrams do
+  not exist yet**. 2026-09-12: every use-case/prototype subsection heading now
+  carries its id inline ("3.2.1.8 (UC-08) ...", "3.2.2.8 (PR-08) ...") so the
+  SPMP/STD cross-references actually resolve inside the SRS, and a title-page
+  block (version, date, prepared-by, both advisers) was added. Also fixed: the page header read "Software Project
+  Management Plan"; §3 opened with the whole §2.5 Assumptions block pasted a
+  second time; and Supabase was listed as a dependency (not in §2's fixed
+  stack). Still open: §3.5.2 Availability and §3.5.3 Security have swapped
+  content (Availability describes access control, Security describes
+  usability) — the same defect is flagged in `SRS.md`; fixing it means
+  authoring new requirement text, so it was left for the team.
 - `/docs/SDD.md` — Software Design Description (all 5 sections written, 26
-  figures in `/docs/assets/`). §3.1's data dictionary is kept current with
-  `backend/database/migrations/` — including Phase 2 auth fields
-  (`employee_code`, `email`, `password` on Employee; `slug` on Role) and
-  Phase 3 crew deployment state (`status`, `deployed_at` on Crew). Note:
-  Figures 1.0 and 9.0 (class diagram and ERD for Employee & Workforce
-  Management) still predate this — they're missing `certification`/
-  `emergency_contact` on Employee (Fig 1.0 also shows a separate
-  `Certification` table that doesn't exist in the real schema) and the
-  Phase 2/3 fields above. Draft corrected replacements exist at
-  `docs/assets/sdd-fig-1-0-...-corrected.svg` and
-  `docs/assets/sdd-fig-9-0-...-corrected.svg` (linked from the notes next to
-  each figure in SDD.md) — swap them in once whoever owns those figures has
-  reviewed them.
-- `/docs/STD.docx` — Software Test Document *(add once finalized)*
+  figures in `/docs/assets/`, plus 3 corrected variants — see below). §3.1's
+  data dictionary is kept current with `backend/database/migrations/` —
+  including Phase 2 auth fields (`employee_code`, `email`, `password` on
+  Employee; `slug` on Role) and Phase 3 crew deployment state (`status`,
+  `deployed_at` on Crew). Figures 1.0, 2.0, and 9.0 (Employee & Workforce
+  Management class diagram, Crew Assignment class diagram, and the ERD)
+  originally predated this data dictionary; SDD.md now embeds the corrected
+  versions directly (`docs/assets/sdd-fig-{1,2,9}-0-...-corrected.svg`), with
+  the original stale PNGs kept alongside for reference and a note on each
+  explaining what changed.
+- `/docs/SDD.docx` — the Word build of the SDD, for submission. Synced from
+  `SDD.md` on 2026-09-11: §3.1 data dictionary (Employee 9→26 fields, Role
+  `slug`, Crew `status`/`deployed_at`, `certification`/`emergency_contact`
+  as `json`), the 7-role RBAC description, Figures 1.0/2.0/9.0 swapped for
+  the corrected renders, and a missing Figure 9.0 caption added. **Section 5
+  (Human Interface Design) is still an empty heading — not required yet.**
+  Regenerate from `SDD.md` whenever the data dictionary changes; it has no
+  automated build, so the sync is manual. Known cosmetic gaps left alone:
+  the header still reads "Insert Project / System Title Here", the footer
+  says "Page Number" instead of a real field, the List of Figures has no
+  page numbers, and the List of Tables page numbers (54-66) predate the
+  current 28-page layout. A title-page block (version, date, prepared-by,
+  both advisers) was added 2026-09-12.
+- `/docs/STD.md` + `/docs/STD.docx` — Software Test Document, drafted 2026-09-11.
+  Structure follows the school's STD format (1. Introduction / 1.1 System
+  Overview / 1.2 Test Approach / 1.3 Definitions · 2. Test Plan / 2.1 Testing
+  Tools and Environment / 2.2 Test Case Template · 3. Test Cases · 4.
+  Requirements Traceability). Carries the six acceptance test cases named in
+  §7 below — TC-01 clock rollback, TC-02 local DB tampering, TC-03 MitM
+  signature forgery, TC-04 late foreman override, TC-05 absent foreman
+  re-assignment, TC-06 holiday payroll — each traced to an FR/UC in Table 9.0.
+  **Actual Result / Pass/Fail / Comments are intentionally blank**: it is a
+  test *plan*, to be filled in at execution. Four of the six depend on modules
+  not yet built (Phases 5, 7, 8), so they cannot be run yet. The docx is
+  generated, not hand-edited — regenerate it from `STD.md` rather than editing
+  the Word file, or the two will drift.
 - `/docs/HRIS_ERD.drawio` — entity-relationship diagram (editable in draw.io)
 - `/docs/HRIS_ERD_reference.md` — ERD design/formatting notes
 

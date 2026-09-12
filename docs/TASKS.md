@@ -12,8 +12,8 @@ Check off tasks as they're completed; a phase counts as done once every task und
 - [x] SPMP drafted (`docs/SPMP.md`)
 - [x] SRS drafted (`docs/SRS.md`)
 - [x] ERD reference note added (`docs/HRIS_ERD_reference.md`)
-- [ ] SDD finalized and added to `docs/`
-- [ ] STD finalized and added to `docs/`
+- [x] SDD finalized and added to `docs/` (`docs/SDD.md` + `docs/SDD.docx`)
+- [x] STD drafted and added to `docs/` (`docs/STD.md` + `docs/STD.docx`) — TC-01–TC-06 specified; Actual Result / Pass/Fail left blank until the cases can be executed (TC-01–03 need Phase 5, TC-04–05 need Phase 7, TC-06 needs Phase 8)
 - [x] `HRIS_ERD.drawio` added to `docs/`
 - [x] Monorepo folder structure created (`backend/`, `web/`, `mobile/`, `docs/`)
 - [x] Design prototypes (14 screens) imported to `docs/prototypes/`
@@ -55,7 +55,7 @@ Check off tasks as they're completed; a phase counts as done once every task und
 > (RollCallScreen only ever calls `attendanceRepository`, never `apiClient`),
 > but an actual device test is still owed before calling this fully proven.
 
-## Phase 5 — Cryptographic Attendance Integrity Engine (UC-06, UC-07, UC-08) (10%)
+## Phase 5 — Cryptographic Attendance Integrity Engine (supports UC-04) (10%)
 
 - [ ] Monotonic clock capture (`elapsedRealtime` / `mach_continuous_time`)
 - [ ] HMAC-SHA256 hash chaining ledger
@@ -64,7 +64,7 @@ Check off tasks as they're completed; a phase counts as done once every task und
 - [ ] Mobile: Foreman Device Binding screen
 - [ ] Security tests: TC-01 clock rollback, TC-02 DB tampering, TC-03 MitM signature forgery
 
-## Phase 6 — Automated Background Sync Engine (UC-09) (10%)
+## Phase 6 — Automated Background Sync Engine (supports UC-04) (10%)
 
 - [ ] Background sync service (mobile)
 - [ ] Retry queue with exponential backoff
@@ -72,7 +72,7 @@ Check off tasks as they're completed; a phase counts as done once every task und
 - [ ] Mobile: Foreman Sync Queue screen
 - [ ] Sync latency validated (< 5 seconds on reconnection)
 
-## Phase 7 — Foreman Edge Case Handling (UC-05/10, late override, absent foreman, retroactive recovery) (10%)
+## Phase 7 — Foreman Edge Case Handling (UC-05, UC-06, UC-07 — late override, absent foreman, retroactive recovery) (10%)
 
 - [ ] Late Foreman Override — default 7:00 AM shift credit + `FOREMAN_LATE_OVERRIDE` audit flag
 - [ ] 1-click Absent Foreman crew re-assignment
@@ -83,7 +83,7 @@ Check off tasks as they're completed; a phase counts as done once every task und
 - [ ] Web: Late Override Audit screen
 - [ ] Tests: TC-04 late foreman override, TC-05 absent foreman re-assignment
 
-## Phase 8 — Philippine Labor Code Payroll Engine (UC-13) (10%)
+## Phase 8 — Philippine Labor Code Payroll Engine (UC-08) (10%)
 
 - [ ] `Payroll`, `Payroll Detail` tables
 - [ ] Payroll computation service — regular, OT (1.25x), Night Diff (1.10x), Rest Day (1.30x), Holiday (2.0x)
@@ -91,7 +91,7 @@ Check off tasks as they're completed; a phase counts as done once every task und
 - [ ] Web: Payroll Run screen
 - [ ] Tests: TC-06 holiday payroll computation, verified against manual calculations
 
-## Phase 9 — Leave & Overtime Filing + Executive Analytics (UC-14, UC-15) (10%)
+## Phase 9 — Leave & Overtime Filing + Executive Analytics (UC-10, UC-09) (10%)
 
 - [ ] `Leave Request`, `Overtime Request` tables + multi-tier approval workflow
 - [ ] Leave/Overtime filing web UI

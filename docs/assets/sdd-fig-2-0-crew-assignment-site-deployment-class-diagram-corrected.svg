@@ -1,0 +1,78 @@
+<svg viewBox="0 0 1120 700" width="1120" height="700" xmlns="http://www.w3.org/2000/svg">
+<rect x="0" y="0" width="1120" height="700" fill="#ffffff"/>
+
+<!-- Site -deploys- Crew -->
+<line x1="360" y1="60" x2="560" y2="60" stroke="#555555" stroke-width="1.3"/>
+<text x="374" y="50" font-size="14" fill="#444444" font-family="Segoe UI, Helvetica, Arial, sans-serif">1</text>
+<text x="460" y="50" text-anchor="middle" font-size="14" font-style="italic" fill="#444444" font-family="Segoe UI, Helvetica, Arial, sans-serif">deploys</text>
+<text x="536" y="50" font-size="14" fill="#444444" font-family="Segoe UI, Helvetica, Arial, sans-serif">*</text>
+
+<!-- Crew -has- CrewAssignment -->
+<line x1="650" y1="316" x2="650" y2="420" stroke="#555555" stroke-width="1.3"/>
+<text x="656" y="335" font-size="14" fill="#444444" font-family="Segoe UI, Helvetica, Arial, sans-serif">1</text>
+<text x="672" y="372" text-anchor="middle" font-size="14" font-style="italic" fill="#444444" font-family="Segoe UI, Helvetica, Arial, sans-serif">has</text>
+<text x="656" y="408" font-size="14" fill="#444444" font-family="Segoe UI, Helvetica, Arial, sans-serif">*</text>
+
+<!-- CrewAssignment -assigns- Employee -->
+<line x1="660" y1="440" x2="760" y2="440" stroke="#555555" stroke-width="1.3"/>
+<text x="670" y="430" font-size="14" fill="#444444" font-family="Segoe UI, Helvetica, Arial, sans-serif">*</text>
+<text x="710" y="430" text-anchor="middle" font-size="14" font-style="italic" fill="#444444" font-family="Segoe UI, Helvetica, Arial, sans-serif">assigns</text>
+<text x="744" y="430" font-size="14" fill="#444444" font-family="Segoe UI, Helvetica, Arial, sans-serif">1</text>
+
+<!-- Site -->
+<g font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="40" y="40" width="320" height="224" fill="#ffffff" stroke="#1F3864" stroke-width="1.5"/>
+<rect x="40" y="40" width="320" height="40" fill="#1F3864"/>
+<text x="200.0" y="67.0" text-anchor="middle" font-weight="bold" font-size="19" fill="#ffffff">Site</text>
+<text x="56" y="108" font-size="15" fill="#222222">- siteId: int</text>
+<text x="56" y="134" font-size="15" fill="#222222">- siteName: string</text>
+<text x="56" y="160" font-size="15" fill="#222222">- location: string</text>
+<text x="56" y="186" font-size="15" fill="#222222">- status: string</text>
+<line x1="40" y1="198" x2="360" y2="198" stroke="#1F3864" stroke-width="1"/>
+<text x="56" y="226" font-size="15" fill="#222222">+ activateSite()</text>
+<text x="56" y="252" font-size="15" fill="#222222">+ closeSite()</text>
+</g>
+
+<!-- Crew (corrected: status + deployedAt added, Phase 3) -->
+<g font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="560" y="40" width="380" height="276" fill="#ffffff" stroke="#1F3864" stroke-width="1.5"/>
+<rect x="560" y="40" width="380" height="40" fill="#1F3864"/>
+<text x="750.0" y="67.0" text-anchor="middle" font-weight="bold" font-size="19" fill="#ffffff">Crew</text>
+<text x="576" y="108" font-size="15" fill="#222222">- crewId: int</text>
+<text x="576" y="134" font-size="15" fill="#222222">- crewName: string</text>
+<text x="576" y="160" font-size="15" fill="#222222">- status: string</text>
+<text x="576" y="186" font-size="15" fill="#222222">- deployedAt: datetime</text>
+<text x="576" y="212" font-size="15" fill="#222222">- siteId: int</text>
+<text x="576" y="238" font-size="15" fill="#222222">- foremanId: int</text>
+<line x1="560" y1="250" x2="940" y2="250" stroke="#1F3864" stroke-width="1"/>
+<text x="576" y="278" font-size="15" fill="#222222">+ formCrew()</text>
+<text x="576" y="304" font-size="15" fill="#222222">+ assignForeman()</text>
+</g>
+
+<!-- CrewAssignment -->
+<g font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="280" y="420" width="380" height="250" fill="#ffffff" stroke="#1F3864" stroke-width="1.5"/>
+<rect x="280" y="420" width="380" height="40" fill="#1F3864"/>
+<text x="470.0" y="447.0" text-anchor="middle" font-weight="bold" font-size="19" fill="#ffffff">CrewAssignment</text>
+<text x="296" y="488" font-size="15" fill="#222222">- assignmentId: int</text>
+<text x="296" y="514" font-size="15" fill="#222222">- crewId: int</text>
+<text x="296" y="540" font-size="15" fill="#222222">- employeeId: int</text>
+<text x="296" y="566" font-size="15" fill="#222222">- dateAssigned: datetime</text>
+<text x="296" y="592" font-size="15" fill="#222222">- status: string</text>
+<line x1="280" y1="604" x2="660" y2="604" stroke="#1F3864" stroke-width="1"/>
+<text x="296" y="632" font-size="15" fill="#222222">+ assignEmployee()</text>
+<text x="296" y="658" font-size="15" fill="#222222">+ reassignEmployee()</text>
+</g>
+
+<!-- Employee (stub - see Fig 1.0 for the corrected Employee class) -->
+<g font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="760" y="420" width="320" height="172" fill="#ffffff" stroke="#1F3864" stroke-width="1.5"/>
+<rect x="760" y="420" width="320" height="40" fill="#1F3864"/>
+<text x="920.0" y="447.0" text-anchor="middle" font-weight="bold" font-size="19" fill="#ffffff">Employee</text>
+<text x="776" y="488" font-size="15" fill="#222222">- employeeId: int</text>
+<text x="776" y="514" font-size="15" fill="#222222">- firstName: string</text>
+<text x="776" y="540" font-size="15" fill="#222222">- lastName: string</text>
+<line x1="760" y1="552" x2="1080" y2="552" stroke="#1F3864" stroke-width="1"/>
+<text x="776" y="580" font-size="15" font-style="italic" fill="#222222">(see Fig 1.0 Employee class)</text>
+</g>
+</svg>

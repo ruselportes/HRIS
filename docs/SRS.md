@@ -5,6 +5,12 @@
 **Human Resource Information System (HRIS)**
 **for Arcenas Development Corporation**
 
+- **Document Version:** 1.0
+- **Date:** September 11, 2026
+- **Prepared By:** Jay Mark A. Reños, Liza Mae C. Sugala, Rusel R. Portes, Efren S. Cabudbud Jr., CarlVey Sente, Rayla G. Lanaza
+- **Technical Adviser:** Eric Bulala
+- **Subject Adviser:** Engr. Clark Kevin V. Villamor — Head, College of Computer Studies
+
 ---
 
 ## List of Figures
@@ -29,6 +35,8 @@
 | 16.0 | Retroactive Crew Recovery Sign-off Prototype |
 | 17.0 | Philippine Labor Law Automated Payroll Computation Prototype |
 | 18.0 | Executive Compliance Audit & Site Labor Analytics Prototype |
+| 19.0 | Leave & Overtime Filing and Approval Use Case |
+| 20.0 | Leave & Overtime Filing and Approval Prototype |
 
 ## List of Tables
 
@@ -98,25 +106,30 @@ Overall, the HRIS is intended to cut down on manual HR work, reduce errors in at
 
 This subsection provides a summary of the major functions that the HRIS for Arcenas Development Corporation will perform. From the viewpoint of the end-users, the HRIS offers the following core functionalities:
 
-- **User Account and Authentication** – Allows authorized users to securely log in and access system functions based on their assigned roles and permissions.
-- **Employee Information Management** – Allows authorized personnel to add, update, view, and manage employee records and personal information.
-- **Attendance Management** – Allows authorized users to record, view, monitor, and manage employee attendance records.
-- **Mobile Attendance Recording** – Allows site foremen to record employee attendance using the mobile application, particularly at remote construction sites.
-- **Offline Attendance** – Allows site foremen to record attendance even without an internet connection by temporarily storing records on the mobile device.
-- **Automatic Data Synchronization** – Synchronizes locally stored attendance records with the central system once an internet connection becomes available.
-- **Leave Management** – Allows employees or authorized personnel to submit, review, approve, and monitor leave requests and leave records.
-- **Payroll Management** – Allows authorized personnel to manage payroll-related information and use attendance and employee records as supporting data for payroll processing.
-- **Reports and Monitoring** – Allows authorized users to generate and view reports related to employee information, attendance, leave, and payroll.
-- **Cryptographic Validation** – Validates attendance records to help maintain data integrity and prevent unauthorized modification or manipulation of attendance information.
+- **FR-01 User Account and Authentication** – Allows authorized users to securely log in and access system functions based on their assigned roles and permissions.
+- **FR-02 Employee Information Management** – Allows authorized personnel to add, update, view, and manage employee records and personal information.
+- **FR-03 Attendance Management** – Allows authorized users to record, view, monitor, and manage employee attendance records.
+- **FR-04 Mobile Attendance Recording** – Allows site foremen to record employee attendance using the mobile application, particularly at remote construction sites.
+- **FR-05 Offline Attendance** – Allows site foremen to record attendance even without an internet connection by temporarily storing records on the mobile device.
+- **FR-06 Automatic Data Synchronization** – Synchronizes locally stored attendance records with the central system once an internet connection becomes available.
+- **FR-07 Leave Management** – Allows employees or authorized personnel to submit, review, approve, and monitor leave requests and leave records.
+- **FR-08 Payroll Management** – Allows authorized personnel to manage payroll-related information and use attendance and employee records as supporting data for payroll processing.
+- **FR-09 Reports and Monitoring** – Allows authorized users to generate and view reports related to employee information, attendance, leave, and payroll.
+- **FR-10 Cryptographic Validation** – Validates attendance records to help maintain data integrity and prevent unauthorized modification or manipulation of attendance information.
+
+> Note: FR-01 to FR-10 are the formal functional requirement IDs referenced from the SPMP work breakdown structure (§3.2.1).
 
 ### 2.3. User Characteristics
 
-The potential users of the system are identified, classified, and described as follows:
+The potential users of the system are identified, classified, and described as follows. Per `backend/database/seeders/RoleSeeder.php`, `Role` has 7 rows; only the first 5 below are login-capable (`Employee.password` set) — Worker and Operator are record-only classifications with no HRIS login:
 
 - **HR Personnel** – Responsible for managing employee records, attendance, leave, payroll, and other human resource processes.
 - **Site Foremen** – Responsible for recording and monitoring employee attendance at construction sites using the mobile attendance application.
 - **Site Engineers / Construction Managers** – May access attendance information and reports for monitoring employees and workforce activities at construction sites.
 - **System Administrator** – Responsible for managing user accounts, access permissions, and system-related configurations.
+- **Executive** – Views analytics dashboards and reviews audit logs for compliance oversight; read-only access.
+- **Worker** – A field worker on a crew; a record-only classification with no HRIS login of their own.
+- **Operator** – A heavy equipment operator; a record-only classification with no HRIS login of their own.
 
 ### 2.4. Constraints
 
@@ -211,33 +224,39 @@ The HRIS relies on web development technologies, mobile development frameworks, 
 
 #### 3.2.1. Use Cases
 
-| # | Use Case |
-|---|---|
-| UC (Fig. 1.0) | User Authentication & Role-Based Access Control |
-| UC (Fig. 2.0) | Worker Registry and Skill Certification Management |
-| UC (Fig. 3.0) | Crew Assignment & Site Deployment |
-| UC (Fig. 4.0) | Mobile Digital Attendance Checklist |
-| UC (Fig. 5.0) | Late Foreman Override & Shift-Start Credit Engine |
-| UC (Fig. 6.0) | Click Crew Re-assignment & Delegation |
-| UC (Fig. 7.0) | Retroactive Crew Recovery Sign-off |
-| UC (Fig. 8.0) | Philippine Labor Law Automated Payroll Computation |
-| UC (Fig. 9.0) | Executive Compliance Audit & Site Labor Analytics |
+| ID | Figure | Use Case |
+|---|---|---|
+| UC-01 | Fig. 1.0 | User Authentication & Role-Based Access Control |
+| UC-02 | Fig. 2.0 | Worker Registry and Skill Certification Management |
+| UC-03 | Fig. 3.0 | Crew Assignment & Site Deployment |
+| UC-04 | Fig. 4.0 | Mobile Digital Attendance Checklist |
+| UC-05 | Fig. 5.0 | Late Foreman Override & Shift-Start Credit Engine |
+| UC-06 | Fig. 6.0 | Click Crew Re-assignment & Delegation |
+| UC-07 | Fig. 7.0 | Retroactive Crew Recovery Sign-off |
+| UC-08 | Fig. 8.0 | Philippine Labor Law Automated Payroll Computation |
+| UC-09 | Fig. 9.0 | Executive Compliance Audit & Site Labor Analytics |
+| UC-10 | Fig. 19.0 | Leave & Overtime Filing and Approval |
 
-> Note: use case diagrams for each of the above are maintained as figures in the original document; recreate/attach as needed in the design tooling of choice (draw.io/Figma).
+> Note: UC-01 to UC-09 correspond 1:1 to Figures 1.0-9.0 above. UC-10 (Leave & Overtime Filing and Approval) was added to cover the multi-tier leave/overtime approval workflow, which is implemented as its own module (see SDD §2.1.7, §3.1.11-3.1.12, §4.6) and its own SPMP WBS item (§3.2.1, 4.6) but previously had no corresponding entry here. These IDs (UC-01 to UC-10) are the ones referenced from the SPMP work breakdown structure.
+>
+> Use case diagrams for each of the above are maintained as figures in the original document; recreate/attach as needed in the design tooling of choice (draw.io/Figma).
 
 #### 3.2.2. Prototypes
 
-| # | Prototype |
-|---|---|
-| PR (Fig. 10.0) | User Authentication & Role-Based Access Control |
-| PR (Fig. 11.0) | Worker Registry and Skill Certification Management |
-| PR (Fig. 12.0) | Crew Assignment & Site Deployment |
-| PR (Fig. 13.0) | Mobile Digital Attendance Checklist |
-| PR (Fig. 14.0) | Late Foreman Override & Shift-Start Credit Engine |
-| PR (Fig. 15.0) | Click Crew Re-assignment & Delegation |
-| PR (Fig. 16.0) | Retroactive Crew Recovery Sign-off |
-| PR (Fig. 17.0) | Philippine Labor Law Automated Payroll Computation |
-| PR (Fig. 18.0) | Executive Compliance Audit & Site Labor Analytics |
+| ID | Figure | Prototype |
+|---|---|---|
+| PR-01 | Fig. 10.0 | User Authentication & Role-Based Access Control |
+| PR-02 | Fig. 11.0 | Worker Registry and Skill Certification Management |
+| PR-03 | Fig. 12.0 | Crew Assignment & Site Deployment |
+| PR-04 | Fig. 13.0 | Mobile Digital Attendance Checklist |
+| PR-05 | Fig. 14.0 | Late Foreman Override & Shift-Start Credit Engine |
+| PR-06 | Fig. 15.0 | Click Crew Re-assignment & Delegation |
+| PR-07 | Fig. 16.0 | Retroactive Crew Recovery Sign-off |
+| PR-08 | Fig. 17.0 | Philippine Labor Law Automated Payroll Computation |
+| PR-09 | Fig. 18.0 | Executive Compliance Audit & Site Labor Analytics |
+| PR-10 | Fig. 20.0 | Leave & Overtime Filing and Approval |
+
+> Note: PR-01 to PR-10 map 1:1 to UC-01 to UC-10 above (§3.2.1) and are the IDs referenced from the SPMP work breakdown structure.
 
 ### 3.3. Performance Requirements
 

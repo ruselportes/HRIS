@@ -8,7 +8,11 @@
 Document Version: 1.0
 Date: September 3, 2026
 
-Prepared By: Jay Mark A. Reños, Liza Mae C. Sugala, Rusel R. Portes, Efren S. Cabudbud Jr., Rayla G. Lanaza, Carl Vey Sente
+Prepared By: Jay Mark A. Reños, Liza Mae C. Sugala, Rusel R. Portes, Efren S. Cabudbud Jr., CarlVey Sente, Rayla G. Lanaza
+
+Technical Adviser: Eric Bulala
+
+Subject Adviser: Engr. Clark Kevin V. Villamor — Head, College of Computer Studies
 
 ---
 
@@ -124,23 +128,31 @@ The HRIS follows a layered client-server architecture composed of a React Native
 
 #### 2.1.1 Employee & Workforce Management
 
-Represents the classes that manage employee profiles, trade skills, certifications, daily pay rates, and employment status. Core classes include Employee, Role, and Certification, which are used across the web portal by HR Personnel.
+Represents the classes that manage employee profiles, trade skills, certifications, daily pay rates, and employment status. Core classes include Employee and Role, which are used across the web portal by HR Personnel.
 
-![Figure 1.0 Employee & Workforce Management Class Diagram](assets/sdd-fig-1-0-employee-workforce-management-class-diagram.png)
+![Figure 1.0 Employee & Workforce Management Class Diagram](assets/sdd-fig-1-0-employee-workforce-management-class-diagram-corrected.svg)
 
 *Figure 1.0 Employee & Workforce Management Class Diagram*
 
-> **Note:** This figure predates the finalized data dictionary: it shows `certification` split out into a separate `Certification` class/table and omits `emergencyContact` from `Employee`. The actual schema (§3.1.1, and `backend/database/migrations/..._create_employees_table.php`) stores both `certification` and `emergency_contact` as columns directly on `tbl_employee` — no separate certifications table. Per this document's own convention, **the data dictionary wins**; this figure should be redrawn to match.
+> **Note:** The original figure predated the finalized data dictionary — it showed `certification` split out into a separate `Certification` class/table and omitted `emergencyContact` from `Employee`. The actual schema (§3.1.1, and `backend/database/migrations/..._create_employees_table.php`) stores both `certification` and `emergency_contact` as columns directly on `tbl_employee` — no separate certifications table. Per this document's own convention, **the data dictionary wins**.
 >
-> A draft corrected version is available for review: [sdd-fig-1-0-employee-workforce-management-class-diagram-corrected.svg](assets/sdd-fig-1-0-employee-workforce-management-class-diagram-corrected.svg) — `Certification` removed, `certification` and `emergencyContact` restored as `Employee` attributes, and `employeeCode`/`email`/`siteId` added to reflect the Phase 2 auth/site-link additions. Following this document's ERD convention (§3.2), it deliberately still omits `password` (sensitive) and the long tail of HR-profile-only fields (`dateOfBirth`, `mobile`, `civilStatus`, `dependents`, `address`, `bloodType`, `tin`, `sss`, `philhealth`, `pagIbig`, `dateHired`, `costCentre`) that don't participate in relationships or business logic — see §3.1.1 for the exhaustive field list. Swap it in once whoever owns this figure has reviewed it.
+> The diagram above is the corrected version: `Certification` removed, `certification` and `emergencyContact` restored as `Employee` attributes, and `employeeCode`/`email`/`siteId` added to reflect the Phase 2 auth/site-link additions. Following this document's ERD convention (§3.2), it deliberately still omits `password` (sensitive) and the long tail of HR-profile-only fields (`dateOfBirth`, `mobile`, `civilStatus`, `dependents`, `address`, `bloodType`, `tin`, `sss`, `philhealth`, `pagIbig`, `dateHired`, `costCentre`) that don't participate in relationships or business logic — see §3.1.1 for the exhaustive field list. The original, uncorrected PNG is kept at `assets/sdd-fig-1-0-employee-workforce-management-class-diagram.png` for reference.
+>
+> This corrected diagram is not in `3.-Software-Design-Description-Template.docx`, which still shows the original `Employee`/`Role`/`Certification` layout with no caveat.
 
 #### 2.1.2 Crew Assignment & Site Deployment
 
 Represents how Site Engineers organize workers into crews, assign them to project sites, and designate responsible foremen. Core classes include Site, Crew, and CrewAssignment.
 
-![Figure 2.0 Crew Assignment & Site Deployment Class Diagram](assets/sdd-fig-2-0-crew-assignment-site-deployment-class-diagram.png)
+![Figure 2.0 Crew Assignment & Site Deployment Class Diagram](assets/sdd-fig-2-0-crew-assignment-site-deployment-class-diagram-corrected.svg)
 
 *Figure 2.0 Crew Assignment & Site Deployment Class Diagram*
+
+> **Note:** The original figure predated the finalized data dictionary — its `Crew` class omitted `status` and `deployedAt`. The actual schema (§3.1.4, and `backend/database/migrations/0003_01_01_000000_add_deployment_state_to_crews_table.php`) carries both — **the data dictionary wins** per this document's own convention.
+>
+> The diagram above is the corrected version: `status` and `deployedAt` added to `Crew` to reflect the Phase 3 deployment-state addition (§3.1.4); `Site`, `CrewAssignment`, and `Employee` are unchanged (`Employee` is a stub here — see Figure 1.0 for its corrected attribute list). The original, uncorrected PNG is kept at `assets/sdd-fig-2-0-crew-assignment-site-deployment-class-diagram.png` for reference.
+>
+> This corrected diagram was produced from the markdown data dictionary only — **it is not in `3.-Software-Design-Description-Template.docx`**, which still shows the pre-Phase-3 `Crew` class with no `status`/`deployedAt` and carries no note calling that out. Treat the docx as behind this document until it's regenerated from §3.1.
 
 #### 2.1.3 Offline Attendance Checklist
 
@@ -497,13 +509,15 @@ Foreign Key: actor_id
 
 The Entity-Relationship Diagram below illustrates the relationships among Employee, Role, Site, Crew, Crew Assignment, Attendance, Attendance Sync Queue, Crypto Signature Ledger, Payroll, Payroll Detail, Leave Request, Overtime Request, and Audit Log.
 
-![Figure 9.0 Entity-Relationship Diagram](assets/sdd-fig-9-0-entity-relationship-diagram.png)
+![Figure 9.0 Entity-Relationship Diagram](assets/sdd-fig-9-0-entity-relationship-diagram-corrected.svg)
 
 *Figure 9.0 Entity-Relationship Diagram*
 
-> **Note:** This ERD predates the finalized data dictionary: it omits both `certification` and `emergencyContact` from `Employee`. See §3.1.1 and `backend/database/migrations/..._create_employees_table.php` for the authoritative field list — **the data dictionary wins** per this document's own convention. The maintained, up-to-date ERD source is `docs/HRIS_ERD.drawio` / `docs/HRIS_ERD_reference.md`.
+> **Note:** The original ERD predated the finalized data dictionary — it omitted both `certification` and `emergencyContact` from `Employee`. See §3.1.1 and `backend/database/migrations/..._create_employees_table.php` for the authoritative field list — **the data dictionary wins** per this document's own convention. The maintained, up-to-date ERD source is `docs/HRIS_ERD.drawio` / `docs/HRIS_ERD_reference.md`.
 >
-> A draft corrected version, redrawn directly from the §3.1 data dictionary (all 13 entities, PK/FK preserved), is available for review: [sdd-fig-9-0-entity-relationship-diagram-corrected.svg](assets/sdd-fig-9-0-entity-relationship-diagram-corrected.svg). It also adds `Role.slug` and `Crew.status`/`deployedAt` (Phase 2/3 structural additions — see §3.1.2, §3.1.4), and adds `employeeCode`/`email`/`siteId` to `Employee`. Same scoping as `docs/HRIS_ERD_reference.md`: this stays a logical/structural ERD, so `Employee.password` and the non-relational HR-profile fields (`dateOfBirth`, `mobile`, `civilStatus`, etc.) are left out — see §3.1.1 for the exhaustive list. Swap it in once whoever owns this figure has reviewed it.
+> The diagram above is the corrected version, redrawn directly from the §3.1 data dictionary (all 13 entities, PK/FK preserved). It also adds `Role.slug` and `Crew.status`/`deployedAt` (Phase 2/3 structural additions — see §3.1.2, §3.1.4), and adds `employeeCode`/`email`/`siteId` to `Employee`. Same scoping as `docs/HRIS_ERD_reference.md`: this stays a logical/structural ERD, so `Employee.password` and the non-relational HR-profile fields (`dateOfBirth`, `mobile`, `civilStatus`, etc.) are left out — see §3.1.1 for the exhaustive list. The original, uncorrected PNG is kept at `assets/sdd-fig-9-0-entity-relationship-diagram.png` for reference.
+>
+> This corrected diagram is not in `3.-Software-Design-Description-Template.docx`, which still shows the original, pre-Phase-2/3 ERD with no caveat.
 
 ## 4. Detailed Design
 
