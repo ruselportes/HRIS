@@ -1,0 +1,18 @@
+diff --git a/node_modules/@op-engineering/op-sqlite/android/build.gradle b/node_modules/@op-engineering/op-sqlite/android/build.gradle
+index 3049da4..81d28aa 100644
+--- a/node_modules/@op-engineering/op-sqlite/android/build.gradle
++++ b/node_modules/@op-engineering/op-sqlite/android/build.gradle
+@@ -166,7 +166,12 @@ android {
+   ndkVersion getExtOrDefault("ndkVersion")
+ 
+   defaultConfig {
+-    minSdkVersion getExtOrIntegerDefault("minSdkVersion")
++    // Hardcoded (was getExtOrIntegerDefault("minSdkVersion")) — that lookup
++    // was resolving to 22 in this project regardless of rootProject.ext or
++    // OPSQLite_minSdkVersion in gradle.properties, rejected by Prefab
++    // against React Native's Hermes libs (CXX1214, "built for 24"). See
++    // patches/@op-engineering+op-sqlite+*.patch for how this is persisted.
++    minSdkVersion 24
+     targetSdkVersion getExtOrIntegerDefault("targetSdkVersion")
+ 
+     buildConfigField "boolean", "USE_LIBSQL", "${useLibsql}"

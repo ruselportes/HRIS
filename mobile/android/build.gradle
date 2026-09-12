@@ -4,7 +4,14 @@ buildscript {
         minSdkVersion = 24
         compileSdkVersion = 37
         targetSdkVersion = 36
-        ndkVersion = "27.1.12297006"
+        // NOTE: the SDK's 27.1.12297006 install is corrupt on this machine
+        // (only source.properties + a stub toolchains/llvm; no meta/ and no
+        // sysroot). AGP then can't read platforms.json, silently falls back
+        // to API 22 for ANDROID_PLATFORM, and Prefab rejects React Native's
+        // hermestooling libs (built for 24) — the CXX1214 failure. 26.1 is
+        // intact here. Repair 27.1 via Android Studio's SDK Manager and put
+        // this back when convenient.
+        ndkVersion = "30.0.14904198"
         kotlinVersion = "2.2.0"
     }
     repositories {
@@ -16,6 +23,22 @@ buildscript {
         classpath("com.facebook.react:react-native-gradle-plugin")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
     }
+}
+
+// Re-expose the same values on rootProject.ext (not just buildscript.ext) —
+// third-party native modules (e.g. op-sqlite) read config via
+// `rootProject.ext.has('minSdkVersion')`, which buildscript.ext alone does
+// NOT satisfy. Without this, those lookups silently fall through to each
+// module's own often-outdated default (op-sqlite's CMake/prefab build
+// rejected the fallback of 22 against React Native's Hermes libs, which
+// require minSdkVersion 24 — see CXX1214 in the Phase 4/5 mobile work).
+ext {
+    buildToolsVersion = "37.0.0"
+    minSdkVersion = 24
+    compileSdkVersion = 37
+    targetSdkVersion = 36
+    ndkVersion = "30.0.14904198"
+    kotlinVersion = "2.2.0"
 }
 
 apply plugin: "com.facebook.react.rootproject"
