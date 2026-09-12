@@ -30,23 +30,13 @@ class SignatureVerifier
             return ['valid' => false, 'reason' => 'signature_not_base64'];
         }
 
+        $inspection = $this->inspectPublicKey($publicKeyPem);
+
+        if (! $inspection['valid']) {
+            return ['valid' => false, 'reason' => $inspection['reason']];
+        }
+
         $publicKey = openssl_pkey_get_public($publicKeyPem);
-
-        if ($publicKey === false) {
-            return ['valid' => false, 'reason' => 'public_key_unreadable'];
-        }
-
-        $details = openssl_pkey_get_details($publicKey);
-
-        if (($details['type'] ?? null) !== OPENSSL_KEYTYPE_EC) {
-            return ['valid' => false, 'reason' => 'public_key_not_ec'];
-        }
-
-        $expectedCurve = config('crypto.signature.curve', 'prime256v1');
-
-        if (($details['ec']['curve_name'] ?? null) !== $expectedCurve) {
-            return ['valid' => false, 'reason' => 'public_key_wrong_curve'];
-        }
 
         $payload = AttendancePayload::canonicalize($record);
 
@@ -62,6 +52,38 @@ class SignatureVerifier
             0 => ['valid' => false, 'reason' => 'signature_mismatch'],
             default => ['valid' => false, 'reason' => 'signature_verify_error'],
         };
+    }
+
+    /**
+     * Structural check on a device public key, without any signature involved.
+     *
+     * Shared by verify() and by device binding, so the curve rule has exactly
+     * one definition — a key that binding accepts can never be one that
+     * verification then refuses.
+     *
+     * @return array{valid:bool, reason:string|null, curve:string|null}
+     */
+    public function inspectPublicKey(string $publicKeyPem): array
+    {
+        $publicKey = openssl_pkey_get_public($publicKeyPem);
+
+        if ($publicKey === false) {
+            return ['valid' => false, 'reason' => 'public_key_unreadable', 'curve' => null];
+        }
+
+        $details = openssl_pkey_get_details($publicKey);
+
+        if (($details['type'] ?? null) !== OPENSSL_KEYTYPE_EC) {
+            return ['valid' => false, 'reason' => 'public_key_not_ec', 'curve' => null];
+        }
+
+        $curve = $details['ec']['curve_name'] ?? null;
+
+        if ($curve !== config('crypto.signature.curve', 'prime256v1')) {
+            return ['valid' => false, 'reason' => 'public_key_wrong_curve', 'curve' => $curve];
+        }
+
+        return ['valid' => true, 'reason' => null, 'curve' => $curve];
     }
 
     /**

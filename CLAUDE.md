@@ -47,7 +47,7 @@ with special focus on:
 8. Leave & Overtime Filing Workflow (multi-tier approval)
 9. Executive Compliance & Analytics Dashboard
 
-## 4. Database (13-table schema)
+## 4. Database (13 ERD tables + 1 documented Phase 5 addition)
 
 Per SDD Section 3.1 data dictionary (see `/docs/HRIS_ERD.drawio` and
 `/docs/HRIS_ERD_reference.md` for the full ERD):
@@ -59,6 +59,26 @@ Per SDD Section 3.1 data dictionary (see `/docs/HRIS_ERD.drawio` and
 - RBAC runs off `Employee.role_id → Role` — **no separate users/login table.**
 - `Employee.certification` and `Employee.emergency_contact` fields exist per the
   data dictionary (may be missing from older SDD figures — data dictionary wins).
+
+**`device_keys` — 14th table, added Phase 5** (`0004_01_01_000000_create_device_keys_table`).
+Not in the ERD, deliberately and documentedly added because the ERD models no
+device registry at all: STD TC-03 requires a device's TEE public key to be
+"registered on the server", and TC-02 requires the server to recompute each
+record's HMAC, so the per-device HMAC secret must be server-known too. There is
+no existing column anywhere that could hold either — `Attendance Sync Queue`
+carries only a bare `device_id` string. This is unlike the `certifications`
+table proposed in Phase 3, which was correctly **rejected** as redundant since
+`Employee.certification` already existed.
+
+Holds: `employee_id` FK, unique `device_id`, `public_key` (PEM, P-256),
+`hmac_key` (encrypted at rest via APP_KEY — rotating APP_KEY orphans every
+device), `security_level` (Android KeyInfo: STRONGBOX / TRUSTED_ENVIRONMENT /
+SOFTWARE), `last_chain_hash` (enforces chain continuity *across* sync batches,
+not just within one), `bound_at`, `revoked_at`.
+
+> ⚠️ **Still owed:** this table needs adding to the SDD §3.1 data dictionary and
+> `HRIS_ERD.drawio` before submission — Efren's ownership. The table count in
+> those documents will otherwise contradict the migrations.
 
 ## 5. User roles
 
@@ -169,6 +189,17 @@ Both are named per `C:\capstone\internal\Request-Letter-to-Conduct-a-Study.docx`
   not yet built (Phases 5, 7, 8), so they cannot be run yet. The docx is
   generated, not hand-edited — regenerate it from `STD.md` rather than editing
   the Word file, or the two will drift.
+- `/docs/CRYPTOGRAPHY_EXPLAINED.md` — plain-English explainer for the 4-layer
+  attendance integrity engine, written 2026-09-12 against the actual Phase 5
+  code (not a design sketch). Defines every term (TEE, HMAC, ECDSA, monotonic
+  clock, StrongBox, ...), walks each layer with the attack it stops *and what
+  it doesn't*, maps to STD TC-01/02/03, and carries a limitations section plus
+  likely defense Q&A. Two points in it are load-bearing and easy to get wrong
+  when explaining the project: the system is **tamper-evident, not
+  tamper-proof** (it cannot stop a foreman lying at tap time, only detect
+  later edits), and `HRIS_REQUIRE_HARDWARE_KEYS` defaults to **false**, so the
+  hardware-backing guarantee is documented but not enforced until production.
+  Update it alongside any crypto-engine change.
 - `/docs/HRIS_ERD.drawio` — entity-relationship diagram (editable in draw.io)
 - `/docs/HRIS_ERD_reference.md` — ERD design/formatting notes
 

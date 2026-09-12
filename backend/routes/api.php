@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CrewController;
+use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\ForemanController;
 use App\Http\Controllers\Api\ReferenceController;
@@ -54,6 +55,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Mobile roster fetch (UC-04) — foreman's own deployed crew only.
     Route::get('me/crew', [ForemanController::class, 'myCrew'])->middleware('role:foreman');
+
+    // Device binding (Phase 5) — the trust anchor for the integrity engine.
+    // Foreman-only, and every handler scopes to the authenticated employee so
+    // a device id from the request can never reach someone else's device.
+    Route::prefix('me/devices')->middleware('role:foreman')->group(function () {
+        Route::get('/', [DeviceController::class, 'index']);
+        Route::post('/', [DeviceController::class, 'bind']);
+        Route::delete('{deviceId}', [DeviceController::class, 'revoke']);
+    });
 
     // Must precede apiResource so 'next-code' isn't captured as {employee}.
     Route::middleware('role:hr,admin')->get('employees/next-code', [EmployeeController::class, 'nextCode']);
