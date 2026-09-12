@@ -3,7 +3,7 @@
 Each phase below is weighted **10%** of total project completion (10 phases = 100%).
 Check off tasks as they're completed; a phase counts as done once every task under it is checked.
 
-**Overall progress: ~38% (Phase 1: 12/14 items — only SDD & STD deliverables pending; Phase 2: 7/7 complete; Phase 3: 3/3 complete; Phase 4: 5/5 complete — verified via tsc/ESLint/Jest + 50 backend tests, NOT yet an on-device offline run)**
+**Overall progress: ~40% (Phases 1–4 complete: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5.) The mobile app now builds and installs on an emulator as of 2026-09-12 — the Android native build was blocked until then, so Phase 4's offline behaviour has still only been proven by tsc/ESLint/Jest + 50 backend tests, never by an actual airplane-mode run on the device. That run is now possible and is the first thing owed.**
 
 ---
 
@@ -43,17 +43,27 @@ Check off tasks as they're completed; a phase counts as done once every task und
 ## Phase 4 — Offline-Capable Mobile Attendance Checklist (UC-04) (10%)
 
 - [x] React Native navigation/project structure (bottom tabs: Home, Roll call, Timesheet*, Sync* — *ComingSoon stubs for Phase 8/6)
-- [x] Local schema: `attendance`, `attendance_sync_queue` + `crew_roster_cache` (SQLite via `react-native-sqlite-storage`; SQLCipher swap still deferred to Phase 5 per the Phase 1 decision)
+- [x] Local schema: `attendance`, `attendance_sync_queue` + `crew_roster_cache` (SQLite via `@op-engineering/op-sqlite` — swapped in 2026-09-12 after `react-native-sqlite-storage` proved incompatible with this toolchain; SQLCipher swap still deferred to Phase 5, and op-sqlite supports it via a build flag)
 - [x] Mobile: Foreman Home screen (roll-call stat cards, online/offline pill, crew roster cache)
 - [x] Mobile: Roll Call screen — Present/Late/Absent tap checklist + Undo (matches the actual prototype's 3-way choice, not a time-in/out cycle)
 - [x] Offline read/write verified — pure-logic + repository writes go through local SQLite only, no network in the write path
 
 > Note on "offline verified": verified via `npx tsc --noEmit`, ESLint, and 8
-> Jest unit tests on the roll-call state machine (`attendanceLogic.ts`) —
-> NOT an on-device/emulator airplane-mode run, since no Android emulator is
-> available in this environment. The write path is architecturally offline
-> (RollCallScreen only ever calls `attendanceRepository`, never `apiClient`),
-> but an actual device test is still owed before calling this fully proven.
+> Jest unit tests on the roll-call state machine (`attendanceLogic.ts`), plus
+> a confirmed online login on the emulator (2026-09-12). The write path is
+> architecturally offline (RollCallScreen only ever calls
+> `attendanceRepository`, never `apiClient`), but the cold-start offline case
+> is still owed.
+>
+> **A debug build cannot be used to test or demo offline mode.** Debug APKs do
+> not embed the JS bundle — they fetch it from Metro at every launch — so
+> "WiFi off, close app, reopen" always fails with "Unable to load script"
+> regardless of how well the offline code works. This is a dev-mode artifact,
+> not an app defect. The genuine test, and the build to demo at defense, is a
+> release APK (`npx react-native run-android --mode=release`), which embeds
+> the bundle and runs with no dev server. Budget for this before the defense —
+> a panelist asking "now open it with no signal" on a debug build will see a
+> red error screen.
 
 ## Phase 5 — Cryptographic Attendance Integrity Engine (supports UC-04) (10%)
 

@@ -200,6 +200,20 @@ Both are named per `C:\capstone\internal\Request-Letter-to-Conduct-a-Study.docx`
   later edits), and `HRIS_REQUIRE_HARDWARE_KEYS` defaults to **false**, so the
   hardware-backing guarantee is documented but not enforced until production.
   Update it alongside any crypto-engine change.
+- `/docs/PH_LABOR_AND_PAYROLL_EXPLAINED.md` — plain-English guide to the legal
+  rules the Phase 8 payroll engine must obey: PD 442 premium pay (with the full
+  compounding matrix), minimum wage, 13th month pay, SIL, the three statutory
+  contributions (SSS/PhilHealth/Pag-IBIG), and BIR withholding tax. Written
+  2026-09-12. **Every rate carries a `[VERIFY]` flag** — the structure of the
+  law is stable but rates change by agency circular, and my figures predate
+  this project's timeline. Confirm against the official issuances in its §14
+  before implementing. Three findings worth acting on: (a) the Labor Code is
+  **PD 442, not RA 442** — miscited in §3 above, `config/payroll.php` and the
+  SPMP/SRS; (b) `config/payroll.php`'s single `holiday => 2.00` cannot express
+  the law, which pays **regular holidays at 200% and special non-working days
+  at 130%** — needs splitting plus a holiday calendar; (c) `payroll_details`
+  has one merged `deductions` column, but a payslip must itemise SSS,
+  PhilHealth, Pag-IBIG and tax separately (schema gap for Efren).
 - `/docs/HRIS_ERD.drawio` — entity-relationship diagram (editable in draw.io)
 - `/docs/HRIS_ERD_reference.md` — ERD design/formatting notes
 
