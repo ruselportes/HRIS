@@ -79,7 +79,22 @@ class AttendancePayload
             return $value ? '1' : '0';
         }
 
-        $string = is_int($value) || is_float($value) ? (string) $value : (string) $value;
+        // Non-integers are refused rather than rendered. PHP and JS disagree on
+        // float formatting at the edges — (string) 1e20 is "1.0E+20" here but
+        // "100000000000000000000" in JS — so a float would silently produce two
+        // different canonical forms and every signature would fail. Mirrors the
+        // same guard in mobile/src/crypto/payload.ts.
+        if (is_float($value)) {
+            if ((float) (int) $value !== $value) {
+                throw new InvalidArgumentException(
+                    "Attendance payload field [{$field}] must be an integer, got {$value}."
+                );
+            }
+
+            $value = (int) $value;
+        }
+
+        $string = (string) $value;
 
         if (str_contains($string, "\n") || str_contains($string, "\r")) {
             throw new InvalidArgumentException(
