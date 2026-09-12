@@ -19,20 +19,20 @@ class HrisNativePackage : BaseReactPackage() {
   override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? =
     when (name) {
       HrisMonotonicClockModule.NAME -> HrisMonotonicClockModule(reactContext)
+      HrisTeeSignerModule.NAME -> HrisTeeSignerModule(reactContext)
       else -> null
     }
 
   override fun getReactModuleInfoProvider(): ReactModuleInfoProvider = ReactModuleInfoProvider {
-    mapOf(
-      HrisMonotonicClockModule.NAME to
-        ReactModuleInfo(
-          HrisMonotonicClockModule.NAME,
-          HrisMonotonicClockModule.NAME,
-          false, // canOverrideExistingModule
-          false, // needsEagerInit
-          false, // isCxxModule
-          true, // isTurboModule
-        )
-    )
+    listOf(HrisMonotonicClockModule.NAME, HrisTeeSignerModule.NAME).associateWith { name ->
+      ReactModuleInfo(
+        name,
+        name,
+        false, // canOverrideExistingModule
+        false, // needsEagerInit
+        false, // isCxxModule
+        true, // isTurboModule
+      )
+    }
   }
 }
