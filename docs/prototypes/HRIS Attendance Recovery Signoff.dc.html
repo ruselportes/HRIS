@@ -18,30 +18,9 @@ a:hover { color: var(--color-accent-900); }
 </style>
 </helmet>
 
-<div style="width: 1720px; font-family: var(--font-body); color: var(--color-text); padding: 56px 56px 96px; display: flex; flex-direction: column; gap: 56px;">
+<div style="width: 100%; min-height: 100vh; box-sizing: border-box; font-family: var(--font-body); color: var(--color-text);">
 
-  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; border-bottom: 1px solid var(--color-divider); padding-bottom: 24px;">
-    <div>
-      <div style="font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 10px;">Arcenas Development Corporation · HRIS · HR Personnel</div>
-      <h1 style="font-size: 52px; margin: 0 0 10px; letter-spacing: -.02em;">Attendance recovery &amp; sign-off</h1>
-      <p style="margin: 0; font-size: 15px; max-width: 720px; color: var(--color-neutral-700);">When a foreman is absent or a device stays offline past the cut-off, the day's attendance arrives incomplete. Recovery reconstructs it from the evidence that does exist — gate biometrics, the acting foreman's notes, the crew manifest — and no reconstructed day reaches payroll without two named signatures.</p>
-    </div>
-    <div style="display: grid; grid-template-columns: auto auto; gap: 5px 24px; font-size: 12px; color: var(--color-neutral-700); text-align: right; flex: none;">
-      <span>Cut-off</span><span style="color: var(--color-text);">21 Aug – 05 Sep 2026</span>
-      <span>Payroll locks</span><span style="color: var(--color-text);">06 Sep, 12:00</span>
-      <span>Sign-off</span><span style="color: var(--color-text);">Site Engineer, then HR</span>
-      <span>Retention</span><span style="color: var(--color-text);">Audit trail kept 5 years</span>
-    </div>
-  </header>
-
-  <!-- QUEUE -->
-  <section style="display: flex; flex-direction: column; gap: 20px;">
-    <div style="display: flex; align-items: baseline; gap: 16px;">
-      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">01 — Recovery queue</h2>
-      <span style="font-size: 12px; color: var(--color-neutral-700);">One row per affected crew-day, not per worker. Sorted by hours at risk against the payroll lock.</span>
-    </div>
-
-    <div class="blueprint" style="display: flex; background: var(--color-bg); min-height: 720px;">
+    <div class="blueprint" style="display: flex; background: var(--color-bg); min-height: 100vh; width: 100%;">
       <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
 
       <aside style="width: 220px; flex: none; background: var(--color-accent-900); color: var(--color-bg); display: flex; flex-direction: column;">
@@ -51,10 +30,10 @@ a:hover { color: var(--color-accent-900); }
         </div>
         <nav style="flex: 1; padding: 12px 0;">
           <div style="padding: 10px 18px 6px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .45;">Workforce</div>
-          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; opacity: .85;">
+          <a href="HRIS%20Employee%20Records.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; opacity: .85; text-decoration: none; color: inherit;">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20v-1a5 5 0 015-5h1"></path><circle cx="9" cy="8" r="3.5"></circle><path d="M15 20v-1a5 5 0 015-5"></path></svg>
             <span style="font-size: 14px;">Employees</span>
-          </div>
+          </a>
           <div style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; opacity: .85;">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>
             <span style="font-size: 14px;">Attendance &amp; DTR</span>
@@ -64,16 +43,16 @@ a:hover { color: var(--color-accent-900); }
             <span style="font-size: 14px;">Recovery</span>
             <span style="margin-left: auto; font-size: 10px; background: #E2681C; color: #fff; padding: 1px 6px;">5</span>
           </div>
-          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; opacity: .85;">
+          <a href="HRIS%20Late%20Override%20Audit.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; opacity: .85; text-decoration: none; color: inherit;">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4h11l-1.5 4L16 12H5"></path></svg>
             <span style="font-size: 14px;">Overrides &amp; Audit</span>
             <span style="margin-left: auto; font-size: 10px; background: #E2681C; color: #fff; padding: 1px 6px;">41</span>
-          </div>
+          </a>
           <div style="padding: 16px 18px 6px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .45;">Payroll</div>
-          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; opacity: .85;">
+          <a href="HRIS%20Payroll%20Run.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; min-height: 44px; opacity: .85; text-decoration: none; color: inherit;">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="13"></rect><path d="M3.5 10h17"></path></svg>
             <span style="font-size: 14px;">Payroll Runs</span>
-          </div>
+          </a>
         </nav>
       </aside>
 
@@ -209,330 +188,7 @@ a:hover { color: var(--color-accent-900); }
         </div>
       </div>
     </div>
-  </section>
-
-  <!-- DETAIL -->
-  <section style="display: flex; flex-direction: column; gap: 20px;">
-    <div style="display: flex; align-items: baseline; gap: 16px;">
-      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">02 — Reconstruct &amp; confirm</h2>
-      <span style="font-size: 12px; color: var(--color-neutral-700);">Each row shows what the system proposes and where it came from. HR edits the exceptions, not the whole crew.</span>
-    </div>
-
-    <div class="blueprint" style="background: var(--color-bg); padding: 0;">
-      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-
-      <div style="padding: 20px 22px; border-bottom: 1px solid var(--color-divider);">
-        <div style="display: flex; align-items: flex-start; gap: 20px;">
-          <div style="flex: 1; min-width: 0;">
-            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;">
-              <span class="tag" style="background: #F7E8E5; color: #75261C; gap: 6px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#75261C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l8 15H4z"></path><path d="M12 10v3"></path><path d="M12 15.5v.5"></path></svg>Foreman absent</span>
-              <span style="font-size: 12px; color: var(--color-neutral-700);">Case #REC-2026-0088</span>
-            </div>
-            <div style="font-family: var(--font-heading); font-size: 28px; line-height: 1.1;">Site 07 · Formwork crew B — Mon 07 Sep 2026</div>
-            <div style="font-size: 13px; color: var(--color-neutral-700); margin-top: 4px;">R. Dela Cruz absent from 06:41. J. Abainza took over as acting foreman at 06:50 but roll call was not opened until 09:34.</div>
-          </div>
-          <div style="flex: none; text-align: right;">
-            <div style="font-family: var(--font-heading); font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums;">189.0</div>
-            <div style="font-size: 11px; color: var(--color-neutral-700);">hours · 21 records</div>
-          </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 20px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--color-neutral-200);">
-          <div><div style="font-size: 11px; color: var(--color-neutral-700);">Gate biometric</div><div style="font-size: 14px; color: #1F5334;">19 of 21 matched</div><div style="font-size: 11px; color: var(--color-neutral-700);">06:38 – 06:59 arrivals</div></div>
-          <div><div style="font-size: 11px; color: var(--color-neutral-700);">Acting foreman note</div><div style="font-size: 14px;">Full crew on deck</div><div style="font-size: 11px; color: var(--color-neutral-700);">J. Abainza, 09:34</div></div>
-          <div><div style="font-size: 11px; color: var(--color-neutral-700);">Crew manifest</div><div style="font-size: 14px;">21 assigned</div><div style="font-size: 11px; color: var(--color-neutral-700);">unchanged since 01 Sep</div></div>
-          <div><div style="font-size: 11px; color: var(--color-neutral-700);">Evidence strength</div><div style="font-size: 14px; color: #1F5334;">Strong</div><div style="font-size: 11px; color: var(--color-neutral-700);">2 rows need a decision</div></div>
-        </div>
-      </div>
-
-      <div style="display: flex; align-items: center; gap: 12px; padding: 14px 22px; border-bottom: 1px solid var(--color-neutral-200); flex-wrap: wrap;">
-        <span style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700);">Proposed reconstruction</span>
-        <span class="tag" style="background: #E6F1EA; color: #1F5334;">19 from biometric</span>
-        <span class="tag" style="background: #FBF0E2; color: #8A5211;">2 need a decision</span>
-        <div style="margin-left: auto; display: flex; gap: 10px;">
-          <button class="btn btn-secondary" style="white-space: nowrap; flex: none; min-height: 34px;">Accept all biometric times</button>
-          <button class="btn btn-secondary" style="white-space: nowrap; flex: none; min-height: 34px;">Compare to last Monday</button>
-        </div>
-      </div>
-
-      <div style="padding: 0 22px;">
-        <table class="table" style="font-variant-numeric: tabular-nums;">
-          <thead>
-            <tr>
-              <th>Employee</th>
-              <th style="width: 150px;">Source</th>
-              <th style="width: 120px;">Time in</th>
-              <th style="width: 120px;">Time out</th>
-              <th style="width: 80px;">Hrs</th>
-              <th style="width: 170px;">Status</th>
-              <th style="width: 150px;">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Abainza, Jomar T.<div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0455 · acting foreman</div></td>
-              <td>Gate biometric</td>
-              <td>06:44</td><td>17:02</td><td>10.3</td>
-              <td><span class="tag" style="background: #E6F1EA; color: #1F5334; gap: 6px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"></path></svg>Confirmed</span></td>
-              <td><button class="btn btn-ghost" style="white-space: nowrap; flex: none; min-height: 28px;">Edit</button></td>
-            </tr>
-            <tr>
-              <td>Bacus, Elmer P.<div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0509 · Formwork</div></td>
-              <td>Gate biometric</td>
-              <td>06:52</td><td>17:00</td><td>10.1</td>
-              <td><span class="tag" style="background: #E6F1EA; color: #1F5334; gap: 6px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"></path></svg>Confirmed</span></td>
-              <td><button class="btn btn-ghost" style="white-space: nowrap; flex: none; min-height: 28px;">Edit</button></td>
-            </tr>
-            <tr style="box-shadow: inset 3px 0 0 #C9781B; background: color-mix(in srgb, var(--color-text) 4%, transparent);">
-              <td>Sarmiento, Noel D.<div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0810 · Masonry</div></td>
-              <td style="color: #8A5211;">No biometric</td>
-              <td>
-                <div class="input" style="min-height: 32px; padding: 4px 8px; font-size: 13px; border-color: var(--color-accent); font-variant-numeric: tabular-nums;">07:00</div>
-              </td>
-              <td>
-                <div class="input" style="min-height: 32px; padding: 4px 8px; font-size: 13px; border-color: var(--color-accent); font-variant-numeric: tabular-nums;">17:00</div>
-              </td>
-              <td>10.0</td>
-              <td><span class="tag" style="background: #FBF0E2; color: #8A5211; gap: 6px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8A5211" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg>Entered by HR</span></td>
-              <td style="display: flex; gap: 6px;">
-                <button class="btn btn-secondary" style="white-space: nowrap; flex: none; min-height: 28px;">Confirm</button>
-                <button class="btn btn-ghost" style="white-space: nowrap; flex: none; min-height: 28px;">Absent</button>
-              </td>
-            </tr>
-            <tr style="box-shadow: inset 3px 0 0 #A83A2C;">
-              <td>Villamor, Jun P.<div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0821 · Rebar</div></td>
-              <td style="color: #75261C;">Conflict</td>
-              <td>—</td><td>—</td><td>0.0</td>
-              <td><span class="tag" style="background: #F7E8E5; color: #75261C; gap: 6px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#75261C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l8 15H4z"></path><path d="M12 10v3"></path><path d="M12 15.5v.5"></path></svg>On approved leave</span></td>
-              <td style="display: flex; gap: 6px;">
-                <button class="btn btn-secondary" style="white-space: nowrap; flex: none; min-height: 28px;">Keep leave</button>
-                <button class="btn btn-ghost" style="white-space: nowrap; flex: none; min-height: 28px;">Override</button>
-              </td>
-            </tr>
-            <tr>
-              <td>Roska, Jeffrey L.<div style="font-size: 11px; color: var(--color-neutral-700);">ADC-0640 · Rebar</div></td>
-              <td>Gate biometric</td>
-              <td>06:38</td><td>17:04</td><td>10.4</td>
-              <td><span class="tag" style="background: #E6F1EA; color: #1F5334; gap: 6px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#1F5334" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"></path></svg>Confirmed</span></td>
-              <td><button class="btn btn-ghost" style="white-space: nowrap; flex: none; min-height: 28px;">Edit</button></td>
-            </tr>
-            <tr style="opacity: .6;">
-              <td>+ 16 more workers<div style="font-size: 11px; color: var(--color-neutral-700);">all matched to gate biometric</div></td>
-              <td>Gate biometric</td>
-              <td>06:38 – 06:59</td><td>17:00 – 17:06</td><td>165.2</td>
-              <td><span class="tag" style="background: #E6F1EA; color: #1F5334;">Confirmed</span></td>
-              <td><button class="btn btn-ghost" style="white-space: nowrap; flex: none; min-height: 28px;">Show all</button></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div style="padding: 18px 22px; border-top: 1px solid var(--color-divider); display: grid; grid-template-columns: 1.2fr 1fr; gap: 28px;">
-        <div>
-          <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 12px;">Recovery basis — required</div>
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            <div style="min-height: 44px; border: 1px solid var(--color-accent); background: var(--color-accent-100); color: var(--color-accent-800); display: flex; align-items: center; gap: 12px; padding: 0 14px; font-size: 14px;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M4 12l5 5L20 6"></path></svg>
-              Gate biometric reconciled against crew manifest
-            </div>
-            <div style="min-height: 44px; border: 1px solid var(--color-divider); display: flex; align-items: center; padding: 0 14px; font-size: 14px;">Acting foreman's written attestation only</div>
-            <div style="min-height: 44px; border: 1px solid var(--color-divider); display: flex; align-items: center; padding: 0 14px; font-size: 14px;">Site engineer's direct observation</div>
-            <div style="min-height: 44px; border: 1px solid var(--color-divider); display: flex; align-items: center; padding: 0 14px; font-size: 14px; color: var(--color-neutral-700);">Other — state the basis</div>
-          </div>
-          <div class="field" style="margin-top: 14px;">
-            <label>Note for the audit record</label>
-            <div class="input" style="min-height: 72px; padding: 10px 12px; font-size: 14px; line-height: 1.45; align-items: flex-start;">Gate biometric covers 19 of 21. Sarmiento and Villamor handled individually. Acting foreman confirms full crew was on the deck pour from 07:00.</div>
-          </div>
-        </div>
-
-        <div class="blueprint" style="padding: 18px;">
-          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-          <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 14px;">Effect on payroll</div>
-          <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; border-bottom: 1px solid var(--color-neutral-200);"><span style="color: var(--color-neutral-700);">Records recovered</span><span style="font-variant-numeric: tabular-nums;">20 of 21</span></div>
-          <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; border-bottom: 1px solid var(--color-neutral-200);"><span style="color: var(--color-neutral-700);">Regular hours</span><span style="font-variant-numeric: tabular-nums;">180.0</span></div>
-          <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; border-bottom: 1px solid var(--color-neutral-200);"><span style="color: var(--color-neutral-700);">Overtime hours</span><span style="font-variant-numeric: tabular-nums;">9.0</span></div>
-          <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; border-bottom: 1px solid var(--color-neutral-200);"><span style="color: var(--color-neutral-700);">Left as leave</span><span style="font-variant-numeric: tabular-nums;">1 record</span></div>
-          <div style="display: flex; justify-content: space-between; padding: 10px 0 0; font-size: 16px;"><span>Added to this cut-off</span><span style="font-family: var(--font-heading); font-variant-numeric: tabular-nums;">₱153,720</span></div>
-          <div style="font-size: 11px; color: var(--color-neutral-700); margin-top: 10px;">Figures update as rows are confirmed. Nothing is written to payroll until both signatures are in.</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- SIGN-OFF -->
-  <section style="display: flex; flex-direction: column; gap: 20px;">
-    <div style="display: flex; align-items: baseline; gap: 16px;">
-      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">03 — Sign-off &amp; audit trail</h2>
-      <span style="font-size: 12px; color: var(--color-neutral-700);">Two signatures, in order: the engineer who was on site, then HR who owns the payroll consequence.</span>
-    </div>
-
-    <div style="display: grid; grid-template-columns: 1.25fr 1fr; gap: 28px;">
-
-      <div class="blueprint" style="padding: 22px;">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <div style="display: flex; gap: 0; margin-bottom: 24px;">
-          <div style="flex: 1; padding-top: 10px; border-top: 3px solid #2F7A4D;">
-            <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #1F5334;">01 — Reconstructed</div>
-            <div style="font-size: 13px; color: var(--color-neutral-700);">System proposal accepted</div>
-          </div>
-          <div style="flex: 1; padding-top: 10px; border-top: 3px solid #2F7A4D; margin-left: 14px;">
-            <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #1F5334;">02 — Engineer signed</div>
-            <div style="font-size: 13px; color: var(--color-neutral-700);">G. Tabotabo · 07 Sep 16:22</div>
-          </div>
-          <div style="flex: 1; padding-top: 10px; border-top: 3px solid var(--color-accent); margin-left: 14px;">
-            <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-800);">03 — HR sign-off</div>
-            <div style="font-size: 13px; color: var(--color-neutral-700);">You, now</div>
-          </div>
-          <div style="flex: 1; padding-top: 10px; border-top: 3px solid var(--color-neutral-300); margin-left: 14px;">
-            <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700);">04 — Posted to payroll</div>
-            <div style="font-size: 13px; color: var(--color-neutral-700);">On lock, 06 Sep 12:00</div>
-          </div>
-        </div>
-
-        <div style="border: 1px solid var(--color-divider); padding: 18px; margin-bottom: 18px;">
-          <div style="font-family: var(--font-heading); font-size: 20px; margin-bottom: 12px;">You are signing off on</div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px 28px;">
-            <div style="display: flex; justify-content: space-between; font-size: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--color-neutral-200);"><span style="color: var(--color-neutral-700);">Crew-day</span><span>Site 07 · crew B · 07 Sep</span></div>
-            <div style="display: flex; justify-content: space-between; font-size: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--color-neutral-200);"><span style="color: var(--color-neutral-700);">Records</span><span style="font-variant-numeric: tabular-nums;">20 recovered · 1 leave</span></div>
-            <div style="display: flex; justify-content: space-between; font-size: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--color-neutral-200);"><span style="color: var(--color-neutral-700);">Hours</span><span style="font-variant-numeric: tabular-nums;">189.0</span></div>
-            <div style="display: flex; justify-content: space-between; font-size: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--color-neutral-200);"><span style="color: var(--color-neutral-700);">Payroll effect</span><span style="font-variant-numeric: tabular-nums;">₱153,720</span></div>
-            <div style="display: flex; justify-content: space-between; font-size: 14px;"><span style="color: var(--color-neutral-700);">Basis</span><span>Biometric + manifest</span></div>
-            <div style="display: flex; justify-content: space-between; font-size: 14px;"><span style="color: var(--color-neutral-700);">HR edits</span><span style="font-variant-numeric: tabular-nums;">2 rows</span></div>
-          </div>
-        </div>
-
-        <label class="radio" style="gap: 12px; align-items: flex-start; font-size: 14px; line-height: 1.45; margin-bottom: 18px;">
-          <input type="checkbox" style="position: absolute; opacity: 0; width: 0; height: 0;">
-          <span style="width: 18px; height: 18px; border: 1.5px solid var(--color-accent); display: block; flex: none; margin-top: 2px;"></span>
-          I confirm this reconstruction reflects the hours actually worked, based on the evidence recorded above. My name is attached to these records permanently.
-        </label>
-
-        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-          <div style="display: flex; gap: 10px; align-items: flex-start; max-width: 380px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px;"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 11v6"></path><path d="M12 8v.5"></path></svg>
-            <div style="font-size: 12px; color: var(--color-neutral-700);">After sign-off the records are locked. Only a payroll administrator can reopen the case, and reopening is itself logged.</div>
-          </div>
-          <div style="margin-left: auto; display: flex; gap: 10px;">
-            <button class="btn btn-secondary" style="white-space: nowrap; flex: none; min-height: 38px;">Return to engineer</button>
-            <button class="btn btn-secondary" style="white-space: nowrap; flex: none; min-height: 38px; border-color: #A83A2C; color: #75261C;">Reject recovery</button>
-            <button class="btn btn-primary blueprint" style="white-space: nowrap; flex: none; min-height: 38px;"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Sign off — 20 records</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="blueprint" style="padding: 22px;">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 18px;">
-          <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Audit trail — #REC-2026-0088</div>
-          <button class="btn btn-ghost" style="white-space: nowrap; flex: none; margin-left: auto; min-height: 28px;">Export PDF</button>
-        </div>
-
-        <div style="display: flex; flex-direction: column;">
-          <div style="display: grid; grid-template-columns: 16px 1fr; gap: 14px;">
-            <div style="display: flex; flex-direction: column; align-items: center;">
-              <span style="width: 9px; height: 9px; border: 1.5px solid var(--color-neutral-400); margin-top: 5px;"></span>
-              <span style="flex: 1; width: 1px; background: var(--color-neutral-300);"></span>
-            </div>
-            <div style="padding-bottom: 18px;">
-              <div style="font-size: 14px;">Gap detected automatically</div>
-              <div style="font-size: 12px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">07 Sep 12:00 · system · no roll call submitted by cut-off</div>
-            </div>
-          </div>
-          <div style="display: grid; grid-template-columns: 16px 1fr; gap: 14px;">
-            <div style="display: flex; flex-direction: column; align-items: center;">
-              <span style="width: 9px; height: 9px; border: 1.5px solid var(--color-neutral-400); margin-top: 5px;"></span>
-              <span style="flex: 1; width: 1px; background: var(--color-neutral-300);"></span>
-            </div>
-            <div style="padding-bottom: 18px;">
-              <div style="font-size: 14px;">Reconstruction proposed</div>
-              <div style="font-size: 12px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">07 Sep 12:04 · system · 19 of 21 matched to gate biometric</div>
-            </div>
-          </div>
-          <div style="display: grid; grid-template-columns: 16px 1fr; gap: 14px;">
-            <div style="display: flex; flex-direction: column; align-items: center;">
-              <span style="width: 9px; height: 9px; background: var(--color-accent-400); margin-top: 5px;"></span>
-              <span style="flex: 1; width: 1px; background: var(--color-neutral-300);"></span>
-            </div>
-            <div style="padding-bottom: 18px;">
-              <div style="font-size: 14px;">Acting foreman attestation added</div>
-              <div style="font-size: 12px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">07 Sep 15:48 · J. Abainza · "Full crew on the deck pour from 07:00"</div>
-            </div>
-          </div>
-          <div style="display: grid; grid-template-columns: 16px 1fr; gap: 14px;">
-            <div style="display: flex; flex-direction: column; align-items: center;">
-              <span style="width: 9px; height: 9px; background: #2F7A4D; margin-top: 5px;"></span>
-              <span style="flex: 1; width: 1px; background: var(--color-neutral-300);"></span>
-            </div>
-            <div style="padding-bottom: 18px;">
-              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                <div style="font-size: 14px;">Signed by site engineer</div>
-                <span class="tag" style="background: #E6F1EA; color: #1F5334;">Signature 1 of 2</span>
-              </div>
-              <div style="font-size: 12px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">07 Sep 16:22 · G. Tabotabo · ADC-0221 · from 112.203.44.18</div>
-            </div>
-          </div>
-          <div style="display: grid; grid-template-columns: 16px 1fr; gap: 14px;">
-            <div style="display: flex; flex-direction: column; align-items: center;">
-              <span style="width: 9px; height: 9px; background: var(--color-accent); margin-top: 5px;"></span>
-              <span style="flex: 1; width: 1px; background: var(--color-neutral-300);"></span>
-            </div>
-            <div style="padding-bottom: 18px;">
-              <div style="font-size: 14px;">HR edited 2 rows</div>
-              <div style="font-size: 12px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">07 Sep 16:51 · M. Reyes · Sarmiento set 07:00–17:00 · Villamor kept as leave</div>
-            </div>
-          </div>
-          <div style="display: grid; grid-template-columns: 16px 1fr; gap: 14px;">
-            <div style="display: flex; flex-direction: column; align-items: center;">
-              <span style="width: 9px; height: 9px; border: 1.5px dashed var(--color-accent); margin-top: 5px;"></span>
-              <span style="flex: 1; width: 1px; background: var(--color-neutral-300);"></span>
-            </div>
-            <div style="padding-bottom: 18px; opacity: .6;">
-              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                <div style="font-size: 14px;">HR sign-off</div>
-                <span class="tag" style="background: var(--color-neutral-200); color: var(--color-neutral-900);">Signature 2 of 2 — pending</span>
-              </div>
-              <div style="font-size: 12px; color: var(--color-neutral-700);">Awaiting M. Reyes</div>
-            </div>
-          </div>
-          <div style="display: grid; grid-template-columns: 16px 1fr; gap: 14px;">
-            <div style="display: flex; flex-direction: column; align-items: center;">
-              <span style="width: 9px; height: 9px; border: 1.5px dashed var(--color-neutral-400); margin-top: 5px;"></span>
-            </div>
-            <div style="opacity: .6;">
-              <div style="font-size: 14px;">Posted to payroll run 2026-09-A</div>
-              <div style="font-size: 12px; color: var(--color-neutral-700); font-variant-numeric: tabular-nums;">Scheduled 06 Sep 12:00</div>
-            </div>
-          </div>
-        </div>
-
-        <div style="margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--color-neutral-200); font-size: 12px; color: var(--color-neutral-700);">Entries cannot be edited or deleted, only appended. The trail is exported with the payroll register and kept for five years.</div>
-      </div>
-    </div>
-
-    <div style="display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 28px;">
-      <div class="blueprint" style="padding: 20px;">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Reconstruct, then review</div>
-        <div style="font-size: 12px; color: var(--color-neutral-700);">The system proposes from evidence it already holds. HR handles the two exceptions rather than typing 21 rows.</div>
-      </div>
-      <div class="blueprint" style="padding: 20px;">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Every row names its source</div>
-        <div style="font-size: 12px; color: var(--color-neutral-700);">Biometric, HR-entered, or conflict. A reader six months later can tell which hours were measured and which were judged.</div>
-      </div>
-      <div class="blueprint" style="padding: 20px;">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Two signatures, in order</div>
-        <div style="font-size: 12px; color: var(--color-neutral-700);">The engineer was there; HR owns the payroll consequence. Neither can complete a recovery alone.</div>
-      </div>
-      <div class="blueprint" style="padding: 20px;">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Append-only trail</div>
-        <div style="font-size: 12px; color: var(--color-neutral-700);">Nothing in the log can be edited or removed. Reopening a signed case is itself an entry.</div>
-      </div>
-    </div>
-  </section>
-</div>
+  </div>
 
 </x-dc>
 </body>

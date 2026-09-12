@@ -19,327 +19,71 @@ a:hover { color: var(--color-accent-900); }
 </style>
 </helmet>
 
-<div style="width: 1720px; font-family: var(--font-body); color: var(--color-text); padding: 56px 56px 96px; display: flex; flex-direction: column; gap: 60px;">
+<div style="min-height: 100vh; width: 100%; box-sizing: border-box; font-family: var(--font-body); color: var(--color-text); display: flex; align-items: center; justify-content: center; padding: 40px;">
 
-  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; border-bottom: 1px solid var(--color-divider); padding-bottom: 24px;">
-    <div>
-      <div style="font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 10px;">Arcenas Development Corporation · HRIS</div>
-      <h1 style="font-size: 52px; margin: 0 0 10px; letter-spacing: -.02em;">Login &amp; role-based shell</h1>
-      <p style="margin: 0; font-size: 15px; max-width: 680px; color: var(--color-neutral-700);">React + TailwindCSS web app. Access is admin-provisioned — there is no self-registration path. The shell is one layout; the sidebar is the only thing that changes by role.</p>
-    </div>
-    <div style="display: grid; grid-template-columns: auto auto; gap: 5px 24px; font-size: 12px; color: var(--color-neutral-700); text-align: right; flex: none;">
-      <span>Roles</span><span style="color: var(--color-text);">5, admin-assigned</span>
-      <span>Auth</span><span style="color: var(--color-text);">Email or Employee ID + password</span>
-      <span>Sign-up</span><span style="color: var(--color-text);">None — provisioned only</span>
-    </div>
-  </header>
-
-  <!-- LOGIN -->
-  <section style="display: flex; flex-direction: column; gap: 20px;">
-    <div style="display: flex; align-items: baseline; gap: 16px;">
-      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">01 — Login</h2>
-      <span style="font-size: 12px; color: var(--color-neutral-700);">Two-panel: identity plate on the deep steel field, the form on paper ground.</span>
-    </div>
-
-    <div class="blueprint" style="display: grid; grid-template-columns: 1fr 1fr; min-height: 620px;">
-      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-      <div style="background: var(--color-accent-900); color: var(--color-bg); padding: 48px; display: flex; flex-direction: column; justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 14px;">
-          <span style="width: 40px; height: 40px; border: 1px solid rgba(242,242,243,.5); display: grid; place-items: center; font-family: var(--font-heading); font-size: 18px; letter-spacing: .02em;">A</span>
-          <div>
-            <div style="font-family: var(--font-heading); font-size: 19px; letter-spacing: .04em;">ARCENAS</div>
-            <div style="font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .6;">Development Corporation</div>
-          </div>
-        </div>
+  <div class="blueprint" style="display: grid; grid-template-columns: 1fr 1fr; min-height: 620px; width: 100%; max-width: 1040px;">
+    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    <div style="background: var(--color-accent-900); color: var(--color-bg); padding: 48px; display: flex; flex-direction: column; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <span style="width: 40px; height: 40px; border: 1px solid rgba(242,242,243,.5); display: grid; place-items: center; font-family: var(--font-heading); font-size: 18px; letter-spacing: .02em;">A</span>
         <div>
-          <div style="font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .6; margin-bottom: 14px;">Human Resource Information System</div>
-          <div style="font-family: var(--font-heading); font-size: 46px; line-height: 1.06; max-width: 380px;">One record of every worker, on every site.</div>
-          <p style="margin: 18px 0 0; font-size: 14px; opacity: .75; max-width: 400px;">Attendance, payroll and compliance for eleven project sites in Cebu and Bohol. The field app keeps working when the signal does not.</p>
-        </div>
-        <div style="display: flex; align-items: center; gap: 12px; font-size: 12px; opacity: .7;">
-          <span style="width: 7px; height: 7px; border-radius: 50%; background: #6FBF8E;"></span>
-          <span>Server reachable · v2.4.1</span>
-          <span style="margin-left: auto;">© 2026 ADC</span>
+          <div style="font-family: var(--font-heading); font-size: 19px; letter-spacing: .04em;">ARCENAS</div>
+          <div style="font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .6;">Development Corporation</div>
         </div>
       </div>
-
-      <div style="padding: 48px 64px; display: flex; flex-direction: column; justify-content: center;">
-        <div style="max-width: 400px; width: 100%;">
-          <h3 style="font-size: 32px; margin: 0 0 6px;">Sign in</h3>
-          <p style="font-size: 14px; color: var(--color-neutral-700); margin: 0 0 28px;">Use the credentials issued by HR. Accounts are created by an administrator.</p>
-
-          <div class="field" style="margin-bottom: 16px;">
-            <label>Email or Employee ID</label>
-            <input class="input" type="text" style="min-height: 44px;" value="mreyes@arcenasdev.ph" readonly>
-          </div>
-
-          <div class="field" style="margin-bottom: 10px;">
-            <label>Password</label>
-            <div class="input" style="min-height: 44px; display: flex; align-items: center; gap: 10px;">
-              <span style="letter-spacing: .3em; color: var(--color-neutral-800);">••••••••••</span>
-              <button class="btn btn-ghost" style="white-space: nowrap; flex: none; margin-left: auto; min-height: 28px; font-size: 12px;">Show</button>
-            </div>
-          </div>
-
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 26px;">
-            <label class="radio" style="gap: 9px;"><input type="checkbox" style="position: absolute; opacity: 0; width: 0; height: 0;"><span style="width: 16px; height: 16px; border: 1.5px solid var(--color-divider); display: block;"></span>Keep me signed in</label>
-            <a href="#forgot" style="font-size: 13px;">Forgot password</a>
-          </div>
-
-          <button class="btn btn-primary btn-block blueprint" style="white-space: nowrap; min-height: 48px; font-size: 16px; margin-top: 0;"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Sign in</button>
-
-          <div style="margin-top: 26px; border-top: 1px solid var(--color-neutral-200); padding-top: 18px; display: flex; gap: 12px; align-items: flex-start;">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px;"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 11v6"></path><path d="M12 8v.5"></path></svg>
-            <div style="font-size: 12px; color: var(--color-neutral-700);">No account? HRIS access is provisioned by an administrator. Contact HR at <a href="#hr">hr@arcenasdev.ph</a> or local 214.</div>
-          </div>
-        </div>
+      <div>
+        <div style="font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .6; margin-bottom: 14px;">Human Resource Information System</div>
+        <div style="font-family: var(--font-heading); font-size: 46px; line-height: 1.06; max-width: 380px;">One record of every worker, on every site.</div>
+        <p style="margin: 18px 0 0; font-size: 14px; opacity: .75; max-width: 400px;">Attendance, payroll and compliance for eleven project sites in Cebu and Bohol. The field app keeps working when the signal does not.</p>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; font-size: 12px; opacity: .7;">
+        <span style="width: 7px; height: 7px; border-radius: 50%; background: #6FBF8E;"></span>
+        <span>Server reachable · v2.4.1</span>
+        <span style="margin-left: auto;">© 2026 ADC</span>
       </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 28px;">
-      <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 14px;">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Failed sign-in</div>
-        <div class="field">
+    <div style="padding: 48px 64px; display: flex; flex-direction: column; justify-content: center;">
+      <div style="max-width: 400px; width: 100%;">
+        <h3 style="font-size: 32px; margin: 0 0 6px;">Sign in</h3>
+        <p style="font-size: 14px; color: var(--color-neutral-700); margin: 0 0 28px;">Use the credentials issued by HR. Accounts are created by an administrator.</p>
+
+        <div class="field" style="margin-bottom: 16px;">
           <label>Email or Employee ID</label>
-          <input class="input" type="text" style="min-height: 44px; border-color: #A83A2C;" value="ADC-0455" readonly>
-        </div>
-        <div style="display: flex; gap: 10px; align-items: flex-start; border-left: 3px solid #A83A2C; padding: 10px 12px; background: #F7E8E5;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#75261C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px;"><path d="M12 4l8 15H4z"></path><path d="M12 10v4"></path><path d="M12 16.5v.5"></path></svg>
-          <div style="font-size: 13px; color: #75261C;">Incorrect ID or password. 2 attempts left before the account locks for 15 minutes.</div>
-        </div>
-        <div style="font-size: 12px; color: var(--color-neutral-700);">The message never says which field was wrong.</div>
-      </div>
-
-      <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 14px;">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Forgot password</div>
-        <p style="font-size: 13px; color: var(--color-neutral-700); margin: 0;">Enter your Employee ID. HR receives the reset request — no self-serve reset link, since most field workers have no company email.</p>
-        <div class="field">
-          <label>Employee ID</label>
-          <input class="input" type="text" style="min-height: 44px;" placeholder="ADC-0000" readonly>
-        </div>
-        <button class="btn btn-primary blueprint" style="white-space: nowrap; flex: none; min-height: 44px; align-self: flex-start;"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Request reset</button>
-      </div>
-
-      <div class="blueprint" style="padding: 22px; display: flex; flex-direction: column; gap: 14px;">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700);">Offline sign-in — field app</div>
-        <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--color-neutral-200); border: 1px solid var(--color-divider);">
-          <span style="width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--color-neutral-700);"></span>
-          <span style="font-family: var(--font-heading); font-size: 14px; letter-spacing: .04em; text-transform: uppercase;">No connection</span>
-        </div>
-        <p style="font-size: 13px; color: var(--color-neutral-700); margin: 0;">A foreman who signed in on this device within 7 days can unlock with a 6-digit PIN and keep recording. Web sign-in always requires the server.</p>
-        <div style="display: flex; gap: 10px;">
-          <div class="input" style="width: 44px; min-height: 52px; display: grid; place-items: center; font-size: 20px;">•</div>
-          <div class="input" style="width: 44px; min-height: 52px; display: grid; place-items: center; font-size: 20px;">•</div>
-          <div class="input" style="width: 44px; min-height: 52px; display: grid; place-items: center; font-size: 20px;">•</div>
-          <div class="input" style="width: 44px; min-height: 52px; display: grid; place-items: center; font-size: 20px; border-color: var(--color-accent);"></div>
-          <div class="input" style="width: 44px; min-height: 52px;"></div>
-          <div class="input" style="width: 44px; min-height: 52px;"></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- SHELL -->
-  <section style="display: flex; flex-direction: column; gap: 20px;">
-    <div style="display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;">
-      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">02 — Post-login shell</h2>
-      <span style="font-size: 12px; color: var(--color-neutral-700);">Pick a role to see its sidebar and landing dashboard. Same chrome, different nav.</span>
-    </div>
-
-    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-      <sc-for list="{{ roleTabs }}" as="tab" hint-placeholder-count="5">
-        <button class="btn" style="{{ tab.style }}" onClick="{{ tab.onClick }}">{{ tab.label }}</button>
-      </sc-for>
-    </div>
-
-    <div class="blueprint" style="display: flex; min-height: 760px; background: var(--color-bg);">
-      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-
-      <aside style="width: 252px; flex: none; background: var(--color-accent-900); color: var(--color-bg); display: flex; flex-direction: column;">
-        <div style="padding: 18px 18px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(242,242,243,.14);">
-          <span style="width: 28px; height: 28px; border: 1px solid rgba(242,242,243,.5); display: grid; place-items: center; font-family: var(--font-heading); font-size: 14px;">A</span>
-          <div style="font-family: var(--font-heading); font-size: 17px; letter-spacing: .02em;">ADC <span style="opacity: .55;">HRIS</span></div>
+          <input class="input" type="text" style="min-height: 44px;" value="mreyes@arcenasdev.ph" readonly>
         </div>
 
-        <div style="padding: 16px 18px; border-bottom: 1px solid rgba(242,242,243,.14);">
-          <div style="font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .5; margin-bottom: 8px;">Signed in as</div>
-          <div style="font-size: 14px;">{{ user.name }}</div>
-          <div style="font-size: 12px; opacity: .65; margin-bottom: 10px;">{{ user.detail }}</div>
-          <span class="tag" style="border: 1px solid rgba(242,242,243,.45); color: var(--color-bg); background: transparent;">{{ user.role }}</span>
-        </div>
-
-        <nav style="flex: 1; padding: 12px 0; overflow: hidden;">
-          <sc-for list="{{ navGroups }}" as="group" hint-placeholder-count="3">
-            <div style="padding: 0 0 10px;">
-              <div style="padding: 10px 18px 6px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .45;">{{ group.label }}</div>
-              <sc-for list="{{ group.items }}" as="item" hint-placeholder-count="4">
-                <div style="{{ item.rowStyle }}">
-                  <span style="{{ item.iconStyle }}" dangerouslySetInnerHTML="{{ item.icon }}"></span>
-                  <span style="font-size: 14px;">{{ item.label }}</span>
-                  <span style="{{ item.badgeStyle }}">{{ item.badge }}</span>
-                </div>
-              </sc-for>
-            </div>
-          </sc-for>
-        </nav>
-
-        <div style="padding: 14px 18px; border-top: 1px solid rgba(242,242,243,.14); display: flex; align-items: center; gap: 10px; font-size: 13px; opacity: .8;">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h4v16h-4"></path><path d="M10 8l-4 4 4 4"></path><path d="M6 12h8"></path></svg>
-          Sign out
-        </div>
-      </aside>
-
-      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
-        <div style="display: flex; align-items: center; gap: 18px; padding: 14px 22px; border-bottom: 1px solid var(--color-divider);">
-          <div>
-            <div style="font-family: var(--font-heading); font-size: 22px; line-height: 1.1;">{{ page.title }}</div>
-            <div style="font-size: 11px; color: var(--color-neutral-700);">{{ page.subtitle }}</div>
-          </div>
-          <div class="input" style="width: 240px; min-height: 34px; margin-left: 12px; display: flex; align-items: center; gap: 8px; color: var(--color-neutral-600); font-size: 13px;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4 4"></path></svg>
-            {{ page.searchHint }}
-          </div>
-          <div style="margin-left: auto; display: flex; align-items: center; gap: 14px;">
-            <span style="display: inline-flex; align-items: center; gap: 7px; border: 1px solid #2F7A4D; padding: 4px 10px;">
-              <span style="width: 7px; height: 7px; border-radius: 50%; background: #2F7A4D;"></span>
-              <span style="font-family: var(--font-heading); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: #1F5334;">Online</span>
-            </span>
-            <button class="btn btn-secondary btn-icon" aria-label="Notifications"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10a6 6 0 1112 0c0 4 1.5 5.5 1.5 5.5H4.5S6 14 6 10z"></path><path d="M10 19a2 2 0 004 0"></path></svg></button>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="width: 28px; height: 28px; border: 1px solid var(--color-divider); display: grid; place-items: center; font-family: var(--font-heading); font-size: 12px;">{{ user.initials }}</span>
-              <span style="font-size: 13px;">{{ user.short }}</span>
-            </div>
+        <div class="field" style="margin-bottom: 10px;">
+          <label>Password</label>
+          <div class="input" style="min-height: 44px; display: flex; align-items: center; gap: 10px;">
+            <span style="letter-spacing: .3em; color: var(--color-neutral-800);">••••••••••</span>
+            <button class="btn btn-ghost" style="white-space: nowrap; flex: none; margin-left: auto; min-height: 28px; font-size: 12px;">Show</button>
           </div>
         </div>
 
-        <div style="padding: 22px; display: flex; flex-direction: column; gap: 22px;">
-          <div style="display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 16px;">
-            <sc-for list="{{ page.stats }}" as="stat" hint-placeholder-count="4">
-              <div class="blueprint" style="padding: 14px;">
-                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-                <div style="font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700);">{{ stat.label }}</div>
-                <div style="font-family: var(--font-heading); font-size: 32px; font-variant-numeric: tabular-nums; color: {{ stat.color }};">{{ stat.value }}</div>
-                <div style="font-size: 11px; color: var(--color-neutral-700);">{{ stat.note }}</div>
-              </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 26px;">
+          <label class="radio" style="gap: 9px;"><input type="checkbox" style="position: absolute; opacity: 0; width: 0; height: 0;"><span style="width: 16px; height: 16px; border: 1.5px solid var(--color-divider); display: block;"></span>Keep me signed in</label>
+          <a href="#forgot" style="font-size: 13px;">Forgot password</a>
+        </div>
+
+        <a href="HRIS%20Employee%20Records.dc.html" class="btn btn-primary btn-block blueprint" style="white-space: nowrap; min-height: 48px; font-size: 16px; margin-top: 0; text-decoration: none; display: flex; align-items: center; justify-content: center;"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Sign in</a>
+
+        <div style="margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--color-neutral-200);">
+          <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700); margin-bottom: 10px;">Continue as</div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <sc-for list="{{ roleTabs }}" as="tab" hint-placeholder-count="5">
+              <button class="btn" style="{{ tab.style }}" onClick="{{ tab.onClick }}">{{ tab.label }}</button>
             </sc-for>
           </div>
+        </div>
 
-          <div style="display: grid; grid-template-columns: 1.6fr 1fr; gap: 22px;">
-            <div class="blueprint" style="padding: 18px;">
-              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px;">
-                <div style="font-family: var(--font-heading); font-size: 18px;">{{ page.panelTitle }}</div>
-                <span style="font-size: 11px; color: var(--color-neutral-700);">{{ page.panelNote }}</span>
-                <button class="btn btn-ghost" style="white-space: nowrap; flex: none; margin-left: auto; min-height: 28px;">{{ page.panelAction }}</button>
-              </div>
-              <table class="table" style="font-variant-numeric: tabular-nums;">
-                <thead>
-                  <tr>
-                    <sc-for list="{{ page.tableHead }}" as="h" hint-placeholder-count="4"><th>{{ h }}</th></sc-for>
-                  </tr>
-                </thead>
-                <tbody>
-                  <sc-for list="{{ page.tableRows }}" as="row" hint-placeholder-count="4">
-                    <tr>
-                      <td>{{ row.a }}<div style="font-size: 11px; color: var(--color-neutral-700);">{{ row.aSub }}</div></td>
-                      <td>{{ row.b }}</td>
-                      <td>{{ row.c }}</td>
-                      <td><span class="tag" style="{{ row.badgeStyle }}">{{ row.badge }}</span></td>
-                    </tr>
-                  </sc-for>
-                </tbody>
-              </table>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 22px;">
-              <div class="blueprint" style="padding: 18px;">
-                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-                <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 12px;">Your actions</div>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                  <button class="btn btn-primary btn-block blueprint" style="white-space: nowrap; min-height: 40px; margin-top: 0;"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>{{ page.primaryAction }}</button>
-                  <button class="btn btn-secondary btn-block" style="white-space: nowrap; min-height: 40px; margin-top: 0;">{{ page.secondaryAction }}</button>
-                </div>
-                <div style="margin-top: 14px; font-size: 12px; color: var(--color-neutral-700);">{{ page.actionNote }}</div>
-              </div>
-
-              <div class="blueprint" style="padding: 18px;">
-                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-                <div style="font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 12px;">Scope of this account</div>
-                <div style="display: flex; flex-direction: column; gap: 9px; font-size: 13px;">
-                  <sc-for list="{{ page.scope }}" as="s" hint-placeholder-count="3">
-                    <div style="display: flex; gap: 10px; align-items: flex-start;">
-                      <span style="width: 6px; height: 6px; background: var(--color-accent); flex: none; margin-top: 6px;"></span>
-                      <span>{{ s }}</span>
-                    </div>
-                  </sc-for>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div style="margin-top: 22px; border-top: 1px solid var(--color-neutral-200); padding-top: 18px; display: flex; gap: 12px; align-items: flex-start;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px;"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 11v6"></path><path d="M12 8v.5"></path></svg>
+          <div style="font-size: 12px; color: var(--color-neutral-700);">No account? HRIS access is provisioned by an administrator. Contact HR at <a href="#hr">hr@arcenasdev.ph</a> or local 214.</div>
         </div>
       </div>
     </div>
-  </section>
-
-  <!-- MATRIX -->
-  <section style="display: flex; flex-direction: column; gap: 20px;">
-    <div style="display: flex; align-items: baseline; gap: 16px;">
-      <h2 style="font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0;">03 — Nav visibility by role</h2>
-      <span style="font-size: 12px; color: var(--color-neutral-700);">Hidden means absent from the sidebar, not disabled — a role never sees a door it cannot open.</span>
-    </div>
-
-    <div class="blueprint" style="padding: 22px;">
-      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-      <div style="display: flex; gap: 22px; margin-bottom: 16px; font-size: 12px; color: var(--color-neutral-700); flex-wrap: wrap;">
-        <span style="display: inline-flex; align-items: center; gap: 8px;"><span class="tag" style="background: var(--color-accent-900); color: var(--color-bg);">Full</span> create, edit, approve</span>
-        <span style="display: inline-flex; align-items: center; gap: 8px;"><span class="tag" style="border: 1px solid var(--color-accent-700); color: var(--color-accent-800); background: transparent;">View</span> read-only, scoped</span>
-        <span style="display: inline-flex; align-items: center; gap: 8px;"><span style="color: var(--color-neutral-400); font-size: 14px;">—</span> not in sidebar</span>
-      </div>
-      <table class="table">
-        <thead>
-          <tr>
-            <th style="width: 260px;">Nav item</th>
-            <th>HR Personnel</th>
-            <th>Site Foreman</th>
-            <th>Site Engineer / CM</th>
-            <th>System Administrator</th>
-            <th>Executive</th>
-          </tr>
-        </thead>
-        <tbody>
-          <sc-for list="{{ matrix }}" as="row" hint-placeholder-count="14">
-            <tr>
-              <td>{{ row.label }}<div style="font-size: 11px; color: var(--color-neutral-700);">{{ row.note }}</div></td>
-              <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="5">
-                <td><span style="{{ cell.style }}">{{ cell.text }}</span></td>
-              </sc-for>
-            </tr>
-          </sc-for>
-        </tbody>
-      </table>
-    </div>
-
-    <div style="display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 28px;">
-      <div class="blueprint" style="padding: 20px;">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Scope narrows before it hides</div>
-        <div style="font-size: 12px; color: var(--color-neutral-700);">A foreman sees Attendance, but only his crew. An engineer sees his sites. Same screen, filtered server-side — not a different build.</div>
-      </div>
-      <div class="blueprint" style="padding: 20px;">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Money is HR and Admin only</div>
-        <div style="font-size: 12px; color: var(--color-neutral-700);">Rates and payroll runs never appear for site roles. Executives see totals and cost per site, never an individual payslip.</div>
-      </div>
-      <div class="blueprint" style="padding: 20px;">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <div style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Admin manages access, not records</div>
-        <div style="font-size: 12px; color: var(--color-neutral-700);">System Administrator provisions users, roles and sync health. It has no approval authority over attendance or payroll.</div>
-      </div>
-    </div>
-  </section>
+  </div>
 </div>
 
 </x-dc>
@@ -559,11 +303,19 @@ class Component extends DCLogic {
     const key = this.state.role;
     const role = ROLES[key];
 
+    const ROLE_DEST = {
+      hr: 'HRIS%20Employee%20Records.dc.html',
+      foreman: 'HRIS%20Foreman%20Home.dc.html',
+      engineer: 'HRIS%20Crew%20Builder.dc.html',
+      exec: 'HRIS%20Executive%20Dashboard.dc.html'
+    };
+
     const roleTabs = ORDER.map(k => {
       const on = k === key;
+      const dest = ROLE_DEST[k];
       return {
         label: ROLES[k].label,
-        onClick: () => this.setState({ role: k }),
+        onClick: dest ? (() => { window.location.href = dest; }) : (() => this.setState({ role: k })),
         style: 'min-height: 38px; cursor: pointer; white-space: nowrap; flex: none; ' + (on
           ? 'background: var(--color-accent); border-color: var(--color-accent); color: var(--color-bg);'
           : 'border-color: var(--color-divider);')
