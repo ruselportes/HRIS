@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AttendanceSyncController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CrewController;
 use App\Http\Controllers\Api\DeviceController;
@@ -64,6 +65,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [DeviceController::class, 'bind']);
         Route::delete('{deviceId}', [DeviceController::class, 'revoke']);
     });
+
+    // Attendance sync ingestion (Phase 5 layer 4). Returns 207 when any event
+    // in the batch was rejected, so a partially accepted batch is not
+    // indistinguishable from a fully accepted one.
+    Route::post('attendance/sync', [AttendanceSyncController::class, 'store'])
+        ->middleware('role:foreman');
 
     // Must precede apiResource so 'next-code' isn't captured as {employee}.
     Route::middleware('role:hr,admin')->get('employees/next-code', [EmployeeController::class, 'nextCode']);

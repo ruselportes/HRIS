@@ -28,6 +28,13 @@ class DeviceKey extends Model
         'hmac_key',
         'security_level',
         'last_chain_hash',
+        // Clock history for cross-batch continuity. Omitting these from
+        // fillable made update() drop them silently — mass-assignment
+        // protection fails quietly, so the rollback check passed a batch it
+        // should have rejected.
+        'last_monotonic_timestamp',
+        'last_time_in',
+        'last_boot_id',
         'bound_at',
         'revoked_at',
     ];

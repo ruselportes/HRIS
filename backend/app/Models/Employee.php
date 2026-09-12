@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -66,24 +68,24 @@ class Employee extends Authenticatable
         ];
     }
 
-    public function role(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class, 'role_id', 'role_id');
     }
 
-    public function site(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class, 'site_id', 'site_id');
     }
 
-    public function crewAssignments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function crewAssignments(): HasMany
     {
         return $this->hasMany(CrewAssignment::class, 'employee_id', 'employee_id');
     }
 
     public function getFullNameAttribute(): string
     {
-        return trim("{$this->last_name}, {$this->first_name}" . ($this->middle_name ? " {$this->middle_name[0]}." : ''));
+        return trim("{$this->last_name}, {$this->first_name}".($this->middle_name ? " {$this->middle_name[0]}." : ''));
     }
 
     public function getDisplayNameAttribute(): string
