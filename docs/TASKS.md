@@ -3,7 +3,7 @@
 Each phase below is weighted **10%** of total project completion (10 phases = 100%).
 Check off tasks as they're completed; a phase counts as done once every task under it is checked.
 
-**Overall progress: ~40% (Phases 1–4 complete: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5.) The mobile app now builds and installs on an emulator as of 2026-09-12 — the Android native build was blocked until then, so Phase 4's offline behaviour has still only been proven by tsc/ESLint/Jest + 50 backend tests, never by an actual airplane-mode run on the device. That run is now possible and is the first thing owed.**
+**Overall progress: ~50% (Phases 1–5 complete: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6.)** Verified by 114 backend tests and 72 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Two claims still carry asterisks and are spelled out under Phase 5: hardware-backed keys need a physical handset to demonstrate (the emulator reports `SOFTWARE`), and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works.
 
 ---
 
@@ -67,12 +67,31 @@ Check off tasks as they're completed; a phase counts as done once every task und
 
 ## Phase 5 — Cryptographic Attendance Integrity Engine (supports UC-04) (10%)
 
-- [ ] Monotonic clock capture (`elapsedRealtime` / `mach_continuous_time`)
-- [ ] HMAC-SHA256 hash chaining ledger
-- [ ] TEE / Secure Enclave ECDSA P-256 signing
-- [ ] `Crypto Signature Ledger` table + server-side verification service
-- [ ] Mobile: Foreman Device Binding screen
-- [ ] Security tests: TC-01 clock rollback, TC-02 DB tampering, TC-03 MitM signature forgery
+- [x] Monotonic clock capture — `HrisMonotonicClockModule` TurboModule (`elapsedRealtime`); boot sessions identified via `Settings.Global.BOOT_COUNT`, **not** `currentTimeMillis - elapsedRealtime` (that shifts with the wall clock, so a rollback would read as a new boot session and skip the drift check entirely)
+- [x] HMAC-SHA256 hash chaining — `hashChain.ts` ↔ `HashChainVerifier`, cross-verified against PHP with shared test vectors
+- [x] TEE ECDSA P-256 signing — `HrisTeeSignerModule` (Android Keystore, StrongBox with TEE fallback). **iOS Secure Enclave not implemented** — Android is primary per the SPMP; iOS would need a parallel Swift module
+- [x] `Crypto Signature Ledger` + server-side verification — 3 verifiers, `device_keys` (14th table), `POST /api/attendance/sync` running all three gates
+- [x] Mobile: Foreman Device Binding screen — gates the tabs, since capture refuses outright on an unbound device
+- [x] Security tests TC-01/02/03 — **automated, against the real endpoint** (`AttendanceSyncTest`): rollback rejected incl. across sync batches, tampered row + everything after it rejected, altered-payload and off-device-key signatures both rejected
+
+> **Two things Phase 5 did NOT deliver, stated plainly:**
+>
+> 1. **The hardware-backing claim is not yet demonstrated.** An emulator has no
+>    TEE and reports `SOFTWARE`; `config('crypto.require_hardware_backed_keys')`
+>    defaults `false` so emulator development isn't blocked. The claim only holds
+>    on a physical Android device with that flag on. STD §2.1 already specifies a
+>    physical device for all mobile test cases — so TC-01–03 pass automatically
+>    here, but the *manual* STD runs still need real hardware.
+> 2. **SQLCipher is still deferred.** The HMAC secret sits in AsyncStorage —
+>    app-private but unencrypted. Root access reads it and forges self-verifying
+>    chain entries. The ECDSA key is non-exportable in the TEE, so that attacker
+>    still cannot produce a signature the server accepts: layer 2 degrades, layer
+>    3 holds. op-sqlite supports SQLCipher via a build flag; enabling it is the
+>    proper hardening.
+>
+> **Schema additions needing SDD §3.1 + `.drawio` updates (Efren):** `device_keys`
+> (new table), `attendances.date` + `attendances.status`, `device_keys` clock-history
+> columns. Each is documented in its migration with the reason it was unavoidable.
 
 ## Phase 6 — Automated Background Sync Engine (supports UC-04) (10%)
 

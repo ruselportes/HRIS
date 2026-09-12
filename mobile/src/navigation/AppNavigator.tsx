@@ -7,15 +7,17 @@
  * @format
  */
 
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {ActivityIndicator, StyleSheet, View} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {useAuth} from '../auth/AuthContext';
+import {isBound} from '../crypto/deviceCredentials';
 import {LoginScreen} from '../screens/LoginScreen';
 import {ForemanHomeScreen} from '../screens/ForemanHomeScreen';
 import {RollCallScreen} from '../screens/RollCallScreen';
 import {ComingSoonScreen} from '../screens/ComingSoonScreen';
+import {DeviceBindingScreen} from '../screens/DeviceBindingScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -29,8 +31,18 @@ function SyncTab() {
 
 function AppNavigator() {
   const {ready, user} = useAuth();
+  const [bound, setBound] = useState<boolean | null>(null);
 
-  if (!ready) {
+  useEffect(() => {
+    if (!user) {
+      setBound(null);
+      return;
+    }
+
+    isBound().then(setBound);
+  }, [user]);
+
+  if (!ready || (user && bound === null)) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" />
@@ -38,18 +50,35 @@ function AppNavigator() {
     );
   }
 
+  if (!user) {
+    return (
+      <NavigationContainer>
+        <LoginScreen />
+      </NavigationContainer>
+    );
+  }
+
+  /*
+   * Binding gates the tabs rather than sitting inside them. Capture refuses
+   * outright on an unbound device, so letting a foreman reach Roll Call first
+   * would only present a screen where every tap fails.
+   */
+  if (!bound) {
+    return (
+      <NavigationContainer>
+        <DeviceBindingScreen onBound={() => setBound(true)} />
+      </NavigationContainer>
+    );
+  }
+
   return (
     <NavigationContainer>
-      {user ? (
-        <Tab.Navigator screenOptions={{headerShown: false}}>
-          <Tab.Screen name="Home" component={ForemanHomeScreen} />
-          <Tab.Screen name="RollCall" component={RollCallScreen} options={{title: 'Roll call'}} />
-          <Tab.Screen name="Timesheet" component={TimesheetTab} />
-          <Tab.Screen name="Sync" component={SyncTab} />
-        </Tab.Navigator>
-      ) : (
-        <LoginScreen />
-      )}
+      <Tab.Navigator screenOptions={{headerShown: false}}>
+        <Tab.Screen name="Home" component={ForemanHomeScreen} />
+        <Tab.Screen name="RollCall" component={RollCallScreen} options={{title: 'Roll call'}} />
+        <Tab.Screen name="Timesheet" component={TimesheetTab} />
+        <Tab.Screen name="Sync" component={SyncTab} />
+      </Tab.Navigator>
     </NavigationContainer>
   );
 }
