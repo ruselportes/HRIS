@@ -14,10 +14,10 @@
 
 import React, {useEffect, useState} from 'react';
 import {FlatList, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
-import {getOrCreateDeviceId} from '../db/deviceId';
 import {AttendanceRecord, AttendanceStatus} from '../db/attendanceLogic';
 import {
   CachedCrew,
+  DeviceNotBoundError,
   getCachedCrew,
   listTodayAttendance,
   recordStatus,
@@ -34,13 +34,10 @@ type RowState = {
 export function RollCallScreen() {
   const [crew, setCrew] = useState<CachedCrew | null>(null);
   const [rows, setRows] = useState<RowState[]>([]);
-  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      const id = await getOrCreateDeviceId();
-      setDeviceId(id);
-
       const cached = await getCachedCrew();
       setCrew(cached);
 
@@ -66,23 +63,37 @@ export function RollCallScreen() {
     })();
   }, []);
 
-  const mark = async (employeeId: number, status: 'present' | 'late' | 'absent') => {
-    if (!crew || !deviceId) return;
-
-    const updated = await recordStatus(employeeId, crew.crewId, status, deviceId);
-    setRows(prev =>
-      prev.map(row => (row.employeeId === employeeId ? {...row, record: updated} : row)),
-    );
+  /**
+   * Surface a capture failure instead of leaving the row silently unchanged.
+   * The likely cause is an unbound device, and a tap that appears to do
+   * nothing would have the foreman marking the same worker repeatedly.
+   */
+  const applyCapture = async (
+    employeeId: number,
+    capture: () => Promise<AttendanceRecord>,
+  ) => {
+    setError(null);
+    try {
+      const updated = await capture();
+      setRows(prev =>
+        prev.map(row =>
+          row.employeeId === employeeId ? {...row, record: updated} : row,
+        ),
+      );
+    } catch (err) {
+      setError(
+        err instanceof DeviceNotBoundError
+          ? 'This device is not bound yet — bind it before recording attendance.'
+          : 'Could not record that tap. It was not saved; try again.',
+      );
+    }
   };
 
-  const undo = async (employeeId: number) => {
-    if (!crew || !deviceId) return;
+  const mark = (employeeId: number, status: 'present' | 'late' | 'absent') =>
+    crew && applyCapture(employeeId, () => recordStatus(employeeId, crew.crewId, status));
 
-    const updated = await undoAttendance(employeeId, crew.crewId, deviceId);
-    setRows(prev =>
-      prev.map(row => (row.employeeId === employeeId ? {...row, record: updated} : row)),
-    );
-  };
+  const undo = (employeeId: number) =>
+    crew && applyCapture(employeeId, () => undoAttendance(employeeId, crew.crewId));
 
   if (!crew) {
     return (
@@ -96,6 +107,8 @@ export function RollCallScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Roll Call</Text>
       <Text style={styles.subtitle}>{crew.crewName}</Text>
+
+      {error && <Text style={styles.error}>{error}</Text>}
 
       <FlatList
         data={rows}
@@ -189,6 +202,15 @@ const styles = StyleSheet.create({
   emptyText: {fontSize: 15, color: '#5d5d60', textAlign: 'center'},
   title: {fontSize: 24, fontWeight: '700', color: '#1d1f20', paddingHorizontal: 20},
   subtitle: {fontSize: 14, color: '#5d5d60', paddingHorizontal: 20, marginBottom: 12},
+  error: {
+    fontSize: 14,
+    color: '#75261c',
+    backgroundColor: '#f6e1de',
+    marginHorizontal: 20,
+    marginBottom: 12,
+    padding: 10,
+    borderRadius: 4,
+  },
   list: {paddingHorizontal: 20, paddingBottom: 40},
   row: {
     backgroundColor: '#fff',

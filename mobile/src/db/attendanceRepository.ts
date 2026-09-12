@@ -1,7 +1,16 @@
 /**
- * SQLite-backed repository (op-sqlite). Thin wrapper around database.ts +
- * the pure state machine in attendanceLogic.ts — no business logic lives
- * here beyond translating rows <-> the AttendanceRecord shape.
+ * SQLite-backed repository (op-sqlite).
+ *
+ * As of Phase 5 this is an append-only signed event log, not a mutable table.
+ * Every tap writes a new chained, signed row; nothing is updated or deleted,
+ * because a hash chain cannot tolerate rewriting history — editing a chained
+ * row invalidates its own HMAC and orphans every row after it, which is the
+ * property STD TC-02 relies on. Undo is therefore an appended event, not a
+ * deletion.
+ *
+ * Current UI state is derived (latest event per employee+date) rather than
+ * stored, so there is a single source of truth instead of two representations
+ * that can drift apart.
  *
  * @format
  */
@@ -15,6 +24,11 @@ import {
   todayLocalDate,
   undoStatus,
 } from './attendanceLogic';
+import {loadCredentials} from '../crypto/deviceCredentials';
+import {captureClock} from '../crypto/monotonicClock';
+import {computeHmac, hmacKeyFromBase64} from '../crypto/hashChain';
+import {signAttendance} from '../crypto/teeSigner';
+import {AttendancePayloadRecord} from '../crypto/payload';
 
 export interface RosterMember {
   employeeId: number;
@@ -30,6 +44,16 @@ export interface CachedCrew {
   siteName: string | null;
   cachedAt: number;
   members: RosterMember[];
+}
+
+/** Raised when capture is attempted before the device has been bound. */
+export class DeviceNotBoundError extends Error {
+  constructor() {
+    super(
+      'This device is not bound. Complete device binding before recording attendance.',
+    );
+    this.name = 'DeviceNotBoundError';
+  }
 }
 
 /** Replaces the whole cached roster with a fresh fetch from GET /api/me/crew. */
@@ -68,7 +92,9 @@ export async function saveRosterCache(
 
 export async function getCachedCrew(): Promise<CachedCrew | null> {
   const db = await getDatabase();
-  const result = await db.execute('SELECT * FROM crew_roster_cache ORDER BY last_name;');
+  const result = await db.execute(
+    'SELECT * FROM crew_roster_cache ORDER BY last_name;',
+  );
 
   if (result.rows.length === 0) {
     return null;
@@ -103,28 +129,60 @@ function rowToRecord(row: any): AttendanceRecord {
   };
 }
 
-async function loadRecord(employeeId: number, date: string): Promise<AttendanceRecord> {
+/** The chain tip: hmac_hash of the most recent event this device produced. */
+async function currentChainTip(): Promise<string | null> {
   const db = await getDatabase();
   const result = await db.execute(
-    'SELECT * FROM attendance WHERE employee_id = ? AND date = ?;',
+    'SELECT hmac_hash FROM attendance_events ORDER BY event_id DESC LIMIT 1;',
+  );
+
+  return result.rows.length === 0 ? null : (result.rows[0] as any).hmac_hash;
+}
+
+/** Latest event for one employee on a date, or a blank record if none. */
+async function latestEvent(
+  employeeId: number,
+  date: string,
+): Promise<AttendanceRecord> {
+  const db = await getDatabase();
+  const result = await db.execute(
+    `SELECT * FROM attendance_events
+      WHERE employee_id = ? AND date = ?
+      ORDER BY event_id DESC LIMIT 1;`,
     [employeeId, date],
   );
 
-  if (result.rows.length === 0) {
-    return blankRecordFor(employeeId, date);
-  }
-
-  return rowToRecord(result.rows[0]);
+  return result.rows.length === 0
+    ? blankRecordFor(employeeId, date)
+    : rowToRecord(result.rows[0]);
 }
 
-export async function getTodayAttendance(employeeId: number): Promise<AttendanceRecord> {
-  return loadRecord(employeeId, todayLocalDate());
+export async function getTodayAttendance(
+  employeeId: number,
+): Promise<AttendanceRecord> {
+  return latestEvent(employeeId, todayLocalDate());
 }
 
-export async function listTodayAttendance(): Promise<Map<number, AttendanceRecord>> {
+/**
+ * Current state for every employee marked today — the latest event each.
+ * Earlier events for the same employee remain in the log; they are history,
+ * not current state.
+ */
+export async function listTodayAttendance(): Promise<
+  Map<number, AttendanceRecord>
+> {
   const db = await getDatabase();
   const date = todayLocalDate();
-  const result = await db.execute('SELECT * FROM attendance WHERE date = ?;', [date]);
+
+  const result = await db.execute(
+    `SELECT e.* FROM attendance_events e
+      JOIN (
+        SELECT employee_id, MAX(event_id) AS latest_id
+        FROM attendance_events WHERE date = ?
+        GROUP BY employee_id
+      ) newest ON newest.latest_id = e.event_id;`,
+    [date],
+  );
 
   const map = new Map<number, AttendanceRecord>();
   for (const row of result.rows as any[]) {
@@ -134,89 +192,129 @@ export async function listTodayAttendance(): Promise<Map<number, AttendanceRecor
   return map;
 }
 
-async function persist(
-  db: Awaited<ReturnType<typeof getDatabase>>,
+/**
+ * Append one chained, signed event.
+ *
+ * Order matters and is deliberate: capture the clock first (synchronously, at
+ * the tap), then chain, then sign. Signing is the slow step and happens last,
+ * over values already fixed — so its latency cannot influence what was
+ * attested.
+ */
+async function appendEvent(
   record: AttendanceRecord,
   crewId: number,
-): Promise<void> {
-  await db.execute(
-    `INSERT INTO attendance (employee_id, crew_id, date, status, time_in, monotonic_timestamp, override_flag, sync_status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
-     ON CONFLICT(employee_id, date) DO UPDATE SET
-       status = excluded.status,
-       time_in = excluded.time_in,
-       monotonic_timestamp = excluded.monotonic_timestamp,
-       override_flag = excluded.override_flag,
-       sync_status = 'pending';`,
+): Promise<AttendanceRecord> {
+  const credentials = await loadCredentials();
+
+  if (credentials === null) {
+    // Refuse rather than writing an unsigned row. The server would reject it
+    // anyway, so a fallback would only lose the foreman's work silently.
+    throw new DeviceNotBoundError();
+  }
+
+  const clock = captureClock();
+  const prevHash = await currentChainTip();
+
+  const payload: AttendancePayloadRecord = {
+    employee_id: record.employeeId,
+    crew_id: crewId,
+    date: record.date,
+    status: record.status,
+    time_in: record.timeIn,
+    monotonic_timestamp: Math.round(clock.monotonicMs),
+    boot_id: clock.bootId,
+    device_id: credentials.deviceId,
+    prev_hash: prevHash,
+  };
+
+  const hmacHash = computeHmac(
+    payload,
+    hmacKeyFromBase64(credentials.hmacKeyBase64),
+  );
+
+  // Signed before insert, not after: a row written first and signed second
+  // could be left permanently unsignable if signing throws in between.
+  const signature = await signAttendance(payload);
+
+  const db = await getDatabase();
+
+  const insert = await db.execute(
+    `INSERT INTO attendance_events
+      (employee_id, crew_id, date, status, time_in, monotonic_timestamp,
+       boot_id, boot_id_system_backed, device_id, prev_hash, hmac_hash,
+       ecdsa_signature, override_flag, captured_at, sync_status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending');`,
     [
-      record.employeeId,
-      crewId,
-      record.date,
-      record.status,
-      record.timeIn,
-      // PLACEHOLDER: wall-clock, not a real monotonic capture. Phase 5 owns
-      // elapsedRealtime/mach_continuous_time + HMAC chaining + TEE signing.
-      record.timeIn === null ? null : Date.now(),
+      payload.employee_id,
+      payload.crew_id,
+      payload.date,
+      payload.status,
+      payload.time_in,
+      payload.monotonic_timestamp,
+      payload.boot_id,
+      clock.bootIdSystemBacked ? 1 : 0,
+      payload.device_id,
+      payload.prev_hash,
+      hmacHash,
+      signature,
       record.overrideFlag ? 1 : 0,
+      clock.wallClockMs,
     ],
   );
-}
 
-async function enqueueSync(
-  db: Awaited<ReturnType<typeof getDatabase>>,
-  employeeId: number,
-  date: string,
-  deviceId: string,
-): Promise<void> {
-  const result = await db.execute(
-    'SELECT local_id FROM attendance WHERE employee_id = ? AND date = ?;',
-    [employeeId, date],
-  );
-  const localId = (result.rows[0] as any).local_id;
-
+  /*
+   * insertId from the INSERT itself, rather than a follow-up
+   * "SELECT event_id ORDER BY event_id DESC LIMIT 1". That query was both
+   * unnecessary and unsafe: it indexed rows[0] unguarded, so an unexpectedly
+   * empty result would throw after the event had already been written,
+   * leaving a committed event with no queue row and the foreman's tap
+   * apparently failed when it had in fact been recorded.
+   */
   await db.execute(
-    `INSERT INTO attendance_sync_queue (local_attendance_id, device_id, queued_at, sync_status)
+    `INSERT INTO attendance_sync_queue (event_id, device_id, queued_at, sync_status)
      VALUES (?, ?, ?, 'pending');`,
-    [localId, deviceId, Date.now()],
+    [insert.insertId ?? null, credentials.deviceId, Date.now()],
   );
+
+  return record;
 }
 
 /**
- * Foreman taps Present/Late/Absent for a roster row. Entirely local — no
- * network call in this path, which is what makes roll call offline-capable.
- * Every (re-)selection re-queues a pending sync row; Phase 6's engine is
- * expected to de-dupe/collapse by local_attendance_id when it drains this.
+ * Foreman taps Present/Late/Absent. Appends a new signed event — no network
+ * call in this path, which is what keeps roll call offline-capable.
  */
 export async function recordStatus(
   employeeId: number,
   crewId: number,
   status: 'present' | 'late' | 'absent',
-  deviceId: string,
 ): Promise<AttendanceRecord> {
   const date = todayLocalDate();
-  const current = await loadRecord(employeeId, date);
-  const updated = selectStatus(current, status, Date.now());
+  const current = await latestEvent(employeeId, date);
 
-  const db = await getDatabase();
-  await persist(db, updated, crewId);
-  await enqueueSync(db, employeeId, date, deviceId);
-
-  return updated;
+  return appendEvent(selectStatus(current, status, Date.now()), crewId);
 }
 
-/** Undo — reverts a marked row back to Pending, per the prototype's Undo action. */
+/**
+ * Undo — appends a reverting event rather than deleting anything. The original
+ * event stays in the log and in the chain, which is what makes the correction
+ * itself auditable rather than invisible.
+ */
 export async function undoAttendance(
   employeeId: number,
   crewId: number,
-  deviceId: string,
 ): Promise<AttendanceRecord> {
   const date = todayLocalDate();
-  const current = await loadRecord(employeeId, date);
-  const reverted = undoStatus(current);
+  const current = await latestEvent(employeeId, date);
 
+  return appendEvent(undoStatus(current), crewId);
+}
+
+/** Pending events in chain order — what Phase 6's sync engine will drain. */
+export async function listPendingEvents(): Promise<any[]> {
   const db = await getDatabase();
-  await persist(db, reverted, crewId);
-  await enqueueSync(db, employeeId, date, deviceId);
+  const result = await db.execute(
+    "SELECT * FROM attendance_events WHERE sync_status = 'pending' ORDER BY event_id;",
+  );
 
-  return reverted;
+  return result.rows as any[];
 }
