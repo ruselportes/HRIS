@@ -245,32 +245,116 @@ class AttendanceSyncTest extends TestCase
         $this->assertSame(0, Attendance::count());
     }
 
-    /** TC-01: wall clock rolled back two hours while the counter advanced. */
-    public function test_clock_rollback_between_events_is_rejected(): void
+    /** A rollback override: five real minutes on the counter, ~2h earlier on the wall. */
+    private function rollbackOverride(): array
+    {
+        return [
+            'time_in' => 1789200000000 - (115 * 60 * 1000),
+            'monotonic_timestamp' => 86_400_000 + (5 * 60 * 1000),
+        ];
+    }
+
+    /**
+     * TC-01, per the STD's own expected result: the record is FLAGGED rather
+     * than trusted, verified = false is recorded, an audit entry is written,
+     * and "the hash chain remains continuous".
+     *
+     * This test previously asserted the record was rejected and absent — which
+     * contradicted the STD and meant one clock drift orphaned every later event.
+     */
+    public function test_clock_rollback_is_flagged_not_rejected(): void
     {
         $workers = [$this->worker(), $this->worker()];
 
         $events = $this->buildBatch(
             array_map(fn ($w) => $w->employee_id, $workers),
             null,
+            [1 => $this->rollbackOverride()],
+        );
+
+        $response = $this->sync($events)->assertStatus(207);
+
+        $response->assertJsonPath('accepted', 1);
+        $response->assertJsonPath('flagged', 1);
+        $response->assertJsonPath('rejected', 0);
+        $response->assertJsonPath('results.0.status', 'accepted');
+        $response->assertJsonPath('results.1.status', 'flagged');
+        $response->assertJsonPath('results.1.reason', 'wall_clock_rolled_back');
+
+        // Committed, but explicitly NOT trusted.
+        $flagged = Attendance::where('employee_id', $workers[1]->employee_id)->first();
+        $this->assertNotNull($flagged, 'A flagged record is kept for HR review, not discarded.');
+        $this->assertFalse($flagged->cryptoSignature->verified);
+
+        $this->assertDatabaseHas('audit_logs', ['action_type' => 'ATTENDANCE_CLOCK_FLAGGED']);
+    }
+
+    /** The substance of TC-01's "the hash chain remains continuous". */
+    public function test_the_chain_stays_continuous_through_a_flagged_event(): void
+    {
+        $workers = [$this->worker(), $this->worker(), $this->worker()];
+
+        $events = $this->buildBatch(
+            array_map(fn ($w) => $w->employee_id, $workers),
+            null,
             [
-                // Five real minutes pass on the monotonic counter, but the
-                // wall clock reads nearly two hours earlier.
-                1 => [
-                    'time_in' => 1789200000000 - (115 * 60 * 1000),
-                    'monotonic_timestamp' => 86_400_000 + (5 * 60 * 1000),
-                ],
+                1 => $this->rollbackOverride(),
+                // Event 2 is honest, its clock consistent with event 0.
+                2 => ['time_in' => 1789200000000 + (10 * 60 * 1000), 'monotonic_timestamp' => 86_400_000 + (10 * 60 * 1000)],
             ],
         );
 
         $response = $this->sync($events)->assertStatus(207);
 
-        $response->assertJsonPath('results.0.accepted', true);
-        $response->assertJsonPath('results.1.reason', 'wall_clock_rolled_back');
+        // If a flag broke the chain, event 2 would be chain_broken_upstream.
+        $response->assertJsonPath('results.2.status', 'accepted');
+        $this->assertSame(end($events)['hmac_hash'], $this->device->fresh()->last_chain_hash);
+    }
 
-        $this->assertDatabaseMissing('attendances', [
-            'employee_id' => $workers[1]->employee_id,
+    public function test_a_flagged_reading_does_not_become_the_clock_baseline(): void
+    {
+        // If the rolled-back reading became the baseline, the NEXT event could
+        // share the falsified clock and look like perfectly normal drift — the
+        // rollback would be laundered. The next event must be compared against
+        // the last TRUSTED reading instead.
+        $workers = [$this->worker(), $this->worker(), $this->worker()];
+
+        $rolled = $this->rollbackOverride();
+
+        $events = $this->buildBatch(
+            array_map(fn ($w) => $w->employee_id, $workers),
+            null,
+            [
+                1 => $rolled,
+                // Consistent with the ROLLED clock (+1 min on both), but still
+                // ~2h behind the last trusted reading.
+                2 => [
+                    'time_in' => $rolled['time_in'] + 60_000,
+                    'monotonic_timestamp' => $rolled['monotonic_timestamp'] + 60_000,
+                ],
+            ],
+        );
+
+        $this->sync($events)
+            ->assertStatus(207)
+            ->assertJsonPath('results.2.status', 'flagged');
+    }
+
+    public function test_a_flagged_event_never_overwrites_a_verified_time(): void
+    {
+        // "No falsified time is committed as the effective attendance time."
+        $worker = $this->worker();
+
+        $events = $this->buildBatch([$worker->employee_id, $worker->employee_id], null, [
+            1 => array_merge($this->rollbackOverride(), ['status' => 'late']),
         ]);
+
+        $this->sync($events)->assertStatus(207)->assertJsonPath('results.1.status', 'flagged');
+
+        $attendance = Attendance::where('employee_id', $worker->employee_id)->first();
+
+        $this->assertSame('present', $attendance->status, 'The flagged event replaced a trusted record.');
+        $this->assertTrue($attendance->cryptoSignature->verified);
     }
 
     public function test_clock_continuity_is_enforced_across_batches(): void
@@ -281,21 +365,92 @@ class AttendanceSyncTest extends TestCase
         $batchOne = $this->buildBatch([$first->employee_id]);
         $this->sync($batchOne)->assertOk();
 
-        $second = $this->worker();
         $batchTwo = $this->buildBatch(
-            [$second->employee_id],
+            [$this->worker()->employee_id],
             end($batchOne)['hmac_hash'],
-            [
-                0 => [
-                    'time_in' => 1789200000000 - (115 * 60 * 1000),
-                    'monotonic_timestamp' => 86_400_000 + (5 * 60 * 1000),
-                ],
-            ],
+            [0 => $this->rollbackOverride()],
         );
 
         $this->sync($batchTwo)
             ->assertStatus(207)
+            ->assertJsonPath('results.0.status', 'flagged')
             ->assertJsonPath('results.0.reason', 'wall_clock_rolled_back');
+    }
+
+    /**
+     * Regression for a latent bug: the chain was precomputed independently of
+     * the signature gate, so an event with a bad signature still let its
+     * successor pass linkage, and the tip jumped straight past the rejected
+     * event. Every TC-03 test used a single-event batch, so it never showed.
+     */
+    public function test_a_bad_signature_orphans_its_successors_instead_of_being_skipped(): void
+    {
+        $workers = [$this->worker(), $this->worker(), $this->worker()];
+        $events = $this->buildBatch(array_map(fn ($w) => $w->employee_id, $workers));
+
+        // Corrupt only event 1's signature; its HMAC and linkage stay valid.
+        $events[1]['ecdsa_signature'] = base64_encode(str_repeat("\x30", 70));
+
+        $response = $this->sync($events)->assertStatus(207);
+
+        $response->assertJsonPath('results.0.status', 'accepted');
+        $response->assertJsonPath('results.1.status', 'rejected');
+        $response->assertJsonPath('results.2.status', 'rejected');
+        $response->assertJsonPath('results.2.reason', 'chain_broken_upstream');
+
+        // The tip must stop at event 0, not leap to event 2.
+        $this->assertSame($events[0]['hmac_hash'], $this->device->fresh()->last_chain_hash);
+        $this->assertSame(1, Attendance::count());
+    }
+
+    public function test_status_reports_the_server_chain_tip(): void
+    {
+        $events = $this->buildBatch([$this->worker()->employee_id, $this->worker()->employee_id]);
+        $this->sync($events)->assertOk();
+
+        $this->actingAs($this->foreman, 'sanctum')
+            ->getJson('/api/attendance/sync/status?device_id='.$this->device->device_id)
+            ->assertOk()
+            ->assertJsonPath('last_chain_hash', end($events)['hmac_hash']);
+    }
+
+    public function test_status_is_null_for_a_device_that_has_never_synced(): void
+    {
+        $this->actingAs($this->foreman, 'sanctum')
+            ->getJson('/api/attendance/sync/status?device_id='.$this->device->device_id)
+            ->assertOk()
+            ->assertJsonPath('last_chain_hash', null);
+    }
+
+    public function test_status_refuses_someone_elses_device(): void
+    {
+        $other = $this->loginUser('foreman');
+        DeviceKey::factory()->create(['employee_id' => $other->employee_id, 'device_id' => 'dev-theirs-0002']);
+
+        $this->actingAs($this->foreman, 'sanctum')
+            ->getJson('/api/attendance/sync/status?device_id=dev-theirs-0002')
+            ->assertStatus(403);
+    }
+
+    /**
+     * The lost-response case the status endpoint exists for: the server
+     * commits a batch, the response never arrives, and the device retries the
+     * same batch. Without reconciliation every event fails, and the device
+     * would mark genuinely accepted records as rejected.
+     */
+    public function test_replaying_an_already_committed_batch_fails_which_is_why_status_exists(): void
+    {
+        $events = $this->buildBatch([$this->worker()->employee_id]);
+
+        $this->sync($events)->assertOk();
+
+        // Blind retry of the identical batch.
+        $this->sync($events)
+            ->assertStatus(207)
+            ->assertJsonPath('results.0.reason', 'prev_hash_mismatch');
+
+        // The data is safe — the first commit stands, nothing duplicated.
+        $this->assertSame(1, Attendance::count());
     }
 
     public function test_a_batch_that_ignores_prior_history_is_rejected(): void

@@ -67,9 +67,13 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Attendance sync ingestion (Phase 5 layer 4). Returns 207 when any event
-    // in the batch was rejected, so a partially accepted batch is not
-    // indistinguishable from a fully accepted one.
+    // was flagged or rejected, so a partial result is not indistinguishable
+    // from a clean one.
     Route::post('attendance/sync', [AttendanceSyncController::class, 'store'])
+        ->middleware('role:foreman');
+
+    // Server chain tip, for the sync engine to reconcile after a lost response.
+    Route::get('attendance/sync/status', [AttendanceSyncController::class, 'status'])
         ->middleware('role:foreman');
 
     // Must precede apiResource so 'next-code' isn't captured as {employee}.
