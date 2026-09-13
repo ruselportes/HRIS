@@ -24,7 +24,7 @@ import {
   todayLocalDate,
   undoStatus,
 } from './attendanceLogic';
-import {loadCredentials} from '../crypto/deviceCredentials';
+import {chainEpoch, loadCredentials} from '../crypto/deviceCredentials';
 import {captureClock} from '../crypto/monotonicClock';
 import {computeHmac, hmacKeyFromBase64} from '../crypto/hashChain';
 import {signAttendance} from '../crypto/teeSigner';
@@ -129,11 +129,23 @@ function rowToRecord(row: any): AttendanceRecord {
   };
 }
 
-/** The chain tip: hmac_hash of the most recent event this device produced. */
-async function currentChainTip(): Promise<string | null> {
+/**
+ * The chain tip: hmac_hash of the most recent event in the CURRENT binding's
+ * chain.
+ *
+ * Scoped by epoch, not "the latest event ever". Binding resets the server's tip
+ * to null; if this looked across all history, the first event after a rebind
+ * would link to pre-rebind events, the server would reject it, and the device
+ * could never sync again — breaking rebind, the recovery path for a broken
+ * chain.
+ */
+async function currentChainTip(epoch: string): Promise<string | null> {
   const db = await getDatabase();
   const result = await db.execute(
-    'SELECT hmac_hash FROM attendance_events ORDER BY event_id DESC LIMIT 1;',
+    `SELECT hmac_hash FROM attendance_events
+      WHERE chain_epoch = ?
+      ORDER BY event_id DESC LIMIT 1;`,
+    [epoch],
   );
 
   return result.rows.length === 0 ? null : (result.rows[0] as any).hmac_hash;
@@ -213,7 +225,8 @@ async function appendEvent(
   }
 
   const clock = captureClock();
-  const prevHash = await currentChainTip();
+  const epoch = chainEpoch(credentials);
+  const prevHash = await currentChainTip(epoch);
 
   const payload: AttendancePayloadRecord = {
     employee_id: record.employeeId,
@@ -241,9 +254,9 @@ async function appendEvent(
   const insert = await db.execute(
     `INSERT INTO attendance_events
       (employee_id, crew_id, date, status, time_in, monotonic_timestamp,
-       boot_id, boot_id_system_backed, device_id, prev_hash, hmac_hash,
-       ecdsa_signature, override_flag, captured_at, sync_status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending');`,
+       boot_id, boot_id_system_backed, chain_epoch, device_id, prev_hash,
+       hmac_hash, ecdsa_signature, override_flag, captured_at, sync_status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending');`,
     [
       payload.employee_id,
       payload.crew_id,
@@ -253,6 +266,7 @@ async function appendEvent(
       payload.monotonic_timestamp,
       payload.boot_id,
       clock.bootIdSystemBacked ? 1 : 0,
+      epoch,
       payload.device_id,
       payload.prev_hash,
       hmacHash,
@@ -309,12 +323,225 @@ export async function undoAttendance(
   return appendEvent(undoStatus(current), crewId);
 }
 
-/** Pending events in chain order — what Phase 6's sync engine will drain. */
-export async function listPendingEvents(): Promise<any[]> {
+/* ------------------------------------------------------------------------ *
+ * Sync (Phase 6)
+ * ------------------------------------------------------------------------ */
+
+/**
+ * sync_status values on attendance_events:
+ *   pending  — captured, not yet confirmed by the server
+ *   synced   — accepted and trusted
+ *   flagged  — accepted but time-suspect, sent for HR review
+ *   rejected — refused; failed verification or orphaned by an earlier refusal
+ *
+ * "Kept until confirmed by server" (the Sync Queue prototype): nothing is
+ * deleted on sync. Rows only change status.
+ */
+export type EventSyncStatus = 'pending' | 'synced' | 'flagged' | 'rejected';
+
+/**
+ * Pending events for the CURRENT binding, in chain order.
+ *
+ * Order is chain order (event_id), and must never be re-sorted: the server
+ * walks the batch expecting each event to link to the one before it.
+ */
+export async function listPendingEvents(epoch: string): Promise<any[]> {
   const db = await getDatabase();
   const result = await db.execute(
-    "SELECT * FROM attendance_events WHERE sync_status = 'pending' ORDER BY event_id;",
+    `SELECT * FROM attendance_events
+      WHERE sync_status = 'pending' AND chain_epoch = ?
+      ORDER BY event_id;`,
+    [epoch],
   );
 
   return result.rows as any[];
+}
+
+/** Apply the server's verdict to each event, matched by hmac_hash. */
+export async function applyEventOutcomes(
+  outcomes: {hmacHash: string; status: 'accepted' | 'flagged' | 'rejected'}[],
+): Promise<void> {
+  if (outcomes.length === 0) {
+    return;
+  }
+
+  const db = await getDatabase();
+
+  await db.transaction(async tx => {
+    for (const outcome of outcomes) {
+      const status: EventSyncStatus =
+        outcome.status === 'accepted' ? 'synced' : outcome.status;
+
+      await tx.execute(
+        'UPDATE attendance_events SET sync_status = ? WHERE hmac_hash = ?;',
+        [status, outcome.hmacHash],
+      );
+    }
+  });
+}
+
+/**
+ * Reconcile against the server's real chain tip: every pending event up to and
+ * including the one whose hash the server already holds was accepted, even if
+ * the device never heard back.
+ *
+ * This is the lost-response recovery. The server commits a batch, the reply is
+ * lost, and a blind retry would fail every event as prev_hash_mismatch —
+ * marking genuinely accepted records as rejected. Asking the server where it
+ * is first avoids that.
+ *
+ * Marked `synced`, not flagged: the server does not report per-event verdicts
+ * here, and a flagged event is audit-logged server-side regardless of how the
+ * device labels it. HR's view is authoritative; this only stops the device
+ * resending what the server already has.
+ *
+ * Returns how many events were reconciled.
+ */
+export async function markSyncedThrough(
+  epoch: string,
+  serverTipHash: string,
+): Promise<number> {
+  const db = await getDatabase();
+
+  const tip = await db.execute(
+    `SELECT event_id FROM attendance_events
+      WHERE chain_epoch = ? AND hmac_hash = ?
+      LIMIT 1;`,
+    [epoch, serverTipHash],
+  );
+
+  // The server's tip is not in this device's current chain — nothing to
+  // reconcile. (A tip from a previous binding, or a chain this device never
+  // produced; either way, not ours to mark.)
+  if (tip.rows.length === 0) {
+    return 0;
+  }
+
+  const upTo = (tip.rows[0] as any).event_id;
+
+  const result = await db.execute(
+    `UPDATE attendance_events
+        SET sync_status = 'synced'
+      WHERE chain_epoch = ? AND event_id <= ? AND sync_status = 'pending';`,
+    [epoch, upTo],
+  );
+
+  return result.rowsAffected ?? 0;
+}
+
+/** Record one attempt against the events it covered (ERD tbl_attendance_sync_queue). */
+export async function recordSyncAttempt(
+  eventIds: number[],
+  deviceId: string,
+  status: 'synced' | 'failed',
+): Promise<void> {
+  if (eventIds.length === 0) {
+    return;
+  }
+
+  const db = await getDatabase();
+  const now = Date.now();
+
+  await db.transaction(async tx => {
+    for (const eventId of eventIds) {
+      await tx.execute(
+        `INSERT INTO attendance_sync_queue (event_id, device_id, queued_at, synced_at, sync_status)
+         VALUES (?, ?, ?, ?, ?);`,
+        [eventId, deviceId, now, status === 'synced' ? now : null, status],
+      );
+    }
+  });
+}
+
+export async function recordLastSuccessfulSync(at: number): Promise<void> {
+  const db = await getDatabase();
+  await db.execute(
+    "INSERT INTO app_settings (key, value) VALUES ('last_successful_sync', ?) " +
+      'ON CONFLICT(key) DO UPDATE SET value = excluded.value;',
+    [String(at)],
+  );
+}
+
+export type SyncQueueRow = {
+  eventId: number;
+  employeeName: string;
+  status: string;
+  timeIn: number | null;
+  capturedAt: number;
+  syncStatus: EventSyncStatus;
+  overrideFlag: boolean;
+};
+
+export type SyncSummary = {
+  pending: number;
+  synced: number;
+  flagged: number;
+  rejected: number;
+  lastSuccessfulSync: number | null;
+  rows: SyncQueueRow[];
+};
+
+/**
+ * Everything the Sync Queue screen shows.
+ *
+ * Only the latest event per employee+day is listed, matching what the foreman
+ * thinks of as "a record" — an Undo followed by a re-tap is one person, not
+ * three rows. Failed sorts first ("Failed first", per the prototype), then
+ * oldest first within each group ("As marked, oldest first").
+ *
+ * Names come from the roster cache so a failure names the person rather than a
+ * hash ("A failure names the person").
+ */
+export async function getSyncSummary(epoch: string): Promise<SyncSummary> {
+  const db = await getDatabase();
+
+  const counts = await db.execute(
+    `SELECT sync_status, COUNT(*) AS n FROM attendance_events
+      WHERE chain_epoch = ? GROUP BY sync_status;`,
+    [epoch],
+  );
+
+  const tally: Record<string, number> = {};
+  for (const row of counts.rows as any[]) {
+    tally[row.sync_status] = row.n;
+  }
+
+  const rows = await db.execute(
+    `SELECT e.event_id, e.status, e.time_in, e.captured_at, e.sync_status,
+            e.override_flag, r.first_name, r.last_name
+       FROM attendance_events e
+       JOIN (
+         SELECT employee_id, date, MAX(event_id) AS latest_id
+           FROM attendance_events WHERE chain_epoch = ?
+          GROUP BY employee_id, date
+       ) newest ON newest.latest_id = e.event_id
+       LEFT JOIN crew_roster_cache r ON r.employee_id = e.employee_id
+      ORDER BY CASE e.sync_status WHEN 'rejected' THEN 0 ELSE 1 END, e.event_id;`,
+    [epoch],
+  );
+
+  const last = await db.execute(
+    "SELECT value FROM app_settings WHERE key = 'last_successful_sync';",
+  );
+
+  return {
+    pending: tally.pending ?? 0,
+    synced: tally.synced ?? 0,
+    flagged: tally.flagged ?? 0,
+    rejected: tally.rejected ?? 0,
+    lastSuccessfulSync:
+      last.rows.length === 0 ? null : Number((last.rows[0] as any).value),
+    rows: (rows.rows as any[]).map(row => ({
+      eventId: row.event_id,
+      employeeName:
+        row.last_name && row.first_name
+          ? `${row.last_name}, ${row.first_name}`
+          : `Employee #${row.event_id}`,
+      status: row.status,
+      timeIn: row.time_in,
+      capturedAt: row.captured_at,
+      syncStatus: row.sync_status,
+      overrideFlag: !!row.override_flag,
+    })),
+  };
 }

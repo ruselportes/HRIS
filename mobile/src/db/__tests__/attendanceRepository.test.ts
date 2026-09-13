@@ -42,6 +42,34 @@ function eventInsert(): {sql: string; params: any[]} | undefined {
   return dbCalls().find(call => call.sql.includes('INSERT INTO attendance_events'));
 }
 
+/**
+ * The event INSERT's bound values keyed by column name, parsed from the SQL's
+ * own column list.
+ *
+ * Positional destructuring broke the moment chain_epoch was added — every later
+ * index shifted. Reading names from the statement means adding a column cannot
+ * silently re-point an assertion at the wrong value.
+ */
+function eventRow(): Record<string, any> {
+  const insert = eventInsert();
+  if (!insert) {
+    throw new Error('No INSERT INTO attendance_events was issued.');
+  }
+
+  const columnList = insert.sql.match(/INSERT INTO attendance_events\s*\(([^)]*)\)/);
+  if (!columnList) {
+    throw new Error('Could not parse the column list from the event INSERT.');
+  }
+
+  const columns = columnList[1].split(',').map(column => column.trim());
+
+  // sync_status is a SQL literal ('pending'), not a bound parameter, so it has
+  // no entry in params — the bound columns are everything before it.
+  const bound = columns.filter(column => column !== 'sync_status');
+
+  return Object.fromEntries(bound.map((column, i) => [column, insert.params[i]]));
+}
+
 beforeEach(async () => {
   jest.clearAllMocks();
   resetDatabaseInstanceForTests();
@@ -80,47 +108,57 @@ describe('recordStatus', () => {
 
     await recordStatus(42, 7, 'present');
 
-    const insert = eventInsert()!;
-    const [
-      employeeId,
-      crewId,
-      date,
-      status,
-      timeIn,
-      monotonic,
-      bootId,
-      ,
-      deviceId,
-      prevHash,
-      hmacHash,
-      signature,
-    ] = insert.params;
+    const row = eventRow();
 
     // Rebuild the payload from the row that was written and confirm the
     // signature and HMAC were taken over precisely that.
     const payload = {
-      employee_id: employeeId,
-      crew_id: crewId,
-      date,
-      status,
-      time_in: timeIn,
-      monotonic_timestamp: monotonic,
-      boot_id: bootId,
-      device_id: deviceId,
-      prev_hash: prevHash,
+      employee_id: row.employee_id,
+      crew_id: row.crew_id,
+      date: row.date,
+      status: row.status,
+      time_in: row.time_in,
+      monotonic_timestamp: row.monotonic_timestamp,
+      boot_id: row.boot_id,
+      device_id: row.device_id,
+      prev_hash: row.prev_hash,
     };
 
     expect(__signedPayloads).toHaveLength(1);
     expect(__signedPayloads[0]).toBe(canonicalize(payload));
-    expect(hmacHash).toBe(computeHmac(payload, hmacKeyFromBase64(KEY_BASE64)));
-    expect(signature).toBe(`mock-signature:${canonicalize(payload).length}`);
+    expect(row.hmac_hash).toBe(computeHmac(payload, hmacKeyFromBase64(KEY_BASE64)));
+    expect(row.ecdsa_signature).toBe(`mock-signature:${canonicalize(payload).length}`);
+  });
+
+  test('stamps the event with the current binding epoch', async () => {
+    // Scoping the chain to its binding is what lets a rebind restart it.
+    await recordStatus(42, 7, 'present');
+
+    expect(eventRow().chain_epoch).toBe(
+      deviceCredentials.chainEpoch({deviceId: DEVICE_ID, hmacKeyBase64: KEY_BASE64}),
+    );
+  });
+
+  test('looks up the chain tip within the current epoch only', async () => {
+    // Regression for the rebind bug: an unscoped "latest event ever" tip made a
+    // rebound device link to pre-rebind history and never sync again.
+    await recordStatus(42, 7, 'present');
+
+    const tipQuery = dbCalls().find(call =>
+      /SELECT hmac_hash FROM attendance_events/.test(call.sql),
+    );
+
+    expect(tipQuery?.sql).toMatch(/WHERE chain_epoch = \?/);
+    expect(tipQuery?.params).toEqual([
+      deviceCredentials.chainEpoch({deviceId: DEVICE_ID, hmacKeyBase64: KEY_BASE64}),
+    ]);
   });
 
   test('the first event links to a null previous hash', async () => {
     // The mock returns no rows, i.e. an empty log — the device's first event.
     await recordStatus(42, 7, 'present');
 
-    expect(eventInsert()!.params[9]).toBeNull();
+    expect(eventRow().prev_hash).toBeNull();
   });
 
   test('captures the clock before signing, so signing latency cannot alter it', async () => {
@@ -149,9 +187,9 @@ describe('recordStatus', () => {
 
     await recordStatus(42, 7, 'absent');
 
-    const insert = eventInsert()!;
-    expect(insert.params[4]).toBeNull(); // time_in
-    expect(insert.params[5]).toBe(900_000); // monotonic_timestamp
+    const row = eventRow();
+    expect(row.time_in).toBeNull();
+    expect(row.monotonic_timestamp).toBe(900_000);
   });
 });
 

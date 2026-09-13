@@ -53,7 +53,7 @@ export async function getDatabase(): Promise<DB> {
  * in-place `attendance` table with the append-only `attendance_events` log —
  * see the migration below for why that was forced rather than chosen.
  */
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 async function currentSchemaVersion(db: DB): Promise<number> {
   await db.execute(`
@@ -147,6 +147,7 @@ async function initSchema(db: DB): Promise<void> {
       monotonic_timestamp INTEGER NOT NULL,
       boot_id TEXT NOT NULL,
       boot_id_system_backed INTEGER NOT NULL DEFAULT 0,
+      chain_epoch TEXT,
       device_id TEXT NOT NULL,
       prev_hash TEXT,
       hmac_hash TEXT NOT NULL,
@@ -189,6 +190,23 @@ async function initSchema(db: DB): Promise<void> {
 
   // app_settings is created by currentSchemaVersion() above, since the version
   // marker lives in it and has to be readable before any migration runs.
+
+  /*
+   * v2 -> v3: chain_epoch. A v2 install has attendance_events without the
+   * column, and CREATE TABLE IF NOT EXISTS above will not add it. Existing rows
+   * are left NULL, which is correct rather than lossy: they predate epoch
+   * tracking, belong to no current binding, and so cannot be the tip a new
+   * chain links to.
+   */
+  if (from === 2) {
+    await db.execute('ALTER TABLE attendance_events ADD COLUMN chain_epoch TEXT;');
+  }
+
+  // Tip lookup and sync draining are both scoped to the current binding.
+  await db.execute(`
+    CREATE INDEX IF NOT EXISTS idx_attendance_events_epoch
+      ON attendance_events (chain_epoch, event_id);
+  `);
 
   await setSchemaVersion(db, SCHEMA_VERSION);
 }

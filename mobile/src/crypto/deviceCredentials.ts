@@ -23,6 +23,8 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {sha256} from '@noble/hashes/sha2.js';
+import {bytesToHex, utf8ToBytes} from '@noble/hashes/utils.js';
 
 const KEY_DEVICE_ID = 'hris.device.id';
 const KEY_HMAC_SECRET = 'hris.device.hmac_key';
@@ -67,6 +69,24 @@ export async function loadCredentials(): Promise<DeviceCredentials | null> {
   }
 
   return {deviceId, hmacKeyBase64};
+}
+
+/**
+ * Which chain an event belongs to: a short fingerprint of the binding's HMAC
+ * secret.
+ *
+ * Needed because binding resets the SERVER's chain tip to null, while the
+ * device's tip would otherwise be "the most recent event ever captured". After
+ * a rebind the next event would link to pre-rebind history, the server would
+ * expect null, and the device could never sync again — which would break
+ * rebind, the one recovery path for a device whose chain is broken.
+ *
+ * Every binding issues a fresh secret, so the fingerprint changes exactly when
+ * the chain must restart, with no counter to keep in step. Truncated SHA-256 of
+ * a 256-bit random key does not reveal the key.
+ */
+export function chainEpoch(credentials: DeviceCredentials): string {
+  return bytesToHex(sha256(utf8ToBytes(credentials.hmacKeyBase64))).slice(0, 16);
 }
 
 export async function isBound(): Promise<boolean> {
