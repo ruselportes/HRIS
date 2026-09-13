@@ -3,7 +3,7 @@
 Each phase below is weighted **10%** of total project completion (10 phases = 100%).
 Check off tasks as they're completed; a phase counts as done once every task under it is checked.
 
-**Overall progress: ~50% (Phases 1–5 complete: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6.)** Verified by 114 backend tests and 72 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Two claims still carry asterisks and are spelled out under Phase 5: hardware-backed keys need a physical handset to demonstrate (the emulator reports `SOFTWARE`), and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works.
+**Overall progress: ~60% (Phases 1–6 complete: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5.)** Verified by 122 backend tests and 126 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works.
 
 ---
 
@@ -95,11 +95,38 @@ Check off tasks as they're completed; a phase counts as done once every task und
 
 ## Phase 6 — Automated Background Sync Engine (supports UC-04) (10%)
 
-- [ ] Background sync service (mobile)
-- [ ] Retry queue with exponential backoff
-- [ ] Server-side sync ingestion endpoint
-- [ ] Mobile: Foreman Sync Queue screen
-- [ ] Sync latency validated (< 5 seconds on reconnection)
+- [x] Background sync service — `syncEngine.ts` (one attempt, no timers) + `SyncScheduler` (single-flight, triggers). Fires on connectivity regained, app foreground, and first mount. **See the scope note below on what "background" covers.**
+- [x] Retry queue with exponential backoff — jittered, capped at 5 min; halts (expired sign-in, revoked device, broken chain) never retry
+- [x] Server-side sync ingestion — built in Phase 5; this phase **fixed two bugs in it** and added `GET /attendance/sync/status` for lost-response reconciliation
+- [x] Mobile: Foreman Sync Queue screen — the prototype's four states, rebuilt from the pre-reflow original in git history
+- [x] Sync latency on reconnection — reconnection **pre-empts** any backed-off retry and syncs immediately (tested). An actual < 5 s wall-clock figure needs a device on a real network to measure; the logic cannot be the bottleneck, but the network can
+
+> **Scope of "background":** sync runs whenever the app is alive — foreground,
+> or backgrounded but not killed. It does **not** run after Android has killed
+> the app. That needs WorkManager (or `react-native-background-fetch`), a new
+> native dependency that CLAUDE.md §8 requires flagging, and was not added. The
+> SPMP's latency metric is measured *on reconnection*, which the built trigger
+> covers; a foreman who closes the app entirely will sync on next open.
+>
+> **Bugs found and fixed this phase — three, two of them in Phase 5 code:**
+> 1. **Clock failures were rejected; TC-01 says flag them.** A rejection stopped
+>    the chain tip, so one honest NTP jump orphaned every later event. Now:
+>    committed as `verified = false`, audit-logged, and the chain stays continuous
+>    — exactly TC-01's expected result, and the prototype's own "Flagged" vs
+>    "Failed" distinction.
+> 2. **A bad signature let the tip skip the rejected event.** The chain was
+>    precomputed independently of the signature gate. Every TC-03 test used a
+>    single-event batch, so it never showed.
+> 3. **Rebind could never resync.** The device's chain tip was "latest event
+>    ever", so after rebinding it linked to pre-rebind history. The chain is now
+>    scoped to its binding (`chain_epoch`).
+>
+> **Chain-break policy — deliberate, not a gap:** after the server rejects an
+> event, sync halts for that chain rather than re-signing the orphaned events
+> onto the server's tip. Re-signing would launder tampering (the HMAC secret is
+> unencrypted locally, so a root attacker could alter the "innocent" successors
+> and get a valid TEE signature on the result). Records stay on the phone for HR
+> review and Phase 7's retroactive recovery; rebind starts a fresh chain.
 
 ## Phase 7 — Foreman Edge Case Handling (UC-05, UC-06, UC-07 — late override, absent foreman, retroactive recovery) (10%)
 

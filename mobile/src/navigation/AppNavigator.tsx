@@ -18,6 +18,8 @@ import {ForemanHomeScreen} from '../screens/ForemanHomeScreen';
 import {RollCallScreen} from '../screens/RollCallScreen';
 import {ComingSoonScreen} from '../screens/ComingSoonScreen';
 import {DeviceBindingScreen} from '../screens/DeviceBindingScreen';
+import {SyncQueueScreen} from '../screens/SyncQueueScreen';
+import {useSyncTriggers} from '../sync/useSyncTriggers';
 
 const Tab = createBottomTabNavigator();
 
@@ -25,8 +27,21 @@ function TimesheetTab() {
   return <ComingSoonScreen title="Timesheet" phase="Phase 8 — Payroll Engine" />;
 }
 
-function SyncTab() {
-  return <ComingSoonScreen title="Sync" phase="Phase 6 — Background Sync Engine" />;
+/**
+ * The bound, signed-in app. Sync triggers mount here and nowhere earlier: before
+ * binding there is nothing able to sign, so there is nothing to send.
+ */
+function BoundTabs() {
+  useSyncTriggers();
+
+  return (
+    <Tab.Navigator screenOptions={{headerShown: false}}>
+      <Tab.Screen name="Home" component={ForemanHomeScreen} />
+      <Tab.Screen name="RollCall" component={RollCallScreen} options={{title: 'Roll call'}} />
+      <Tab.Screen name="Timesheet" component={TimesheetTab} />
+      <Tab.Screen name="Sync" component={SyncQueueScreen} />
+    </Tab.Navigator>
+  );
 }
 
 function AppNavigator() {
@@ -73,12 +88,7 @@ function AppNavigator() {
 
   return (
     <NavigationContainer>
-      <Tab.Navigator screenOptions={{headerShown: false}}>
-        <Tab.Screen name="Home" component={ForemanHomeScreen} />
-        <Tab.Screen name="RollCall" component={RollCallScreen} options={{title: 'Roll call'}} />
-        <Tab.Screen name="Timesheet" component={TimesheetTab} />
-        <Tab.Screen name="Sync" component={SyncTab} />
-      </Tab.Navigator>
+      <BoundTabs />
     </NavigationContainer>
   );
 }
