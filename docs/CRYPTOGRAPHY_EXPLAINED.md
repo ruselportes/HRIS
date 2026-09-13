@@ -335,8 +335,24 @@ So the server compares the two deltas:
 ```
 wall clock advanced:      -2h 00m   ← went backwards!
 monotonic advanced:       +0h 05m   ← only 5 minutes really passed
-disagreement (drift):      2h 05m   ← far beyond tolerance → REJECTED
+disagreement (drift):      2h 05m   ← far beyond tolerance → FLAGGED for HR
 ```
+
+**Flagged, not rejected — and the difference is the point.** A clock failure
+does not mean the record was forged. Layers 2 and 3 have already passed, so the
+data is authentic and in the right place in the chain; only its *time* is
+untrusted. So the record is kept, marked `verified = false` so it is excluded
+from trusted data (and from payroll), audit-logged with the drift, and routed
+to HR. Crucially, **the chain keeps going** — the next honest record is still
+accepted. That is exactly what STD TC-01's expected result requires: "the hash
+chain remains continuous."
+
+Rejecting it instead would be worse on both counts. It would contradict the STD,
+and it would stop the chain — so one honest NTP correction past tolerance would
+leave every record the phone ever produced afterwards unable to sync.
+
+Compare Layers 2 and 3, where a failure *does* mean the data can't be trusted:
+those are rejected outright, and everything after them is rejected too.
 
 **Implementation:** [`ClockIntegrityVerifier.php`](../backend/app/Services/Crypto/ClockIntegrityVerifier.php)
 
@@ -353,15 +369,26 @@ disagreement (drift):      2h 05m   ← far beyond tolerance → REJECTED
   discontinuity instead of crying tamper. Chain continuity across the reboot is
   still guaranteed by Layer 2's `prev_hash`, so a reboot cannot be used to
   smuggle in forged history.
-- **Regression is fatal.** Within one boot session, a monotonic counter that
-  went *backwards* is physically impossible — so that value was fabricated.
-  Rejected outright (`monotonic_regressed`).
+- **Regression is the strongest clock signal.** Within one boot session, a
+  monotonic counter that went *backwards* is physically impossible, so that
+  value was fabricated (`monotonic_regressed`). It is still **flagged** rather
+  than rejected — the record passed Layers 2 and 3, so it did come from the
+  enrolled device — but it is a stronger sign of a compromised capture path than
+  ordinary drift, and the audit entry names it specifically so HR can tell them
+  apart.
+- **A flagged reading never becomes the baseline.** The next record is compared
+  against the last *trusted* clock, not the flagged one. Otherwise a second
+  record sharing the falsified clock would look like perfectly normal drift, and
+  the rollback would be laundered.
+- **A flagged record never overwrites a trusted one.** If the worker already has
+  a verified time for that day, a flagged event cannot replace it — TC-01's "no
+  falsified time is committed as the effective attendance time."
 - **Absent workers.** An absent worker has no `time_in`, so there is no wall
   clock to cross-check. Monotonic ordering still applies.
 - **Direction is distinguished.** A backwards jump
   (`wall_clock_rolled_back`) is the classic attack; a forwards jump
   (`wall_clock_jumped_forward`) is more likely misconfiguration. Both are
-  rejected, but the audit trail doesn't conflate them.
+  flagged, but the audit trail doesn't conflate them.
 
 ### What it cannot do
 
@@ -597,9 +624,22 @@ Putting it together. The foreman taps **"Present"** for a worker, offline:
 11. **Layer 3:** verify the ECDSA signature against the stored public key.
 12. **Layer 1:** cross-check wall clock against monotonic clock versus the
     previous record.
-13. All three pass → record accepted, `verified = true`.
-    Any fail → rejected with a specific reason, and the audit trail records
-    which layer caught it and where.
+13. The outcome is one of three, not two:
+    - **Layer 2 or 3 fails → rejected.** The data can't be trusted. Not stored,
+      and every later record in the chain is rejected too.
+    - **Only Layer 1 fails → flagged.** The data is authentic; its time isn't.
+      Stored as `verified = false`, excluded from payroll, sent to HR — and the
+      chain continues.
+    - **All three pass → accepted**, `verified = true`.
+
+    Every rejection and every flag writes an audit entry naming which layer
+    caught it and why.
+
+    The checks run in that order for a reason: the chain is judged against the
+    tip the server actually *accepted*. An earlier version pre-computed the chain
+    independently of the signature check, so a record with a bad signature still
+    let the record after it pass — silently skipping the rejected one. That bug
+    was found and fixed in Phase 6.
 
 ---
 
@@ -607,7 +647,7 @@ Putting it together. The foreman taps **"Present"** for a worker, offline:
 
 | Test | Attack simulated | Layer that catches it | Expected result |
 |---|---|---|---|
-| **TC-01** | Roll the device clock back two hours and log attendance | Layer 1 — monotonic cross-check | Rejected, `wall_clock_rolled_back`, with drift reported |
+| **TC-01** | Roll the device clock back two hours and log attendance | Layer 1 — monotonic cross-check | **Flagged** (not rejected), `wall_clock_rolled_back`, drift reported, `verified = false`, audit entry written — and the hash chain remains continuous |
 | **TC-02** | Edit a row in the local SQLite database directly | Layer 2 — HMAC chain | Row 1 accepted; tampered row and all rows after it rejected, with the break point identified |
 | **TC-03** | Submit forged records to the API, then retry with a signature from a non-TEE keypair | Layer 3 — ECDSA verification | Both rejected: `signature_mismatch` (the key is not the enrolled one) |
 
@@ -675,9 +715,33 @@ than a suspicious jump. Continuity across the boundary is still enforced by
 the hash chain's `prev_hash`, so a reboot cannot insert or discard history.
 
 **"Could the foreman just uninstall and reinstall to start fresh?"**
-That destroys the local chain, but the server retains the last accepted hash
-for that device. The next batch's `prev_hash` won't match, and the break is
-visible. Re-enrolment is an authenticated, auditable event.
+Uninstalling wipes the stored binding, so the phone cannot record attendance at
+all until it is set up again — and re-binding is an authenticated event that is
+written to the audit log (`DEVICE_REBOUND`), naming the employee. So HR can see
+that it happened.
+
+Be honest about the limit, though: **any records that had not yet synced are
+destroyed** by the uninstall, and the server cannot recover records it never
+received. What the system guarantees is that the reset is *visible*, not that
+the lost records come back. This is the tamper-evident / tamper-proof
+distinction again — see §12. The practical mitigation is that sync starts on its
+own the moment signal returns, which keeps that window short.
+
+**"What happens if one record is rejected? Does the phone fix itself?"**
+No — deliberately. After a rejection, every later record on that phone links to
+a hash the server refused, so none of them can be verified. It would be easy to
+"repair" them by re-linking and re-signing them. We don't, because that would
+launder tampering: the HMAC key sits on the phone, so someone with root access
+could alter those later records too, and re-signing would give their edits a
+genuine TEE signature. So sending stops, the phone tells the foreman to contact
+HR, and **the records stay on the phone** for HR to review through the
+retroactive recovery workflow. Refusing to auto-heal *is* the security property.
+
+**"What about a phone whose clock is just a bit wrong?"**
+Differences under 120 seconds are treated as normal drift. Beyond that the record
+is **flagged, not rejected**: kept, marked unverified, sent to HR, and the chain
+continues. A wrong clock doesn't mean the record was forged, and rejecting it
+would stop every later record from syncing. See §5.
 
 **"Is this actually novel, or standard practice?"**
 The primitives are all standard and deliberately so — inventing cryptography
