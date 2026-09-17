@@ -130,14 +130,32 @@ Check off tasks as they're completed; a phase counts as done once every task und
 
 ## Phase 7 — Foreman Edge Case Handling (UC-05, UC-06, UC-07 — late override, absent foreman, retroactive recovery) (10%)
 
-- [ ] Late Foreman Override — default 7:00 AM shift credit + `FOREMAN_LATE_OVERRIDE` audit flag
+- [x] Late Foreman Override — default 7:00 AM shift credit + `FOREMAN_LATE_OVERRIDE` audit flag (mobile late-start prompt, "Set each time myself" manual times, server override events with HR approve/reject gating payroll)
 - [ ] 1-click Absent Foreman crew re-assignment
 - [ ] Retroactive Crew Recovery sign-off workflow
-- [ ] `Audit Log` table + service
+- [ ] `Audit Log` table + service — override events done (`OverrideEvents`); reassignment and recovery entries still to come
 - [ ] Web: Acting Foreman Reassignment screen
 - [ ] Web: Attendance Recovery Signoff screen
-- [ ] Web: Late Override Audit screen
-- [ ] Tests: TC-04 late foreman override, TC-05 absent foreman re-assignment
+- [x] Web: Late Override Audit screen (`/overrides`, Overrides & Audit)
+- [ ] Tests: TC-04 late foreman override ✓ (automated: `LateOverrideTest`, `RollCallScreen.test.tsx`), TC-05 absent foreman re-assignment
+
+> **UC-05 — how the override is trusted.** The credit is not a separate message
+> from the phone: every credited record carries a signed `override_type`
+> (payload v2), and the server both checks it (`TimeInPolicy`: a shift credit
+> must be Present, exactly 07:00 site time, and genuinely past the 15-minute
+> grace) and builds the audit event from those records — one event per foreman,
+> crew and day. Each record keeps its real tap (`captured_at`) beside the
+> credited `time_in`, so a rejection repays from the tap.
+>
+> **Not built from the Late Override Audit prototype**, because nothing records
+> them yet: the foreman's reason, device state, gate-log corroboration, leave
+> conflicts, per-record approval, "Ask foreman", "Export audit log" and the
+> payroll-lock countdown (Phase 8 owns cut-offs).
+>
+> **Still owed:** TC-04 executed on a device (automated tests cover the logic,
+> not the emulator run), and `CrewLeadership` is not yet time-aware — an event
+> captured offline by the foreman who led the crew *at the time* is refused if
+> the crew changed foreman before it synced. Slice 3 (acting foreman) fixes it.
 
 ## Phase 8 — Philippine Labor Code Payroll Engine (UC-08) (10%)
 
