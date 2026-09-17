@@ -21,8 +21,19 @@ import {
 } from '../../native/__mocks__/NativeHrisMonotonicClock';
 import {canonicalize} from '../../crypto/payload';
 import {computeHmac, hmacKeyFromBase64} from '../../crypto/hashChain';
-import {resetDatabaseInstanceForTests} from '../database';
-import {DeviceNotBoundError, recordStatus, undoAttendance} from '../attendanceRepository';
+import {getDatabase, resetDatabaseInstanceForTests} from '../database';
+import {
+  DeviceNotBoundError,
+  getShiftConfig,
+  hasRollCallStarted,
+  recordManualTime,
+  recordShiftCredit,
+  recordStatus,
+  saveLateStartChoice,
+  undoAttendance,
+} from '../attendanceRepository';
+import {DEFAULT_SHIFT, shiftStartMs, siteTimeMs} from '../shiftRules';
+import {todayLocalDate} from '../attendanceLogic';
 import * as deviceCredentials from '../../crypto/deviceCredentials';
 import {createSigningKey} from '../../crypto/teeSigner';
 
@@ -239,5 +250,102 @@ describe('unbound device', () => {
     // writing one would only lose the foreman's work silently.
     expect(eventInsert()).toBeUndefined();
     expect(__signedPayloads).toHaveLength(0);
+  });
+});
+
+/*
+ * Late start (Phase 7 — UC-05, STD TC-04). The server re-checks every one of
+ * these on sync; what is tested here is that the phone signs what the server
+ * expects, so a legitimate override is not refused.
+ */
+describe('late start', () => {
+  /** Answer app_settings reads from a fake store; everything else stays empty. */
+  async function withSettings(settings: Record<string, string>): Promise<void> {
+    const db = await getDatabase();
+
+    (db.execute as jest.Mock).mockImplementation(async (sql: string, params: any[] = []) => {
+      if (/SELECT value FROM app_settings WHERE key = \?/.test(sql) && params[0] in settings) {
+        return {rows: [{value: settings[params[0]]}], rowsAffected: 0};
+      }
+
+      return {rows: [], rowsAffected: 0};
+    });
+  }
+
+  const CACHED_SHIFT = {
+    start: '06:30',
+    late_override_grace_minutes: 10,
+    timezone: 'Asia/Manila',
+    utc_offset_minutes: 480,
+  };
+
+  test('shift credit signs Present at exactly the cached shift start', async () => {
+    await withSettings({shift_config: JSON.stringify(CACHED_SHIFT)});
+
+    await recordShiftCredit(42, 7);
+
+    const row = eventRow();
+    expect(row.status).toBe('present');
+    expect(row.override_type).toBe('shift_credit');
+    expect(row.time_in).toBe(shiftStartMs(todayLocalDate(), CACHED_SHIFT));
+    expect(__signedPayloads[0]).toContain('override_type=shift_credit');
+  });
+
+  test('the credit still records when the tap really happened', async () => {
+    const tappedAt = Date.now();
+    jest.spyOn(Date, 'now').mockReturnValue(tappedAt);
+
+    await recordShiftCredit(42, 7);
+
+    // Both instants are kept: HR sees the credit and the real tap side by side.
+    expect(eventRow().captured_at).toBe(tappedAt);
+    expect(eventRow().time_in).not.toBe(tappedAt);
+  });
+
+  test('manual time signs the stated arrival as manual_time', async () => {
+    const at = siteTimeMs(todayLocalDate(), 7, 45, DEFAULT_SHIFT);
+
+    await recordManualTime(42, 7, 'late', at);
+
+    const row = eventRow();
+    expect(row.status).toBe('late');
+    expect(row.time_in).toBe(at);
+    expect(row.override_type).toBe('manual_time');
+  });
+
+  test('shift rules fall back to the server defaults before the first fetch', async () => {
+    await withSettings({});
+    expect(await getShiftConfig()).toEqual(DEFAULT_SHIFT);
+  });
+
+  test('a malformed cached config falls back rather than blocking roll call', async () => {
+    await withSettings({shift_config: '{"start":"seven"}'});
+    expect(await getShiftConfig()).toEqual(DEFAULT_SHIFT);
+
+    await withSettings({shift_config: 'not json'});
+    expect(await getShiftConfig()).toEqual(DEFAULT_SHIFT);
+  });
+
+  test('roll call counts as started once anyone on the crew is marked today', async () => {
+    const db = await getDatabase();
+    (db.execute as jest.Mock).mockResolvedValueOnce({rows: [{1: 1}], rowsAffected: 0});
+
+    expect(await hasRollCallStarted(7, '2026-09-12')).toBe(true);
+
+    const query = dbCalls().at(-1)!;
+    expect(query.sql).toMatch(/WHERE crew_id = \? AND date = \?/);
+    expect(query.params).toEqual([7, '2026-09-12']);
+  });
+
+  test("saving today's choice clears other days but keeps other crews' today", async () => {
+    await saveLateStartChoice(7, 'credit', '2026-09-12');
+
+    const cleanup = dbCalls().find(call => /DELETE FROM app_settings/.test(call.sql));
+    expect(cleanup?.params).toEqual(['late_start:%:2026-09-12']);
+
+    const write = dbCalls().find(
+      call => /INSERT INTO app_settings/.test(call.sql) && call.params[0] === 'late_start:7:2026-09-12',
+    );
+    expect(JSON.parse(write!.params[1]).mode).toBe('credit');
   });
 });

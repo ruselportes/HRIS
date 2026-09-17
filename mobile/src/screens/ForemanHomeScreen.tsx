@@ -27,6 +27,7 @@ import {
   getCachedCrew,
   listTodayAttendance,
   saveRosterCache,
+  saveShiftConfig,
 } from '../db/attendanceRepository';
 
 export function ForemanHomeScreen() {
@@ -65,6 +66,10 @@ export function ForemanHomeScreen() {
     if (net.isConnected) {
       try {
         const {data} = await apiClient.get('/me/crew');
+        if (data.shift) {
+          // Cached so Roll Call can detect a late start with no signal.
+          await saveShiftConfig(data.shift);
+        }
         if (data.crew) {
           await saveRosterCache(
             data.crew.crew_id,

@@ -27,6 +27,12 @@ import {
 import {chainEpoch, loadCredentials} from '../crypto/deviceCredentials';
 import {captureClock} from '../crypto/monotonicClock';
 import {computeHmac, hmacKeyFromBase64} from '../crypto/hashChain';
+import {
+  DEFAULT_SHIFT,
+  ShiftConfig,
+  creditAtShiftStart,
+  withManualTime,
+} from './shiftRules';
 import {signAttendance} from '../crypto/teeSigner';
 import {AttendancePayloadRecord, OverrideType} from '../crypto/payload';
 
@@ -45,6 +51,9 @@ export interface CachedCrew {
   cachedAt: number;
   members: RosterMember[];
 }
+
+/** A record as roll call shows it: what was credited, and when it was tapped. */
+export type TodayRecord = AttendanceRecord & {capturedAt: number | null};
 
 /** Raised when capture is attempted before the device has been bound. */
 export class DeviceNotBoundError extends Error {
@@ -119,13 +128,14 @@ export async function getCachedCrew(): Promise<CachedCrew | null> {
   };
 }
 
-function rowToRecord(row: any): AttendanceRecord {
+function rowToRecord(row: any): TodayRecord {
   return {
     employeeId: row.employee_id,
     date: row.date,
     status: row.status as AttendanceStatus,
     timeIn: row.time_in,
     overrideType: row.override_type ?? null,
+    capturedAt: row.captured_at ?? null,
   };
 }
 
@@ -180,9 +190,7 @@ export async function getTodayAttendance(
  * Earlier events for the same employee remain in the log; they are history,
  * not current state.
  */
-export async function listTodayAttendance(): Promise<
-  Map<number, AttendanceRecord>
-> {
+export async function listTodayAttendance(): Promise<Map<number, TodayRecord>> {
   const db = await getDatabase();
   const date = todayLocalDate();
 
@@ -196,7 +204,7 @@ export async function listTodayAttendance(): Promise<
     [date],
   );
 
-  const map = new Map<number, AttendanceRecord>();
+  const map = new Map<number, TodayRecord>();
   for (const row of result.rows as any[]) {
     map.set(row.employee_id, rowToRecord(row));
   }
@@ -215,7 +223,7 @@ export async function listTodayAttendance(): Promise<
 async function appendEvent(
   record: AttendanceRecord,
   crewId: number,
-): Promise<AttendanceRecord> {
+): Promise<TodayRecord> {
   const credentials = await loadCredentials();
 
   if (credentials === null) {
@@ -304,9 +312,9 @@ async function appendEvent(
     [insert.insertId ?? null, credentials.deviceId, Date.now()],
   );
 
-  // What was actually signed, so the UI shows the stored time, not the
+  // What was actually signed, so the UI shows the stored times, not the
   // state machine's earlier reading.
-  return {...record, timeIn};
+  return {...record, timeIn, capturedAt: payload.captured_at};
 }
 
 /**
@@ -317,7 +325,7 @@ export async function recordStatus(
   employeeId: number,
   crewId: number,
   status: 'present' | 'late' | 'absent',
-): Promise<AttendanceRecord> {
+): Promise<TodayRecord> {
   const date = todayLocalDate();
   const current = await latestEvent(employeeId, date);
 
@@ -332,11 +340,159 @@ export async function recordStatus(
 export async function undoAttendance(
   employeeId: number,
   crewId: number,
-): Promise<AttendanceRecord> {
+): Promise<TodayRecord> {
   const date = todayLocalDate();
   const current = await latestEvent(employeeId, date);
 
   return appendEvent(undoStatus(current), crewId);
+}
+
+/* ------------------------------------------------------------------------ *
+ * Late start (Phase 7 — UC-05, STD TC-04)
+ * ------------------------------------------------------------------------ */
+
+async function readSetting(key: string): Promise<string | null> {
+  const db = await getDatabase();
+  const result = await db.execute('SELECT value FROM app_settings WHERE key = ?;', [key]);
+
+  return result.rows.length === 0 ? null : String((result.rows[0] as any).value);
+}
+
+async function writeSetting(key: string, value: string): Promise<void> {
+  const db = await getDatabase();
+  await db.execute(
+    'INSERT INTO app_settings (key, value) VALUES (?, ?) ' +
+      'ON CONFLICT(key) DO UPDATE SET value = excluded.value;',
+    [key, value],
+  );
+}
+
+/** Cached from GET /api/me/crew, so the late-start rules work offline. */
+export async function saveShiftConfig(shift: ShiftConfig): Promise<void> {
+  await writeSetting('shift_config', JSON.stringify(shift));
+}
+
+/**
+ * The server's shift rules as last fetched, or its defaults before the first
+ * fetch. A malformed cache falls back rather than throwing: roll call must
+ * still open, and the server re-checks every override on sync regardless.
+ */
+export async function getShiftConfig(): Promise<ShiftConfig> {
+  const raw = await readSetting('shift_config');
+
+  if (raw === null) {
+    return DEFAULT_SHIFT;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+
+    return typeof parsed.start === 'string' &&
+      /^\d{2}:\d{2}$/.test(parsed.start) &&
+      Number.isInteger(parsed.late_override_grace_minutes) &&
+      Number.isInteger(parsed.utc_offset_minutes)
+      ? parsed
+      : DEFAULT_SHIFT;
+  } catch {
+    return DEFAULT_SHIFT;
+  }
+}
+
+/**
+ * How the foreman chose to record a late start:
+ *   credit — everyone marked Present is credited from shift start
+ *   manual — the foreman states each arrival time
+ *   none   — ordinary taps; records carry the real tap time
+ */
+export type LateStartMode = 'credit' | 'manual' | 'none';
+
+export type LateStartChoice = {mode: LateStartMode; decidedAt: number};
+
+const lateStartKey = (crewId: number, date: string) => `late_start:${crewId}:${date}`;
+
+/** The choice already made for this crew today, so it is asked once, not on every visit. */
+export async function getLateStartChoice(
+  crewId: number,
+  date: string = todayLocalDate(),
+): Promise<LateStartChoice | null> {
+  const raw = await readSetting(lateStartKey(crewId, date));
+
+  if (raw === null) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    return ['credit', 'manual', 'none'].includes(parsed.mode) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Remember the choice for today. Other days' choices are cleared at the same
+ * time: they are never read again, since the key carries the date. Other crews'
+ * choices for today are kept — an acting foreman can run two roll calls.
+ *
+ * Only a UI preference. Nothing about the override lives here — each record
+ * carries its own signed override_type, and the server raises the audit event
+ * from those.
+ */
+export async function saveLateStartChoice(
+  crewId: number,
+  mode: LateStartMode,
+  date: string = todayLocalDate(),
+): Promise<LateStartChoice> {
+  const choice: LateStartChoice = {mode, decidedAt: Date.now()};
+  const db = await getDatabase();
+
+  await db.execute(
+    "DELETE FROM app_settings WHERE key LIKE 'late_start:%' AND key NOT LIKE ?;",
+    [`late_start:%:${date}`],
+  );
+  await writeSetting(lateStartKey(crewId, date), JSON.stringify(choice));
+
+  return choice;
+}
+
+/**
+ * Whether anyone on this crew has been marked today. A roll call already under
+ * way is not a late start, even if the foreman comes back to it hours later.
+ */
+export async function hasRollCallStarted(
+  crewId: number,
+  date: string = todayLocalDate(),
+): Promise<boolean> {
+  const db = await getDatabase();
+  const result = await db.execute(
+    'SELECT 1 FROM attendance_events WHERE crew_id = ? AND date = ? LIMIT 1;',
+    [crewId, date],
+  );
+
+  return result.rows.length > 0;
+}
+
+/** Present, credited from shift start — the worker was on site before the foreman. */
+export async function recordShiftCredit(
+  employeeId: number,
+  crewId: number,
+): Promise<TodayRecord> {
+  const date = todayLocalDate();
+  const [current, shift] = await Promise.all([latestEvent(employeeId, date), getShiftConfig()]);
+
+  return appendEvent(creditAtShiftStart(current, date, shift), crewId);
+}
+
+/** Present or Late at an arrival time the foreman states ("Set each time myself"). */
+export async function recordManualTime(
+  employeeId: number,
+  crewId: number,
+  status: 'present' | 'late',
+  timeInMs: number,
+): Promise<TodayRecord> {
+  const current = await latestEvent(employeeId, todayLocalDate());
+
+  return appendEvent(withManualTime(current, status, timeInMs), crewId);
 }
 
 /* ------------------------------------------------------------------------ *
