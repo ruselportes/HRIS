@@ -28,13 +28,22 @@ use InvalidArgumentException;
  */
 class AttendancePayload
 {
-    /** Fields in fixed order. Order is part of the format — do not sort. */
+    /**
+     * Fields in fixed order. Order is part of the format — do not sort.
+     *
+     * v2 added captured_at and override_type. Both change what a worker is
+     * paid or how their time is judged, so both must be covered: captured_at
+     * is the real tap time the clock check runs against, and override_type is
+     * what licenses a time_in that differs from it.
+     */
     public const FIELDS = [
         'employee_id',
         'crew_id',
         'date',
         'status',
         'time_in',
+        'captured_at',
+        'override_type',
         'monotonic_timestamp',
         'boot_id',
         'device_id',
@@ -46,7 +55,7 @@ class AttendancePayload
      */
     public static function canonicalize(array $record): string
     {
-        $version = config('crypto.payload_version', 'v1');
+        $version = config('crypto.payload_version', 'v2');
 
         $lines = ["version={$version}"];
 

@@ -12,16 +12,24 @@
  * @format
  */
 
+import type {OverrideType} from '../crypto/payload';
+
 export type AttendanceStatus = 'pending' | 'present' | 'late' | 'absent';
 
 export interface AttendanceRecord {
   employeeId: number;
   date: string; // YYYY-MM-DD, local device date
   status: AttendanceStatus;
-  timeIn: number | null; // epoch ms, wall-clock placeholder until Phase 5's monotonic capture
-  overrideFlag: boolean; // reserved: set only by the (deferred) manual-time-entry path
+  /** Credited arrival, epoch ms. The tap itself unless overrideType says otherwise. */
+  timeIn: number | null;
+  /** Why timeIn differs from the tap — null for an ordinary tap. */
+  overrideType: OverrideType | null;
 }
 
+/**
+ * An ordinary tap. Clears any earlier override: re-marking a worker by hand
+ * records what the foreman just saw, not the credit applied before it.
+ */
 export function selectStatus(
   record: AttendanceRecord,
   status: 'present' | 'late' | 'absent',
@@ -31,15 +39,16 @@ export function selectStatus(
     ...record,
     status,
     timeIn: status === 'absent' ? null : now,
+    overrideType: null,
   };
 }
 
 export function undoStatus(record: AttendanceRecord): AttendanceRecord {
-  return {...record, status: 'pending', timeIn: null, overrideFlag: false};
+  return {...record, status: 'pending', timeIn: null, overrideType: null};
 }
 
 export function blankRecordFor(employeeId: number, date: string): AttendanceRecord {
-  return {employeeId, date, status: 'pending', timeIn: null, overrideFlag: false};
+  return {employeeId, date, status: 'pending', timeIn: null, overrideType: null};
 }
 
 export function todayLocalDate(now: Date = new Date()): string {

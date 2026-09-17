@@ -21,6 +21,8 @@ const VECTOR_RECORD: AttendancePayloadRecord = {
   date: '2026-09-12',
   status: 'present',
   time_in: 1789200000000,
+  captured_at: 1789200000000,
+  override_type: null,
   monotonic_timestamp: 86400000,
   boot_id: 'b7f3c1a2',
   device_id: 'dev-mgk3f1-a83bd0e1',
@@ -29,12 +31,14 @@ const VECTOR_RECORD: AttendancePayloadRecord = {
 
 /** Must equal AttendancePayloadTest::VECTOR_CANONICAL exactly. */
 const VECTOR_CANONICAL =
-  'version=v1\n' +
+  'version=v2\n' +
   'employee_id=42\n' +
   'crew_id=7\n' +
   'date=2026-09-12\n' +
   'status=present\n' +
   'time_in=1789200000000\n' +
+  'captured_at=1789200000000\n' +
+  'override_type=\n' +
   'monotonic_timestamp=86400000\n' +
   'boot_id=b7f3c1a2\n' +
   'device_id=dev-mgk3f1-a83bd0e1\n' +
@@ -46,7 +50,7 @@ const VECTOR_CANONICAL =
  * Hardcoded rather than derived so a matching bug on both sides cannot hide.
  */
 const VECTOR_DIGEST =
-  '906e597d139deca5875970dcb94fb0bcce0c472fe17fdc867c7a01b1107ec68d';
+  '75122198dee74d1e87c91d7d29d75c53ee3d6237cc3d53a5725f22ca9e7dfffd';
 
 describe('canonicalize', () => {
   test('matches the shared vector byte for byte', () => {
@@ -127,5 +131,14 @@ describe('digest', () => {
 
       expect(digest(mutated)).not.toBe(baseline);
     });
+  });
+
+  test('an override cannot be switched on without changing the digest', () => {
+    // The v1 gap v2 closes: the override now sits inside the signature.
+    const baseline = digest(VECTOR_RECORD);
+
+    expect(
+      digest({...VECTOR_RECORD, override_type: 'shift_credit'}),
+    ).not.toBe(baseline);
   });
 });

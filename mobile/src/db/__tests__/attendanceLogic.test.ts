@@ -52,7 +52,23 @@ describe('undoStatus', () => {
 
     expect(undone.status).toBe('pending');
     expect(undone.timeIn).toBeNull();
-    expect(undone.overrideFlag).toBe(false);
+    expect(undone.overrideType).toBeNull();
+  });
+});
+
+describe('selectStatus and overrides', () => {
+  test('an ordinary re-tap clears an earlier shift credit', () => {
+    const credited = {
+      ...blankRecordFor(1, '2026-09-08'),
+      status: 'present' as const,
+      timeIn: 500,
+      overrideType: 'shift_credit' as const,
+    };
+
+    const retapped = selectStatus(credited, 'late', 9000);
+
+    expect(retapped.overrideType).toBeNull();
+    expect(retapped.timeIn).toBe(9000);
   });
 });
 
@@ -65,7 +81,7 @@ describe('blankRecordFor', () => {
       date: '2026-09-08',
       status: 'pending',
       timeIn: null,
-      overrideFlag: false,
+      overrideType: null,
     });
   });
 });

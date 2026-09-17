@@ -55,7 +55,7 @@ export function RollCallScreen() {
                 date: '',
                 status: 'pending' as AttendanceStatus,
                 timeIn: null,
-                overrideFlag: false,
+                overrideType: null,
               },
           })),
         );

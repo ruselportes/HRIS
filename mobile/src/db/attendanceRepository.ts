@@ -28,7 +28,7 @@ import {chainEpoch, loadCredentials} from '../crypto/deviceCredentials';
 import {captureClock} from '../crypto/monotonicClock';
 import {computeHmac, hmacKeyFromBase64} from '../crypto/hashChain';
 import {signAttendance} from '../crypto/teeSigner';
-import {AttendancePayloadRecord} from '../crypto/payload';
+import {AttendancePayloadRecord, OverrideType} from '../crypto/payload';
 
 export interface RosterMember {
   employeeId: number;
@@ -125,7 +125,7 @@ function rowToRecord(row: any): AttendanceRecord {
     date: row.date,
     status: row.status as AttendanceStatus,
     timeIn: row.time_in,
-    overrideFlag: !!row.override_flag,
+    overrideType: row.override_type ?? null,
   };
 }
 
@@ -228,12 +228,26 @@ async function appendEvent(
   const epoch = chainEpoch(credentials);
   const prevHash = await currentChainTip(epoch);
 
+  /*
+   * An ordinary arrival is credited at the captured tap itself, not at the
+   * Date.now() the state machine read earlier — those are separate reads with
+   * awaits in between, and the server refuses a time_in that drifts from
+   * captured_at. Only an override may carry a different time, and it says so
+   * in the signed override_type.
+   */
+  const timeIn =
+    record.timeIn === null || record.overrideType !== null
+      ? record.timeIn
+      : clock.wallClockMs;
+
   const payload: AttendancePayloadRecord = {
     employee_id: record.employeeId,
     crew_id: crewId,
     date: record.date,
     status: record.status,
-    time_in: record.timeIn,
+    time_in: timeIn,
+    captured_at: clock.wallClockMs,
+    override_type: record.overrideType,
     monotonic_timestamp: Math.round(clock.monotonicMs),
     boot_id: clock.bootId,
     device_id: credentials.deviceId,
@@ -255,7 +269,7 @@ async function appendEvent(
     `INSERT INTO attendance_events
       (employee_id, crew_id, date, status, time_in, monotonic_timestamp,
        boot_id, boot_id_system_backed, chain_epoch, device_id, prev_hash,
-       hmac_hash, ecdsa_signature, override_flag, captured_at, sync_status)
+       hmac_hash, ecdsa_signature, override_type, captured_at, sync_status)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending');`,
     [
       payload.employee_id,
@@ -271,8 +285,8 @@ async function appendEvent(
       payload.prev_hash,
       hmacHash,
       signature,
-      record.overrideFlag ? 1 : 0,
-      clock.wallClockMs,
+      payload.override_type,
+      payload.captured_at,
     ],
   );
 
@@ -290,7 +304,9 @@ async function appendEvent(
     [insert.insertId ?? null, credentials.deviceId, Date.now()],
   );
 
-  return record;
+  // What was actually signed, so the UI shows the stored time, not the
+  // state machine's earlier reading.
+  return {...record, timeIn};
 }
 
 /**
@@ -332,12 +348,16 @@ export async function undoAttendance(
  *   pending  — captured, not yet confirmed by the server
  *   synced   — accepted and trusted
  *   flagged  — accepted but time-suspect, sent for HR review
- *   rejected — refused; failed verification or orphaned by an earlier refusal
+ *   refused  — authentic, but not permitted (e.g. the crew has another
+ *              foreman now). Not saved server-side, but the chain is intact,
+ *              so later events still sync. Phase 7.
+ *   rejected — failed verification or orphaned by an earlier rejection. Breaks
+ *              the chain.
  *
  * "Kept until confirmed by server" (the Sync Queue prototype): nothing is
  * deleted on sync. Rows only change status.
  */
-export type EventSyncStatus = 'pending' | 'synced' | 'flagged' | 'rejected';
+export type EventSyncStatus = 'pending' | 'synced' | 'flagged' | 'refused' | 'rejected';
 
 /**
  * Pending events for the CURRENT binding, in chain order.
@@ -359,7 +379,7 @@ export async function listPendingEvents(epoch: string): Promise<any[]> {
 
 /** Apply the server's verdict to each event, matched by hmac_hash. */
 export async function applyEventOutcomes(
-  outcomes: {hmacHash: string; status: 'accepted' | 'flagged' | 'rejected'}[],
+  outcomes: {hmacHash: string; status: 'accepted' | 'flagged' | 'refused' | 'rejected'}[],
 ): Promise<void> {
   if (outcomes.length === 0) {
     return;
@@ -469,13 +489,14 @@ export type SyncQueueRow = {
   timeIn: number | null;
   capturedAt: number;
   syncStatus: EventSyncStatus;
-  overrideFlag: boolean;
+  overrideType: OverrideType | null;
 };
 
 export type SyncSummary = {
   pending: number;
   synced: number;
   flagged: number;
+  refused: number;
   rejected: number;
   lastSuccessfulSync: number | null;
   rows: SyncQueueRow[];
@@ -508,7 +529,7 @@ export async function getSyncSummary(epoch: string): Promise<SyncSummary> {
 
   const rows = await db.execute(
     `SELECT e.event_id, e.status, e.time_in, e.captured_at, e.sync_status,
-            e.override_flag, r.first_name, r.last_name
+            e.override_type, r.first_name, r.last_name
        FROM attendance_events e
        JOIN (
          SELECT employee_id, date, MAX(event_id) AS latest_id
@@ -516,7 +537,7 @@ export async function getSyncSummary(epoch: string): Promise<SyncSummary> {
           GROUP BY employee_id, date
        ) newest ON newest.latest_id = e.event_id
        LEFT JOIN crew_roster_cache r ON r.employee_id = e.employee_id
-      ORDER BY CASE e.sync_status WHEN 'rejected' THEN 0 ELSE 1 END, e.event_id;`,
+      ORDER BY CASE WHEN e.sync_status IN ('rejected', 'refused') THEN 0 ELSE 1 END, e.event_id;`,
     [epoch],
   );
 
@@ -528,6 +549,7 @@ export async function getSyncSummary(epoch: string): Promise<SyncSummary> {
     pending: tally.pending ?? 0,
     synced: tally.synced ?? 0,
     flagged: tally.flagged ?? 0,
+    refused: tally.refused ?? 0,
     rejected: tally.rejected ?? 0,
     lastSuccessfulSync:
       last.rows.length === 0 ? null : Number((last.rows[0] as any).value),
@@ -541,7 +563,7 @@ export async function getSyncSummary(epoch: string): Promise<SyncSummary> {
       timeIn: row.time_in,
       capturedAt: row.captured_at,
       syncStatus: row.sync_status,
-      overrideFlag: !!row.override_flag,
+      overrideType: row.override_type ?? null,
     })),
   };
 }

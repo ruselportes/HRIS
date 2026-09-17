@@ -27,11 +27,12 @@ class AttendanceSyncController extends Controller
 
         $result = $this->sync->ingest($deviceKey, $request->validated()['events']);
 
-        $clean = $result['flagged'] === 0 && $result['rejected'] === 0;
+        $clean = $result['flagged'] === 0 && $result['refused'] === 0 && $result['rejected'] === 0;
 
         return response()->json([
             'accepted' => $result['accepted'],
             'flagged' => $result['flagged'],
+            'refused' => $result['refused'],
             'rejected' => $result['rejected'],
             'last_chain_hash' => $result['last_chain_hash'],
             'results' => $result['results'],

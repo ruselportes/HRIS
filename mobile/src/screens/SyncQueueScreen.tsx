@@ -225,7 +225,13 @@ function Header({
         <Stat label="Waiting" value={summary.pending} />
         <Stat label="Sent" value={summary.synced} />
         <Stat label="For review" value={summary.flagged} />
-        <Stat label="Not accepted" value={summary.rejected} warn={summary.rejected > 0} />
+        {/* The foreman does not need the refused/rejected distinction to act —
+            neither record counts. The row detail says which kind it was. */}
+        <Stat
+          label="Not accepted"
+          value={summary.rejected + summary.refused}
+          warn={summary.rejected + summary.refused > 0}
+        />
       </View>
 
       {/* "Last successful sync always shows." */}
@@ -236,7 +242,9 @@ function Header({
 
       {summary.rows.length > 0 && (
         <Text style={styles.sectionLabel}>
-          {summary.rejected > 0 ? 'Not accepted first, then oldest first' : 'Oldest first'}
+          {summary.rejected + summary.refused > 0
+            ? 'Not accepted first, then oldest first'
+            : 'Oldest first'}
         </Text>
       )}
     </View>
@@ -256,8 +264,20 @@ const TAG: Record<string, {label: string; style: object; textStyle: object}> = {
   pending: {label: 'Queued', style: {backgroundColor: '#e7e7ea'}, textStyle: {color: '#424244'}},
   synced: {label: 'Sent', style: {backgroundColor: '#e6f1ea'}, textStyle: {color: '#1f5334'}},
   flagged: {label: 'For review', style: {backgroundColor: '#efe9f4'}, textStyle: {color: '#4a3260'}},
+  refused: {label: 'Not accepted', style: {backgroundColor: '#f6e1de'}, textStyle: {color: '#75261c'}},
   rejected: {label: 'Not accepted', style: {backgroundColor: '#f6e1de'}, textStyle: {color: '#75261c'}},
 };
+
+/** Plain words for the credited time, so the foreman sees what was assumed. */
+function overrideNote(row: SyncQueueRow): string {
+  if (row.overrideType === 'shift_credit') {
+    return ' · credited from shift start';
+  }
+  if (row.overrideType === 'manual_time') {
+    return ' · time set by you';
+  }
+  return '';
+}
 
 function QueueRow({row}: {row: SyncQueueRow}) {
   const tag = TAG[row.syncStatus] ?? TAG.pending;
@@ -270,12 +290,16 @@ function QueueRow({row}: {row: SyncQueueRow}) {
       ? `${statusWord} · ${formatTime(row.timeIn)} · sent for HR review`
       : row.syncStatus === 'rejected'
       ? `${statusWord} · ${formatTime(row.timeIn)} · not accepted — HR needs to check this`
-      : `${statusWord}${row.timeIn ? ` · ${formatTime(row.timeIn)}` : ''}${
-          row.overrideFlag ? ' · time set by you' : ''
-        }`;
+      : row.syncStatus === 'refused'
+      ? // Authentic but not permitted — most often the crew was reassigned.
+        // Said plainly, and distinct from rejected, which suggests tampering.
+        `${statusWord} · not accepted — this record wasn't allowed (the crew may have a different foreman now)`
+      : `${statusWord}${row.timeIn ? ` · ${formatTime(row.timeIn)}` : ''}${overrideNote(row)}`;
+
+  const failed = row.syncStatus === 'rejected' || row.syncStatus === 'refused';
 
   return (
-    <View style={[styles.row, row.syncStatus === 'rejected' && styles.rowRejected]}>
+    <View style={[styles.row, failed && styles.rowRejected]}>
       <View style={styles.rowText}>
         <Text style={styles.rowName}>{row.employeeName}</Text>
         <Text style={styles.rowDetail}>{detail}</Text>

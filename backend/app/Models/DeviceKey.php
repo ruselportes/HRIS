@@ -33,7 +33,7 @@ class DeviceKey extends Model
         // protection fails quietly, so the rollback check passed a batch it
         // should have rejected.
         'last_monotonic_timestamp',
-        'last_time_in',
+        'last_captured_at',
         'last_boot_id',
         'bound_at',
         'revoked_at',

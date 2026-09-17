@@ -7,6 +7,7 @@ use App\Models\Crew;
 use App\Models\CryptoSignature;
 use App\Models\DeviceKey;
 use App\Models\Employee;
+use App\Services\Attendance\TimeInPolicy;
 use App\Services\Crypto\AttendancePayload;
 use Database\Factories\DeviceKeyFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -105,17 +106,30 @@ class AttendanceSyncTest extends TestCase
         $hmacKey = base64_decode($this->hmacKeyBase64);
 
         foreach (array_values($employeeIds) as $i => $employeeId) {
+            $wallMs = 1789200000000 + ($i * 60_000);
+            $override = $overrides[$i] ?? [];
+
             $payload = array_merge([
                 'employee_id' => $employeeId,
                 'crew_id' => $this->crewId,
                 'date' => '2026-09-12',
                 'status' => 'present',
-                'time_in' => 1789200000000 + ($i * 60_000),
+                'time_in' => $wallMs,
+                'captured_at' => null,
+                'override_type' => null,
                 'monotonic_timestamp' => 86_400_000 + ($i * 60_000),
                 'boot_id' => 'bc7',
                 'device_id' => $this->device->device_id,
                 'prev_hash' => $prevHash,
-            ], $overrides[$i] ?? []);
+            ], $override);
+
+            // An ordinary tap captures at its own time_in, so a test that moves
+            // time_in (a clock rollback) moves captured_at with it — exactly as
+            // a real Settings change would. Absent has no time_in but still a
+            // real tap time. Only an explicit captured_at breaks the link.
+            if (! array_key_exists('captured_at', $override)) {
+                $payload['captured_at'] = $payload['time_in'] ?? $wallMs;
+            }
 
             $canonical = AttendancePayload::canonicalize($payload);
 
@@ -566,5 +580,155 @@ class AttendanceSyncTest extends TestCase
         unset($events[0]['time_in']);
 
         $this->sync($events)->assertStatus(422)->assertJsonValidationErrors('events.0.time_in');
+    }
+
+    /* -------------------------------------------------------------------- *
+     * Phase 7 — payload v2, TimeInPolicy, crew leadership
+     * -------------------------------------------------------------------- */
+
+    /** 07:00 site time on the batch date, in epoch ms. */
+    private function shiftStartMs(): int
+    {
+        return app(TimeInPolicy::class)->shiftStartMs('2026-09-12');
+    }
+
+    /**
+     * The gap v2 closes. In v1 override_flag sat outside the signature, so an
+     * override could be switched on in the local database or in transit
+     * without breaking anything — while changing what the worker is paid.
+     */
+    public function test_an_override_cannot_be_added_to_an_event_after_signing(): void
+    {
+        $events = $this->buildBatch([$this->worker()->employee_id]);
+        $events[0]['override_type'] = 'shift_credit';
+
+        $this->sync($events)
+            ->assertStatus(207)
+            ->assertJsonPath('results.0.status', 'rejected')
+            ->assertJsonPath('results.0.reason', 'hmac_mismatch');
+
+        $this->assertSame(0, Attendance::count());
+    }
+
+    /**
+     * TC-04, server side: foreman opens roll call at 09:20, crew is credited
+     * 07:00. Accepted as TRUSTED data — not flagged as a clock rollback, which
+     * is what the v1 clock check (against time_in) would have done.
+     */
+    public function test_a_late_foreman_shift_credit_is_accepted_and_credited_at_shift_start(): void
+    {
+        $worker = $this->worker();
+
+        $events = $this->buildBatch([$worker->employee_id], null, [
+            0 => [
+                'time_in' => $this->shiftStartMs(),
+                'captured_at' => $this->shiftStartMs() + (140 * 60_000), // 09:20
+                'override_type' => 'shift_credit',
+            ],
+        ]);
+
+        $this->sync($events)
+            ->assertOk()
+            ->assertJsonPath('results.0.status', 'accepted');
+
+        $attendance = Attendance::where('employee_id', $worker->employee_id)->first();
+
+        $this->assertSame($this->shiftStartMs(), $attendance->time_in->getTimestampMs());
+        $this->assertSame('shift_credit', $attendance->override_flag);
+        $this->assertTrue($attendance->cryptoSignature->verified);
+    }
+
+    /** Continues past a credit rather than flagging the next honest tap. */
+    public function test_an_ordinary_tap_after_a_shift_credit_is_not_flagged(): void
+    {
+        $workers = [$this->worker(), $this->worker()];
+        $tap = $this->shiftStartMs() + (140 * 60_000);
+
+        $events = $this->buildBatch(array_map(fn ($w) => $w->employee_id, $workers), null, [
+            0 => ['time_in' => $this->shiftStartMs(), 'captured_at' => $tap, 'override_type' => 'shift_credit'],
+            1 => ['time_in' => $tap + 60_000, 'monotonic_timestamp' => 86_400_000 + 60_000],
+        ]);
+
+        $this->sync($events)
+            ->assertOk()
+            ->assertJsonPath('results.1.status', 'accepted');
+    }
+
+    /**
+     * A refused event is authentic but not permitted. It must not be committed,
+     * and it must NOT break the chain: its successors still link and are
+     * accepted, instead of every later event becoming chain_broken_upstream.
+     */
+    public function test_a_shift_credit_for_the_wrong_time_is_refused_without_breaking_the_chain(): void
+    {
+        $workers = [$this->worker(), $this->worker()];
+
+        $events = $this->buildBatch(array_map(fn ($w) => $w->employee_id, $workers), null, [
+            0 => [
+                'time_in' => $this->shiftStartMs() - (60 * 60_000), // 06:00, not 07:00
+                'captured_at' => 1789200000000,
+                'override_type' => 'shift_credit',
+            ],
+        ]);
+
+        $response = $this->sync($events)->assertStatus(207);
+
+        $response->assertJsonPath('refused', 1);
+        $response->assertJsonPath('results.0.status', 'refused');
+        $response->assertJsonPath('results.0.reason', 'shift_credit_time_not_shift_start');
+        $response->assertJsonPath('results.1.status', 'accepted');
+
+        $this->assertNull(Attendance::where('employee_id', $workers[0]->employee_id)->first());
+        $this->assertSame(end($events)['hmac_hash'], $this->device->fresh()->last_chain_hash);
+        $this->assertDatabaseHas('audit_logs', ['action_type' => 'ATTENDANCE_REFUSED']);
+    }
+
+    /**
+     * With the clock check on captured_at, time_in would otherwise be unchecked.
+     * An ordinary tap cannot credit an earlier arrival than when it happened.
+     */
+    public function test_an_ordinary_tap_cannot_backdate_its_time_in(): void
+    {
+        $events = $this->buildBatch([$this->worker()->employee_id], null, [
+            0 => ['time_in' => 1789200000000 - (90 * 60_000), 'captured_at' => 1789200000000],
+        ]);
+
+        $this->sync($events)
+            ->assertStatus(207)
+            ->assertJsonPath('results.0.status', 'refused')
+            ->assertJsonPath('results.0.reason', 'time_in_does_not_match_tap');
+
+        $this->assertSame(0, Attendance::count());
+    }
+
+    /**
+     * TC-05, server side: once a crew has been handed to another foreman, the
+     * original foreman's phone can no longer submit roll call for it — even
+     * though the event is genuine and correctly signed.
+     */
+    public function test_a_foreman_who_no_longer_leads_the_crew_is_refused(): void
+    {
+        $otherForeman = $this->loginUser('foreman');
+        Crew::whereKey($this->crewId)->update(['foreman_id' => $otherForeman->employee_id]);
+
+        $events = $this->buildBatch([$this->worker()->employee_id, $this->worker()->employee_id]);
+
+        $response = $this->sync($events)->assertStatus(207);
+
+        $response->assertJsonPath('refused', 2);
+        $response->assertJsonPath('results.0.reason', 'not_crew_foreman');
+        // Not chain_broken_upstream: a permission problem does not orphan the chain.
+        $response->assertJsonPath('results.1.reason', 'not_crew_foreman');
+
+        $this->assertSame(0, Attendance::count());
+        $this->assertSame(end($events)['hmac_hash'], $this->device->fresh()->last_chain_hash);
+    }
+
+    public function test_captured_at_is_required(): void
+    {
+        $events = $this->buildBatch([$this->worker()->employee_id]);
+        unset($events[0]['captured_at']);
+
+        $this->sync($events)->assertStatus(422)->assertJsonValidationErrors('events.0.captured_at');
     }
 }

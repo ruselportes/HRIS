@@ -25,6 +25,7 @@ class ClockIntegrityVerifierTest extends TestCase
     private function record(int $wallMs, int $monotonicMs, string $bootId = 'boot-a'): array
     {
         return [
+            'captured_at' => $wallMs,
             'time_in' => $wallMs,
             'monotonic_timestamp' => $monotonicMs,
             'boot_id' => $bootId,
@@ -147,14 +148,51 @@ class ClockIntegrityVerifierTest extends TestCase
         $this->assertSame('monotonic_regressed', $result['reason']);
     }
 
-    public function test_absent_worker_without_time_in_skips_the_wall_clock_check(): void
+    public function test_a_baseline_without_captured_at_skips_the_wall_clock_check(): void
     {
-        $previous = $this->record(1789200000000, 86400000);
-        $current = ['time_in' => null, 'monotonic_timestamp' => 86400000 + self::MINUTE, 'boot_id' => 'boot-a'];
+        // Only a baseline migrated from before captured_at was tracked can lack
+        // it; every v2 event carries one.
+        $previous = ['captured_at' => null, 'monotonic_timestamp' => 86400000, 'boot_id' => 'boot-a'];
+        $current = $this->record(1789200000000 + self::MINUTE, 86400000 + self::MINUTE);
 
         $result = $this->verifier->verify($current, $previous);
 
         $this->assertTrue($result['valid']);
         $this->assertSame('no_wall_clock_to_compare', $result['reason']);
+    }
+
+    /**
+     * Phase 7, and the reason the check moved to captured_at. A late foreman
+     * override credits time_in as 07:00 while the tap happens at 09:20. The
+     * clock itself was never touched, so this must NOT look like a rollback.
+     */
+    public function test_a_credited_time_in_far_from_the_tap_is_not_mistaken_for_a_rollback(): void
+    {
+        $previous = $this->record(1789200000000, 86400000);
+
+        $current = $this->record(1789200000000 + 5 * self::MINUTE, 86400000 + 5 * self::MINUTE);
+        $current['time_in'] = 1789200000000 - 140 * self::MINUTE; // credited two hours earlier
+
+        $result = $this->verifier->verify($current, $previous);
+
+        $this->assertTrue($result['valid']);
+        $this->assertSame(0, $result['drift_seconds']);
+    }
+
+    /** An Absent worker has no time_in, but still has a real tap — so it is still checked. */
+    public function test_an_absent_worker_is_still_clock_checked_via_captured_at(): void
+    {
+        $previous = $this->record(1789200000000, 86400000);
+
+        $current = $this->record(
+            1789200000000 - 120 * self::MINUTE + 5 * self::MINUTE,
+            86400000 + 5 * self::MINUTE,
+        );
+        $current['time_in'] = null;
+
+        $result = $this->verifier->verify($current, $previous);
+
+        $this->assertFalse($result['valid']);
+        $this->assertSame('wall_clock_rolled_back', $result['reason']);
     }
 }

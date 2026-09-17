@@ -33,6 +33,8 @@ const RECORD: AttendancePayloadRecord = {
   date: '2026-09-12',
   status: 'present',
   time_in: 1789200000000,
+  captured_at: 1789200000000,
+  override_type: null,
   monotonic_timestamp: 86400000,
   boot_id: 'bc7',
   device_id: 'dev-mgk3f1-a83bd0e1',

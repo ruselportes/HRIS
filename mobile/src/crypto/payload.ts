@@ -18,8 +18,20 @@
 import {sha256} from '@noble/hashes/sha2.js';
 import {bytesToHex, utf8ToBytes} from '@noble/hashes/utils.js';
 
-/** Must match config('crypto.payload_version') on the server. */
-export const PAYLOAD_VERSION = 'v1';
+/**
+ * Must match config('crypto.payload_version') on the server.
+ *
+ * v2 (Phase 7) signs captured_at and override_type. In v1 both sat outside the
+ * signature, so an override — which changes what a worker is paid — could be
+ * switched on in local storage or in transit without breaking anything.
+ */
+export const PAYLOAD_VERSION = 'v2';
+
+/**
+ * Why the credited time_in differs from the tap, if it does. Null for an
+ * ordinary tap. Mirrors TimeInPolicy's OVERRIDE_* constants on the server.
+ */
+export type OverrideType = 'shift_credit' | 'manual_time';
 
 /** Fixed order — the order is part of the format. Do not sort. */
 export const PAYLOAD_FIELDS = [
@@ -28,6 +40,8 @@ export const PAYLOAD_FIELDS = [
   'date',
   'status',
   'time_in',
+  'captured_at',
+  'override_type',
   'monotonic_timestamp',
   'boot_id',
   'device_id',
@@ -41,7 +55,11 @@ export type AttendancePayloadRecord = {
   crew_id: number;
   date: string;
   status: string;
+  /** What the worker is credited with. Equals captured_at unless overridden. */
   time_in: number | null;
+  /** When the tap really happened (wall clock) — what the clock check runs on. */
+  captured_at: number;
+  override_type: OverrideType | null;
   monotonic_timestamp: number;
   boot_id: string;
   device_id: string;

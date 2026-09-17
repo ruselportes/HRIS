@@ -11,7 +11,13 @@
  * @format
  */
 
-export type EventStatus = 'accepted' | 'flagged' | 'rejected';
+/**
+ * `refused` (Phase 7) is NOT a chain break. The event was authentic and
+ * correctly chained but not permitted — e.g. the crew was handed to another
+ * foreman — so the server still advanced its tip and later events link fine.
+ * Only `rejected` halts.
+ */
+export type EventStatus = 'accepted' | 'flagged' | 'refused' | 'rejected';
 
 export type EventResult = {
   hmacHash: string;
@@ -64,7 +70,12 @@ export function classifySuccess(data: any): AttemptOutcome {
  * turns an unknown result into "accepted".
  */
 function normaliseStatus(result: any): EventStatus {
-  if (result.status === 'accepted' || result.status === 'flagged' || result.status === 'rejected') {
+  if (
+    result.status === 'accepted' ||
+    result.status === 'flagged' ||
+    result.status === 'refused' ||
+    result.status === 'rejected'
+  ) {
     return result.status;
   }
 

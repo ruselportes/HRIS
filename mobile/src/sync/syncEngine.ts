@@ -46,7 +46,14 @@ export const BATCH_SIZE = 100;
 
 export type SyncRunResult =
   | {kind: 'idle'}
-  | {kind: 'synced'; sent: number; accepted: number; flagged: number; reconciled: number}
+  | {
+      kind: 'synced';
+      sent: number;
+      accepted: number;
+      flagged: number;
+      refused: number;
+      reconciled: number;
+    }
   | {kind: 'retry'; reason: string; sent: number}
   | {kind: 'halted'; reason: HaltReason | 'unbound'};
 
@@ -60,14 +67,15 @@ function toWireEvent(row: any) {
     // Sent explicitly even when null: the server requires the key to be
     // PRESENT, because a dropped key would change the canonical payload.
     time_in: row.time_in ?? null,
+    // Both signed as of payload v2, so both are sent exactly as stored.
+    captured_at: row.captured_at,
+    override_type: row.override_type ?? null,
     monotonic_timestamp: row.monotonic_timestamp,
     boot_id: row.boot_id,
     device_id: row.device_id,
     prev_hash: row.prev_hash ?? null,
     hmac_hash: row.hmac_hash,
     ecdsa_signature: row.ecdsa_signature,
-    override_flag: !!row.override_flag,
-    captured_at: row.captured_at,
   };
 }
 
@@ -115,13 +123,14 @@ export async function runSync(): Promise<SyncRunResult> {
   if (pending.length === 0) {
     await recordLastSuccessfulSync(Date.now());
     return reconciled > 0
-      ? {kind: 'synced', sent: 0, accepted: 0, flagged: 0, reconciled}
+      ? {kind: 'synced', sent: 0, accepted: 0, flagged: 0, refused: 0, reconciled}
       : {kind: 'idle'};
   }
 
   let sent = 0;
   let accepted = 0;
   let flagged = 0;
+  let refused = 0;
 
   for (let start = 0; start < pending.length; start += BATCH_SIZE) {
     const batch = pending.slice(start, start + BATCH_SIZE);
@@ -157,9 +166,12 @@ export async function runSync(): Promise<SyncRunResult> {
     sent += batch.length;
     accepted += outcome.results.filter(r => r.status === 'accepted').length;
     flagged += outcome.results.filter(r => r.status === 'flagged').length;
+    // Refused events do not halt: the server advanced its tip past them, so
+    // the rest of the queue still links. They stay on the phone as refused.
+    refused += outcome.results.filter(r => r.status === 'refused').length;
 
     // A rejection breaks the chain for every later batch. Stop here rather than
-    // sending batches that are guaranteed to be refused.
+    // sending batches that are guaranteed to be rejected.
     if (outcome.results.some(r => r.status === 'rejected')) {
       return {kind: 'halted', reason: 'chain_broken'};
     }
@@ -167,5 +179,5 @@ export async function runSync(): Promise<SyncRunResult> {
 
   await recordLastSuccessfulSync(Date.now());
 
-  return {kind: 'synced', sent, accepted, flagged, reconciled};
+  return {kind: 'synced', sent, accepted, flagged, refused, reconciled};
 }

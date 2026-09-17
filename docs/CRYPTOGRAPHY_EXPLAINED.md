@@ -281,20 +281,36 @@ and [`backend/app/Services/Crypto/AttendancePayload.php`](../backend/app/Service
 — deliberate mirrors of each other, pinned by a shared test vector on both
 sides.
 
-A canonical payload looks like this:
+A canonical payload looks like this (format **v2**, since Phase 7):
 
 ```
-version=v1
+version=v2
 employee_id=42
 crew_id=1
 date=2026-09-12
 status=present
 time_in=1757649600000
+captured_at=1757649600000
+override_type=
 monotonic_timestamp=845123
 boot_id=b3f1c2d4e5
 device_id=dev-mg8x2k-a91f
 prev_hash=9f86d081884c7d65...
 ```
+
+Two different times appear here, and the difference matters:
+
+- `time_in` — the arrival the worker is **credited** with.
+- `captured_at` — when the tap **actually happened**.
+
+For an ordinary tap they are the same value. They differ only when
+`override_type` says why: `shift_credit` (a late foreman crediting the 07:00
+shift start) or `manual_time` (the foreman stating an arrival time).
+
+**Why v2 exists.** In v1, `captured_at` and the override flag sat *outside* the
+signature. An override changes what a worker is paid, so an unsigned override
+could be switched on in the phone's database, or added in transit, without
+breaking anything. v2 puts both inside the signed payload.
 
 Three defensive details worth understanding:
 
@@ -322,9 +338,24 @@ now genuinely says 6:00 AM. Nothing about the record itself looks wrong.
 
 Every record carries **two independent times**:
 
-- `time_in` — the wall clock. **Untrusted** (the user can set it).
+- `captured_at` — the wall clock at the moment of the tap. **Untrusted** (the
+  user can set it).
 - `monotonic_timestamp` — `elapsedRealtime()`, milliseconds since boot.
   **Cannot be set by the user at all.**
+
+The check runs on `captured_at`, **not** `time_in`. `time_in` is what the
+worker is *credited* with, and a late-foreman override deliberately credits
+07:00 for a tap made at 09:20. Checked against `time_in`, every legitimate
+override would look exactly like a two-hour clock rollback. A real rollback
+still moves `captured_at`, so it is still caught.
+
+That creates a new question: if the clock check ignores `time_in`, what stops
+a signed event from crediting any time at all? A separate rule on the server,
+`TimeInPolicy`. An ordinary tap's `time_in` must equal its `captured_at`. A
+`shift_credit` must be exactly that day's 07:00, on a Present worker, tapped
+after the 15-minute grace window. A `manual_time` must fall on that day and
+cannot be later than the moment it was recorded. An event that breaks these is
+**refused**: it isn't saved, but unlike a rejection it doesn't break the chain.
 
 Between any two consecutive records from the same boot session, *both clocks
 should advance by the same amount.* If 40 minutes of stopwatch time passed,

@@ -13,7 +13,14 @@ return [
     |
     */
 
-    'payload_version' => 'v1',
+    /*
+     | v2 (Phase 7) signs captured_at and override_type. v1 left both outside
+     | the signature, so an override — which changes what a worker is paid —
+     | could be flipped in the local database or in transit without breaking
+     | anything. Clean cut, no v1 acceptance: nothing has shipped past the
+     | emulator, so there are no v1 events in the field to honour.
+     */
+    'payload_version' => 'v2',
 
     /*
      | How far the device's wall clock may disagree with its own monotonic

@@ -88,6 +88,17 @@ describe('classifySuccess', () => {
     expect(outcome.kind === 'processed' && outcome.results[0].status).toBe('flagged');
   });
 
+  test('refused is kept distinct from rejected', () => {
+    // An unknown status falls back to the boolean and becomes "rejected", which
+    // halts the chain. refused must be recognised, or a crew reassignment would
+    // stop the phone syncing entirely.
+    const outcome = classifySuccess({
+      results: [{hmac_hash: 'x', status: 'refused', reason: 'not_crew_foreman', accepted: false}],
+    });
+
+    expect(outcome.kind === 'processed' && outcome.results[0].status).toBe('refused');
+  });
+
   test('falls back to the boolean for a server that predates status', () => {
     const outcome = classifySuccess({
       results: [

@@ -53,7 +53,7 @@ export async function getDatabase(): Promise<DB> {
  * in-place `attendance` table with the append-only `attendance_events` log —
  * see the migration below for why that was forced rather than chosen.
  */
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 async function currentSchemaVersion(db: DB): Promise<number> {
   await db.execute(`
@@ -153,6 +153,7 @@ async function initSchema(db: DB): Promise<void> {
       hmac_hash TEXT NOT NULL,
       ecdsa_signature TEXT NOT NULL,
       override_flag INTEGER NOT NULL DEFAULT 0,
+      override_type TEXT,
       captured_at INTEGER NOT NULL,
       sync_status TEXT NOT NULL DEFAULT 'pending'
     );
@@ -200,6 +201,20 @@ async function initSchema(db: DB): Promise<void> {
    */
   if (from === 2) {
     await db.execute('ALTER TABLE attendance_events ADD COLUMN chain_epoch TEXT;');
+  }
+
+  /*
+   * v3 -> v4 (Phase 7): override_type. The signed payload (v2) carries WHY a
+   * credited time_in differs from the tap — shift_credit or manual_time — and
+   * this row is what was signed, so it has to be stored to be resent. The old
+   * boolean override_flag column is left in place (never written again):
+   * dropping a column needs SQLite 3.35+, and it is harmless.
+   *
+   * Existing rows stay NULL, which is correct: no override could be created
+   * before this version existed.
+   */
+  if (from === 2 || from === 3) {
+    await db.execute('ALTER TABLE attendance_events ADD COLUMN override_type TEXT;');
   }
 
   // Tip lookup and sync draining are both scoped to the current binding.

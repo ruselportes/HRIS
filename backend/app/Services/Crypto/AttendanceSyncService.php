@@ -6,6 +6,8 @@ use App\Models\Attendance;
 use App\Models\AuditLog;
 use App\Models\CryptoSignature;
 use App\Models\DeviceKey;
+use App\Services\Attendance\CrewLeadership;
+use App\Services\Attendance\TimeInPolicy;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -36,16 +38,20 @@ class AttendanceSyncService
         private HashChainVerifier $chainVerifier,
         private SignatureVerifier $signatureVerifier,
         private ClockIntegrityVerifier $clockVerifier,
+        private TimeInPolicy $timeInPolicy,
+        private CrewLeadership $crewLeadership,
     ) {}
 
     public const STATUS_ACCEPTED = 'accepted';
 
     public const STATUS_FLAGGED = 'flagged';
 
+    public const STATUS_REFUSED = 'refused';
+
     public const STATUS_REJECTED = 'rejected';
 
     /**
-     * Three outcomes, not two — and the difference is the substance of this
+     * Four outcomes — and the difference between them is the substance of this
      * method.
      *
      *   rejected — the chain or the signature failed. The DATA cannot be
@@ -63,6 +69,15 @@ class AttendanceSyncService
      *     draws the same line ("Flagged — sent for review" vs "Failed — not
      *     accepted").
      *
+     *   refused (Phase 7) — chain and signature pass, so the event is authentic
+     *     and correctly positioned, but it is not PERMITTED: the device's
+     *     foreman does not lead that crew (TC-05), or the credited time_in is
+     *     not one TimeInPolicy allows. Not committed, audit-logged, and the tip
+     *     DOES advance — the same reasoning as flagged. Refusing to advance
+     *     would turn one unauthorised tap into chain_broken_upstream for every
+     *     event the device ever sends afterwards, bricking its sync over a
+     *     permission problem rather than an integrity one.
+     *
      *   accepted — every gate passed.
      *
      * Treating a clock failure as a rejection would be both wrong against the
@@ -70,7 +85,7 @@ class AttendanceSyncService
      * would orphan every event the device ever produced afterwards.
      *
      * @param  array<int, array<string, mixed>>  $events  in chain order
-     * @return array{accepted:int, flagged:int, rejected:int, last_chain_hash:string|null, results:array<int, array<string, mixed>>}
+     * @return array{accepted:int, flagged:int, refused:int, rejected:int, last_chain_hash:string|null, results:array<int, array<string, mixed>>}
      */
     public function ingest(DeviceKey $deviceKey, array $events): array
     {
@@ -90,7 +105,12 @@ class AttendanceSyncService
         $rejectedEarlier = false;
 
         $results = [];
-        $counts = [self::STATUS_ACCEPTED => 0, self::STATUS_FLAGGED => 0, self::STATUS_REJECTED => 0];
+        $counts = [
+            self::STATUS_ACCEPTED => 0,
+            self::STATUS_FLAGGED => 0,
+            self::STATUS_REFUSED => 0,
+            self::STATUS_REJECTED => 0,
+        ];
 
         foreach ($events as $index => $event) {
             $outcome = $this->evaluate($deviceKey, $event, $hmacKey, $tip, $previousClock, $rejectedEarlier);
@@ -98,6 +118,14 @@ class AttendanceSyncService
             if ($outcome['status'] === self::STATUS_REJECTED) {
                 $rejectedEarlier = true;
                 $this->recordRejection($deviceKey, $event, $outcome['reason']);
+            } elseif ($outcome['status'] === self::STATUS_REFUSED) {
+                $this->recordRefusal($deviceKey, $event, $outcome['reason']);
+
+                // Authentic and correctly chained, so its successors must still
+                // link. The clock baseline does NOT move: a refused event is
+                // never trusted data, so it should not become the reference
+                // later events are judged against.
+                $tip = $event['hmac_hash'];
             } else {
                 $verified = $outcome['status'] === self::STATUS_ACCEPTED;
 
@@ -118,7 +146,7 @@ class AttendanceSyncService
                 if ($verified) {
                     $previousClock = [
                         'monotonic_timestamp' => $event['monotonic_timestamp'],
-                        'time_in' => $event['time_in'] ?? null,
+                        'captured_at' => $event['captured_at'] ?? null,
                         'boot_id' => $event['boot_id'],
                     ];
                 }
@@ -140,13 +168,14 @@ class AttendanceSyncService
         $deviceKey->update([
             'last_chain_hash' => $tip,
             'last_monotonic_timestamp' => $previousClock['monotonic_timestamp'] ?? null,
-            'last_time_in' => $previousClock['time_in'] ?? null,
+            'last_captured_at' => $previousClock['captured_at'] ?? null,
             'last_boot_id' => $previousClock['boot_id'] ?? null,
         ]);
 
         return [
             'accepted' => $counts[self::STATUS_ACCEPTED],
             'flagged' => $counts[self::STATUS_FLAGGED],
+            'refused' => $counts[self::STATUS_REFUSED],
             'rejected' => $counts[self::STATUS_REJECTED],
             // Returned so the device can reconcile after a lost response —
             // see AttendanceSyncController::status().
@@ -193,6 +222,22 @@ class AttendanceSyncService
             return ['status' => self::STATUS_REJECTED, 'reason' => $signature['reason'], 'drift_seconds' => null];
         }
 
+        /*
+         * Permission gates, after authenticity and before the clock. They only
+         * mean anything once the event is known to be genuine, and a refusal
+         * outranks a clock flag: an event that is not permitted must not be
+         * committed at all, not even as unverified.
+         */
+        if (! $this->crewLeadership->leads((int) $deviceKey->employee_id, (int) $event['crew_id'])) {
+            return ['status' => self::STATUS_REFUSED, 'reason' => 'not_crew_foreman', 'drift_seconds' => null];
+        }
+
+        $timeIn = $this->timeInPolicy->evaluate($event);
+
+        if (! $timeIn['valid']) {
+            return ['status' => self::STATUS_REFUSED, 'reason' => $timeIn['reason'], 'drift_seconds' => null];
+        }
+
         $clock = $this->clockVerifier->verify($event, $previousClock);
 
         if (! $clock['valid']) {
@@ -207,10 +252,10 @@ class AttendanceSyncService
     }
 
     /**
-     * The canonical payload fields only. Anything else the device sent
-     * (captured_at, override_flag) is deliberately excluded: the signature was
-     * taken over exactly these fields in exactly this shape, so adding to them
-     * here would break verification.
+     * The canonical payload fields only — exactly the shape that was signed.
+     * As of v2 that includes captured_at and override_type, which v1 left
+     * unsigned; anything else the device sends stays outside the signature
+     * and must not influence what is committed.
      */
     private function payloadOf(array $event): array
     {
@@ -220,6 +265,8 @@ class AttendanceSyncService
             'date' => $event['date'],
             'status' => $event['status'],
             'time_in' => $event['time_in'] ?? null,
+            'captured_at' => $event['captured_at'],
+            'override_type' => $event['override_type'] ?? null,
             'monotonic_timestamp' => $event['monotonic_timestamp'],
             'boot_id' => $event['boot_id'],
             'device_id' => $event['device_id'],
@@ -235,7 +282,7 @@ class AttendanceSyncService
 
         return [
             'monotonic_timestamp' => (int) $deviceKey->last_monotonic_timestamp,
-            'time_in' => $deviceKey->last_time_in === null ? null : (int) $deviceKey->last_time_in,
+            'captured_at' => $deviceKey->last_captured_at === null ? null : (int) $deviceKey->last_captured_at,
             'boot_id' => $deviceKey->last_boot_id,
         ];
     }
@@ -280,7 +327,10 @@ class AttendanceSyncService
                         : null,
                     'monotonic_timestamp' => $event['monotonic_timestamp'],
                     'sync_status' => 'synced',
-                    'override_flag' => ! empty($event['override_flag']) ? '1' : null,
+                    // The override kind, not a bare boolean — shift_credit and
+                    // manual_time are reviewed differently. Read from the
+                    // signed override_type, never an unsigned flag.
+                    'override_flag' => $event['override_type'] ?? null,
                 ],
             );
 
@@ -314,6 +364,31 @@ class AttendanceSyncService
                 $deviceKey->device_id,
                 $reason ?? 'unspecified',
                 $driftSeconds !== null ? " (drift {$driftSeconds}s)" : '',
+            ),
+            'timestamp' => now(),
+        ]);
+    }
+
+    /**
+     * A refused event came from a genuine device but was not permitted. Kept
+     * distinct from ATTENDANCE_VERIFICATION_FAILED because the response is
+     * different: a failed verification suggests tampering, while a refusal is
+     * usually a stale roster or a misapplied override that someone should talk
+     * to the foreman about.
+     */
+    private function recordRefusal(DeviceKey $deviceKey, array $event, ?string $reason): void
+    {
+        AuditLog::create([
+            'actor_id' => $deviceKey->employee_id,
+            'action_type' => 'ATTENDANCE_REFUSED',
+            'description' => sprintf(
+                'Refused attendance for employee %s, crew %s on %s from device %s: %s. '
+                .'Authentic and chained, but not permitted; not committed.',
+                $event['employee_id'] ?? 'unknown',
+                $event['crew_id'] ?? 'unknown',
+                $event['date'] ?? 'unknown date',
+                $deviceKey->device_id,
+                $reason ?? 'unspecified',
             ),
             'timestamp' => now(),
         ]);

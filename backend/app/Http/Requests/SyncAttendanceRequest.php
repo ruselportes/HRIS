@@ -36,6 +36,17 @@ class SyncAttendanceRequest extends FormRequest
              */
             'events.*.time_in' => ['present', 'nullable', 'integer'],
 
+            // Signed as of payload v2. The real wall-clock moment of the tap —
+            // what the clock check runs against, and what time_in is judged
+            // relative to. Required: an event without it cannot be verified.
+            'events.*.captured_at' => ['required', 'integer', 'min:0'],
+
+            // Signed as of payload v2. Null for an ordinary tap. Present (not
+            // "sometimes") for the same reason as time_in: a missing key must
+            // fail validation rather than silently become null and change what
+            // was signed.
+            'events.*.override_type' => ['present', 'nullable', Rule::in(['shift_credit', 'manual_time'])],
+
             'events.*.monotonic_timestamp' => ['required', 'integer', 'min:0'],
             'events.*.boot_id' => ['required', 'string', 'max:64'],
             'events.*.device_id' => ['required', 'string', 'max:100'],
@@ -45,8 +56,6 @@ class SyncAttendanceRequest extends FormRequest
 
             'events.*.hmac_hash' => ['required', 'string', 'size:64'],
             'events.*.ecdsa_signature' => ['required', 'string', 'max:1000'],
-            'events.*.override_flag' => ['sometimes', 'boolean'],
-            'events.*.captured_at' => ['sometimes', 'integer'],
         ];
     }
 }

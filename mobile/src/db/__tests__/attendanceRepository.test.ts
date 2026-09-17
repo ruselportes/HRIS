@@ -118,6 +118,8 @@ describe('recordStatus', () => {
       date: row.date,
       status: row.status,
       time_in: row.time_in,
+      captured_at: row.captured_at,
+      override_type: row.override_type,
       monotonic_timestamp: row.monotonic_timestamp,
       boot_id: row.boot_id,
       device_id: row.device_id,
@@ -128,6 +130,20 @@ describe('recordStatus', () => {
     expect(__signedPayloads[0]).toBe(canonicalize(payload));
     expect(row.hmac_hash).toBe(computeHmac(payload, hmacKeyFromBase64(KEY_BASE64)));
     expect(row.ecdsa_signature).toBe(`mock-signature:${canonicalize(payload).length}`);
+  });
+
+  /*
+   * The server refuses an ordinary tap whose time_in drifts from captured_at.
+   * They used to be two separate Date.now() reads with awaits between them, so
+   * they are now required to be the same value.
+   */
+  test('an ordinary tap signs time_in equal to the captured tap time', async () => {
+    await recordStatus(42, 7, 'present');
+
+    const row = eventRow();
+
+    expect(row.time_in).toBe(row.captured_at);
+    expect(row.override_type).toBeNull();
   });
 
   test('stamps the event with the current binding epoch', async () => {

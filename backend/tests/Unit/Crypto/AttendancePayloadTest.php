@@ -21,18 +21,22 @@ class AttendancePayloadTest extends TestCase
         'date' => '2026-09-12',
         'status' => 'present',
         'time_in' => 1789200000000,
+        'captured_at' => 1789200000000,
+        'override_type' => null,
         'monotonic_timestamp' => 86400000,
         'boot_id' => 'b7f3c1a2',
         'device_id' => 'dev-mgk3f1-a83bd0e1',
         'prev_hash' => 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
     ];
 
-    public const VECTOR_CANONICAL = "version=v1\n"
+    public const VECTOR_CANONICAL = "version=v2\n"
         ."employee_id=42\n"
         ."crew_id=7\n"
         ."date=2026-09-12\n"
         ."status=present\n"
         ."time_in=1789200000000\n"
+        ."captured_at=1789200000000\n"
+        ."override_type=\n"
         ."monotonic_timestamp=86400000\n"
         ."boot_id=b7f3c1a2\n"
         ."device_id=dev-mgk3f1-a83bd0e1\n"
@@ -130,9 +134,24 @@ class AttendancePayloadTest extends TestCase
         );
 
         $this->assertSame(
-            'a82f7ef2c38cf3e92cb99da6aa8016701bc33444d25004f3cf0d2133517c5529',
+            '576e11103aaa6f32b71fe58d84f34360724a96821fe06186f661c1ad5d190f3c',
             $hmac,
         );
+    }
+
+    /**
+     * The reason payload v2 exists: in v1 an override could be switched on
+     * without touching anything signed. It must now change the digest.
+     */
+    public function test_override_type_and_captured_at_are_covered_by_the_signature(): void
+    {
+        $baseline = AttendancePayload::digest(self::VECTOR_RECORD);
+
+        $overridden = array_merge(self::VECTOR_RECORD, ['override_type' => 'shift_credit']);
+        $retimed = array_merge(self::VECTOR_RECORD, ['captured_at' => self::VECTOR_RECORD['captured_at'] + 1]);
+
+        $this->assertNotSame($baseline, AttendancePayload::digest($overridden));
+        $this->assertNotSame($baseline, AttendancePayload::digest($retimed));
     }
 
     public function test_line_break_in_a_field_is_rejected(): void

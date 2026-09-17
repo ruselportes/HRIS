@@ -103,6 +103,8 @@ describe('clockFieldsForPayload', () => {
         date: '2026-09-12',
         status: 'present',
         time_in: 1789200000000,
+        captured_at: 1789200000000,
+        override_type: null,
         device_id: 'dev-test',
         prev_hash: null,
         ...clockFieldsForPayload(),

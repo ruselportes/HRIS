@@ -40,6 +40,8 @@ class HashChainVerifierTest extends TestCase
                 'date' => '2026-09-12',
                 'status' => 'present',
                 'time_in' => 1789200000000 + ($i * 60_000),
+                'captured_at' => 1789200000000 + ($i * 60_000),
+                'override_type' => null,
                 'monotonic_timestamp' => 86400000 + ($i * 60_000),
                 'boot_id' => 'b7f3c1a2',
                 'device_id' => 'dev-mgk3f1-a83bd0e1',

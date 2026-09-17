@@ -36,13 +36,22 @@ function row(n: number) {
     prev_hash: n === 1 ? null : `h${n - 1}`,
     hmac_hash: `h${n}`,
     ecdsa_signature: `s${n}`,
-    override_flag: 0,
+    override_type: null,
     captured_at: 1789200000000 + n,
   };
 }
 
-function summary(overrides: Partial<{rejected: number}> = {}) {
-  return {pending: 0, synced: 0, flagged: 0, rejected: 0, lastSuccessfulSync: null, rows: [], ...overrides};
+function summary(overrides: Partial<{rejected: number; refused: number}> = {}) {
+  return {
+    pending: 0,
+    synced: 0,
+    flagged: 0,
+    refused: 0,
+    rejected: 0,
+    lastSuccessfulSync: null,
+    rows: [],
+    ...overrides,
+  };
 }
 
 function accepting(rows: any[]) {
@@ -129,6 +138,7 @@ test('a fully reconciled queue with nothing left to send reports what it reconci
     sent: 0,
     accepted: 0,
     flagged: 0,
+    refused: 0,
     reconciled: 3,
   });
 });
@@ -143,9 +153,13 @@ test('sends events in chain order with the exact wire shape', async () => {
   const [, body] = postSpy.mock.calls[0];
   expect(body.device_id).toBe(CREDS.deviceId);
   expect(body.events.map((e: any) => e.hmac_hash)).toEqual(['h1', 'h2']);
-  // time_in must be PRESENT even when null; override_flag becomes a boolean.
+  // time_in and override_type must be PRESENT even when null: both are part
+  // of the signed payload, so a dropped key would change what was verified.
   expect(body.events[0]).toHaveProperty('time_in');
-  expect(body.events[0].override_flag).toBe(false);
+  expect(body.events[0]).toHaveProperty('override_type', null);
+  expect(body.events[0]).toHaveProperty('captured_at', 1789200000001);
+  // The unsigned v1 boolean is no longer sent at all.
+  expect(body.events[0]).not.toHaveProperty('override_flag');
 });
 
 test('an absent worker is sent with time_in present as null, not omitted', async () => {
@@ -216,6 +230,34 @@ test('a rejection stops further batches instead of sending ones that must fail',
   expect(repo.applyEventOutcomes).toHaveBeenCalledTimes(1);
   // ...but the second batch is never sent.
   expect(postSpy).toHaveBeenCalledTimes(1);
+});
+
+/*
+ * Phase 7. A refused event (e.g. the crew was handed to another foreman) is
+ * authentic and chained — the server advanced its tip past it. Treating it
+ * like a rejection would halt this phone's sync forever over a permission
+ * problem, so later batches must still be sent.
+ */
+test('a refusal does not halt — later batches are still sent', async () => {
+  const rows = Array.from({length: BATCH_SIZE + 1}, (_, i) => row(i + 1));
+  (repo.listPendingEvents as jest.Mock).mockResolvedValue(rows);
+  postSpy
+    .mockResolvedValueOnce({
+      data: {
+        results: [
+          {hmac_hash: 'h1', status: 'refused', reason: 'not_crew_foreman'},
+          {hmac_hash: 'h2', status: 'accepted', reason: null},
+        ],
+      },
+    })
+    .mockResolvedValueOnce({
+      data: {results: [{hmac_hash: `h${BATCH_SIZE + 1}`, status: 'accepted', reason: null}]},
+    });
+
+  const result = await runSync();
+
+  expect(postSpy).toHaveBeenCalledTimes(2);
+  expect(result).toMatchObject({kind: 'synced', refused: 1, accepted: 2});
 });
 
 test('a network failure mid-run keeps earlier progress and asks to retry', async () => {

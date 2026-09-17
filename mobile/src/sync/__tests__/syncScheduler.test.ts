@@ -87,7 +87,7 @@ test('reconnection pre-empts a long backoff and syncs immediately', async () => 
   const run = jest
     .fn<Promise<SyncRunResult>, []>()
     .mockResolvedValueOnce({kind: 'retry', reason: 'network', sent: 0})
-    .mockResolvedValueOnce({kind: 'synced', sent: 3, accepted: 3, flagged: 0, reconciled: 0});
+    .mockResolvedValueOnce({kind: 'synced', sent: 3, accepted: 3, flagged: 0, refused: 0, reconciled: 0});
 
   const scheduler = new SyncScheduler({run, delay: () => 5 * 60_000, now: () => 0});
 
@@ -118,7 +118,7 @@ test('a successful sync resets the backoff', async () => {
   const run = jest
     .fn<Promise<SyncRunResult>, []>()
     .mockResolvedValueOnce({kind: 'retry', reason: 'network', sent: 0})
-    .mockResolvedValueOnce({kind: 'synced', sent: 1, accepted: 1, flagged: 0, reconciled: 0});
+    .mockResolvedValueOnce({kind: 'synced', sent: 1, accepted: 1, flagged: 0, refused: 0, reconciled: 0});
 
   const scheduler = new SyncScheduler({run, delay: () => 1_000});
 

@@ -5,9 +5,19 @@ namespace App\Services\Crypto;
 /**
  * Monotonic-vs-wall-clock cross-check (Phase 5, TC-01 clock rollback).
  *
- * The device reports two independent times per record: `time_in` (wall clock,
- * user-settable, therefore untrusted) and `monotonic_timestamp`
- * (elapsedRealtime — milliseconds since boot, not settable from Settings).
+ * The device reports two independent times per record: `captured_at` (wall
+ * clock at the tap, user-settable, therefore untrusted) and
+ * `monotonic_timestamp` (elapsedRealtime — milliseconds since boot, not
+ * settable from Settings).
+ *
+ * Why captured_at and not time_in (Phase 7): time_in is what the worker is
+ * CREDITED with, which a late foreman override deliberately sets to 07:00
+ * while the tap really happens at 09:20. Checked against time_in, that is
+ * indistinguishable from a rollback, so every legitimate override would be
+ * flagged. captured_at is when the tap actually happened — the reading the
+ * monotonic counter is measuring. Whether time_in is allowed to differ from it
+ * is TimeInPolicy's decision, not this class's. It also means an Absent worker
+ * is now clock-checked too: no time_in, but still a captured_at.
  *
  * Between two consecutive records from the same boot session, both clocks
  * should advance by the same amount. If the wall clock disagrees with the
@@ -59,13 +69,14 @@ class ClockIntegrityVerifier
             ];
         }
 
-        // An Absent worker has no time_in, so there is no wall clock to
-        // cross-check. The monotonic ordering above still applies.
-        if ($record['time_in'] === null || $previous['time_in'] === null) {
+        // Every v2 event carries captured_at, so this only fires for a baseline
+        // migrated from a device that never recorded one. The monotonic
+        // ordering above still applies.
+        if (($record['captured_at'] ?? null) === null || ($previous['captured_at'] ?? null) === null) {
             return ['valid' => true, 'reason' => 'no_wall_clock_to_compare', 'drift_seconds' => null];
         }
 
-        $wallDelta = (int) $record['time_in'] - (int) $previous['time_in'];
+        $wallDelta = (int) $record['captured_at'] - (int) $previous['captured_at'];
 
         // Both deltas are in milliseconds; drift is their disagreement.
         $driftSeconds = (int) round(abs($wallDelta - $monotonicDelta) / 1000);
