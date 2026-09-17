@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 /**
  * ERD: tbl_attendance (attendance_id, employee_id FK, crew_id FK, time_in,
@@ -26,10 +27,12 @@ class Attendance extends Model
         'employee_id',
         'crew_id',
         'time_in',
+        'captured_at',
         'time_out',
         'monotonic_timestamp',
         'sync_status',
         'override_flag',
+        'override_audit_id',
         'date',
         'status',
     ];
@@ -38,9 +41,62 @@ class Attendance extends Model
     {
         return [
             'time_in' => 'datetime',
+            'captured_at' => 'datetime',
             'time_out' => 'datetime',
             'monotonic_timestamp' => 'integer',
         ];
+    }
+
+    /** The override event (audit entry) this record's credited time belongs to. */
+    public function overrideEvent(): BelongsTo
+    {
+        return $this->belongsTo(AuditLog::class, 'override_audit_id', 'audit_id');
+    }
+
+    /**
+     * Whether payroll may use this record at all (Phase 7, feeding Phase 8).
+     *
+     * A record must carry a verified signature. Beyond that, an overridden
+     * record is held back until HR has decided on its override event: pending
+     * means nobody has checked the credited time yet, so it is not paid on.
+     */
+    public function isPayrollReady(): bool
+    {
+        if ($this->cryptoSignature?->verified !== true) {
+            return false;
+        }
+
+        if ($this->override_flag === null) {
+            return true;
+        }
+
+        return in_array(
+            $this->overrideEvent?->review_status,
+            [AuditLog::REVIEW_APPROVED, AuditLog::REVIEW_REJECTED],
+            true,
+        );
+    }
+
+    /**
+     * The arrival time payroll should use, or null if it cannot use one yet.
+     *
+     * Approved: the credited time stands. Rejected: HR did not accept the
+     * credit, so the worker is paid from when the tap really happened — "rejecting
+     * reverts to the actual tap times". Nothing is rewritten; the decision
+     * governs which recorded time counts, so both stay recoverable.
+     */
+    public function effectiveTimeIn(): ?Carbon
+    {
+        if (! $this->isPayrollReady()) {
+            return null;
+        }
+
+        if ($this->override_flag !== null
+            && $this->overrideEvent?->review_status === AuditLog::REVIEW_REJECTED) {
+            return $this->captured_at;
+        }
+
+        return $this->time_in;
     }
 
     public function employee(): BelongsTo

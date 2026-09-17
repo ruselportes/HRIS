@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\CryptoSignature;
 use App\Models\DeviceKey;
 use App\Services\Attendance\CrewLeadership;
+use App\Services\Attendance\OverrideEvents;
 use App\Services\Attendance\TimeInPolicy;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -40,6 +41,7 @@ class AttendanceSyncService
         private ClockIntegrityVerifier $clockVerifier,
         private TimeInPolicy $timeInPolicy,
         private CrewLeadership $crewLeadership,
+        private OverrideEvents $overrideEvents,
     ) {}
 
     public const STATUS_ACCEPTED = 'accepted';
@@ -129,7 +131,7 @@ class AttendanceSyncService
             } else {
                 $verified = $outcome['status'] === self::STATUS_ACCEPTED;
 
-                $this->commit($event, $verified);
+                $this->commit($deviceKey, $event, $verified);
 
                 if (! $verified) {
                     $this->recordFlag($deviceKey, $event, $outcome['reason'], $outcome['drift_seconds']);
@@ -298,9 +300,9 @@ class AttendanceSyncService
      * one that was verified. A later ACCEPTED event does replace a flagged row,
      * since trusted data should supersede untrusted.
      */
-    private function commit(array $event, bool $verified): void
+    private function commit(DeviceKey $deviceKey, array $event, bool $verified): void
     {
-        DB::transaction(function () use ($event, $verified) {
+        DB::transaction(function () use ($deviceKey, $event, $verified) {
             if (! $verified) {
                 $existing = Attendance::query()
                     ->where('employee_id', $event['employee_id'])
@@ -325,14 +327,25 @@ class AttendanceSyncService
                     'time_in' => isset($event['time_in']) && $event['time_in'] !== null
                         ? Carbon::createFromTimestampMs((int) $event['time_in'])
                         : null,
+                    // The real tap. For an override this is what a rejection
+                    // falls back to; for an ordinary tap it equals time_in.
+                    'captured_at' => Carbon::createFromTimestampMs((int) $event['captured_at']),
                     'monotonic_timestamp' => $event['monotonic_timestamp'],
                     'sync_status' => 'synced',
                     // The override kind, not a bare boolean — shift_credit and
                     // manual_time are reviewed differently. Read from the
                     // signed override_type, never an unsigned flag.
                     'override_flag' => $event['override_type'] ?? null,
+                    // Cleared here and re-linked below if this event is itself an
+                    // override. An ordinary re-tap supersedes an earlier credit,
+                    // so the worker must leave that override's review.
+                    'override_audit_id' => null,
                 ],
             );
+
+            if (! empty($event['override_type'])) {
+                $this->overrideEvents->record($attendance, $event['override_type'], (int) $deviceKey->employee_id);
+            }
 
             CryptoSignature::updateOrCreate(
                 ['attendance_id' => $attendance->attendance_id],

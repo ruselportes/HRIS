@@ -67,6 +67,27 @@ class TimeInPolicy
         };
     }
 
+    /**
+     * What the phone needs to apply the same rules offline: when to offer the
+     * late override and which instant to credit. Sent from here, beside the
+     * rule that enforces it, so device and server cannot disagree.
+     *
+     * utc_offset_minutes lets the device compute "07:00 site time" without a
+     * timezone database. Safe because Asia/Manila has no DST; if the site
+     * timezone ever observed DST, the offset would need to be per date.
+     *
+     * @return array{start:string, late_override_grace_minutes:int, timezone:string, utc_offset_minutes:int}
+     */
+    public function shiftConfig(): array
+    {
+        return [
+            'start' => config('attendance.shift_start', '07:00'),
+            'late_override_grace_minutes' => (int) config('attendance.late_override_grace_minutes', 15),
+            'timezone' => $this->timezone(),
+            'utc_offset_minutes' => Carbon::now($this->timezone())->utcOffset(),
+        ];
+    }
+
     /** Epoch ms of the configured shift start on a date, in site time. */
     public function shiftStartMs(string $date): int
     {

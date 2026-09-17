@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CrewController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\ForemanController;
+use App\Http\Controllers\Api\OverrideController;
 use App\Http\Controllers\Api\ReferenceController;
 use Illuminate\Support\Facades\Route;
 
@@ -75,6 +76,16 @@ Route::middleware('auth:sanctum')->group(function () {
     // Server chain tip, for the sync engine to reconcile after a lost response.
     Route::get('attendance/sync/status', [AttendanceSyncController::class, 'status'])
         ->middleware('role:foreman');
+
+    // Overrides & Audit (Phase 7, UC-05). Viewing per the nav matrix, foremen
+    // scoped to their own in the controller; only HR decides, since approval
+    // changes pay.
+    Route::prefix('overrides')->middleware('role:hr,engineer,admin,foreman')->group(function () {
+        Route::get('/', [OverrideController::class, 'index'])->name('overrides.index');
+        Route::get('{override}', [OverrideController::class, 'show'])->whereNumber('override')->name('overrides.show');
+        Route::post('{override}/approve', [OverrideController::class, 'approve'])->whereNumber('override')->middleware('role:hr');
+        Route::post('{override}/reject', [OverrideController::class, 'reject'])->whereNumber('override')->middleware('role:hr');
+    });
 
     // Must precede apiResource so 'next-code' isn't captured as {employee}.
     Route::middleware('role:hr,admin')->get('employees/next-code', [EmployeeController::class, 'nextCode']);

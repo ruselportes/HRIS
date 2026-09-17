@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ForemanCrewResource;
 use App\Models\Crew;
+use App\Services\Attendance\TimeInPolicy;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,7 +17,7 @@ use Illuminate\Http\Request;
  */
 class ForemanController extends Controller
 {
-    public function myCrew(Request $request): JsonResponse
+    public function myCrew(Request $request, TimeInPolicy $timeInPolicy): JsonResponse
     {
         $crew = Crew::query()
             ->with(['site', 'foreman', 'activeMembers.employee'])
@@ -25,10 +26,12 @@ class ForemanController extends Controller
             ->orderByDesc('deployed_at')
             ->first();
 
-        if ($crew === null) {
-            return response()->json(['crew' => null]);
-        }
-
-        return response()->json(['crew' => new ForemanCrewResource($crew)]);
+        return response()->json([
+            'crew' => $crew === null ? null : new ForemanCrewResource($crew),
+            // Cached with the roster (Phase 7): the late-start override is
+            // offered offline, so the phone needs the shift rules before it
+            // loses signal, not when it next reaches the server.
+            'shift' => $timeInPolicy->shiftConfig(),
+        ]);
     }
 }
