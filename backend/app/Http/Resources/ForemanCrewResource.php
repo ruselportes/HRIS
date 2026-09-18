@@ -23,6 +23,9 @@ class ForemanCrewResource extends JsonResource
                 'site_name' => $this->site->site_name,
                 'location' => $this->site->location,
             ],
+            // Phase 7 (UC-06): set when this foreman is covering for someone,
+            // so the phone can say whose crew it is and until when.
+            'acting' => CrewResource::actingCover($this->resource),
             'members' => $this->activeMembers->map(fn ($assignment) => [
                 'employee_id' => $assignment->employee->employee_id,
                 'employee_code' => $assignment->employee->employee_code,

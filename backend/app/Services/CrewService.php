@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Http\Resources\CrewResource;
 use App\Models\Crew;
 use App\Models\CrewAssignment;
 use App\Models\Employee;
+use App\Services\Attendance\CrewLeadership;
 use App\Support\CertificationStatus;
 use Carbon\Carbon;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -18,6 +20,8 @@ use Illuminate\Support\Collection;
  */
 class CrewService
 {
+    public function __construct(private readonly CrewLeadership $leadership) {}
+
     /**
      * Raw field workers eligible for the builder pool: worker/operator roles
      * (record-only, never login), not separated, and without an active
@@ -86,7 +90,11 @@ class CrewService
 
             if ($existing === null) {
                 CrewAssignment::query()->updateOrCreate(
-                    ['crew_id' => $crew->crew_id, 'employee_id' => $employee->employee_id],
+                    [
+                        'crew_id' => $crew->crew_id,
+                        'employee_id' => $employee->employee_id,
+                        'assignment_type' => CrewAssignment::TYPE_MEMBER,
+                    ],
                     ['status' => 'active', 'date_assigned' => null],
                 );
                 $added[] = $employee->employee_id;
@@ -116,13 +124,15 @@ class CrewService
         CrewAssignment::query()
             ->where('crew_id', $crew->crew_id)
             ->where('employee_id', $employee->employee_id)
+            ->where('assignment_type', CrewAssignment::TYPE_MEMBER)
             ->where('status', 'active')
             ->update(['status' => 'inactive', 'date_assigned' => null]);
     }
 
     /**
-     * Designate a crew foreman. Phase 3 accepts a foreman who already leads
-     * another crew (the acting-foreman/handoff flow is Phase 7's edge case).
+     * Designate a crew's regular foreman. Phase 3 accepts a foreman who already
+     * leads another crew; a temporary handover is ActingForemanService's job.
+     * Goes through CrewLeadership so the change is recorded as history.
      */
     public function designateForeman(Crew $crew, Employee $foreman): void
     {
@@ -132,7 +142,15 @@ class CrewService
             );
         }
 
-        $crew->update(['foreman_id' => $foreman->employee_id]);
+        if ($crew->hasActingForeman()) {
+            // Replacing the foreman mid-cover would leave the cover handing the
+            // crew back to someone who no longer leads it.
+            throw new HttpResponseException(
+                new JsonResponse(['message' => "{$crew->crew_name} has an acting foreman. End the cover before changing its foreman."], 422)
+            );
+        }
+
+        $this->leadership->handOver($crew, $foreman->employee_id, CrewAssignment::TYPE_FOREMAN);
     }
 
     /**
@@ -152,6 +170,7 @@ class CrewService
 
         CrewAssignment::query()
             ->where('crew_id', $crew->crew_id)
+            ->where('assignment_type', CrewAssignment::TYPE_MEMBER)
             ->where('status', 'active')
             ->update(['date_assigned' => $effectiveDate]);
     }
@@ -163,7 +182,7 @@ class CrewService
     public function deploymentOverview(): array
     {
         $crews = Crew::query()
-            ->with(['site', 'foreman', 'activeMembers.employee.role'])
+            ->with(['site', 'foreman', 'regularForeman', 'activeMembers.employee.role'])
             ->where('status', '!=', 'archived')
             ->orderBy('crew_name')
             ->get();
@@ -200,6 +219,7 @@ class CrewService
                         'employee_code' => $crew->foreman->employee_code,
                         'full_name' => $crew->foreman->full_name,
                     ] : null,
+                    'acting' => CrewResource::actingCover($crew),
                     'members' => $crew->activeMembers->map(fn ($a) => [
                         'employee_id' => $a->employee->employee_id,
                         'employee_code' => $a->employee->employee_code,

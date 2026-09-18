@@ -52,4 +52,10 @@ class CrewPolicy
     {
         return $this->hasAnyRole($employee, ['engineer']);
     }
+
+    /** UC-06: hand a crew to an acting foreman, or end that cover. */
+    public function assignActingForeman(Employee $employee, Crew $crew): bool
+    {
+        return $this->hasAnyRole($employee, ['engineer']);
+    }
 }

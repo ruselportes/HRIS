@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ActingForemanController;
 use App\Http\Controllers\Api\AttendanceSyncController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CrewController;
@@ -27,7 +28,9 @@ Route::prefix('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth:sanctum')->group(function () {
+// acting.expire ends acting foreman covers that have run out before anything
+// reads crew leadership (Phase 7, UC-06).
+Route::middleware(['auth:sanctum', 'acting.expire'])->group(function () {
     Route::prefix('auth')->group(function () {
         Route::get('me', [AuthController::class, 'me']);
         Route::post('logout', [AuthController::class, 'logout']);
@@ -51,6 +54,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('{crew}/members', [CrewController::class, 'assignMembers'])->middleware('role:engineer');
         Route::post('{crew}/deploy', [CrewController::class, 'deploy'])->middleware('role:engineer');
         Route::delete('{crew}/members/{employee}', [CrewController::class, 'removeMember'])->middleware('role:engineer');
+
+        // Acting foreman cover (Phase 7, UC-06 / TC-05).
+        Route::get('{crew}/acting-candidates', [ActingForemanController::class, 'candidates'])->middleware('role:engineer');
+        Route::post('{crew}/acting-foreman', [ActingForemanController::class, 'store'])->middleware('role:engineer');
+        Route::delete('{crew}/acting-foreman', [ActingForemanController::class, 'destroy'])->middleware('role:engineer');
     });
 
     Route::get('deployment', [CrewController::class, 'deployment'])->middleware('role:hr,engineer,executive');

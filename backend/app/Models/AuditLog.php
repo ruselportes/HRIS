@@ -22,6 +22,12 @@ class AuditLog extends Model
 
     public const MANUAL_TIME_OVERRIDE = 'MANUAL_TIME_OVERRIDE';
 
+    /** A Site Engineer handed a crew to an acting foreman (UC-06, TC-05). */
+    public const ACTING_FOREMAN_ASSIGNED = 'ACTING_FOREMAN_ASSIGNED';
+
+    /** The cover ended — early by the engineer, or on its own at expiry. */
+    public const ACTING_FOREMAN_ENDED = 'ACTING_FOREMAN_ENDED';
+
     /** Action types that group override records and go through HR review. */
     public const OVERRIDE_TYPES = [self::LATE_OVERRIDE, self::MANUAL_TIME_OVERRIDE];
 

@@ -230,7 +230,16 @@ class AttendanceSyncService
          * outranks a clock flag: an event that is not permitted must not be
          * committed at all, not even as unverified.
          */
-        if (! $this->crewLeadership->leads((int) $deviceKey->employee_id, (int) $event['crew_id'])) {
+        /*
+         * Asked as of the capture, not of the sync: a tap taken offline before
+         * the crew changed hands was the foreman's to take. captured_at is the
+         * device's claim, but it is the same value the clock check below holds
+         * against the monotonic clock, so backdating a tap to before a handover
+         * surfaces as a clock flag rather than passing silently.
+         */
+        $capturedAt = Carbon::createFromTimestampMs((int) $event['captured_at']);
+
+        if (! $this->crewLeadership->leads((int) $deviceKey->employee_id, (int) $event['crew_id'], $capturedAt)) {
             return ['status' => self::STATUS_REFUSED, 'reason' => 'not_crew_foreman', 'drift_seconds' => null];
         }
 

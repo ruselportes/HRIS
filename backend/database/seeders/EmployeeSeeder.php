@@ -98,6 +98,32 @@ class EmployeeSeeder extends Seeder
                 'date_hired' => '2018-11-05',
                 'cost_centre' => 'CO-07',
             ],
+            // Phase 7 (UC-06): a Site Foreman with no crew of their own, so an
+            // acting foreman can be assigned from a fresh seed. Every other
+            // seeded foreman already leads a deployed crew.
+            [
+                'employee_code' => 'ADC-0666',
+                'email' => 'dante.enriquez@arcenasdev.ph',
+                'password' => 'password',
+                'role_id' => $role('foreman'),
+                'site_id' => $site('Site 07 — Mandaue Viaduct'),
+                'first_name' => 'Dante',
+                'last_name' => 'Enriquez',
+                'middle_name' => 'Villaflor',
+                'trade_skill' => 'Rebar',
+                'employment_status' => 'regular',
+                'date_hired' => '2020-04-13',
+                'cost_centre' => 'CO-07',
+                'certification' => [
+                    [
+                        'name' => 'Construction Foreman NC II',
+                        'issuer' => 'TESDA',
+                        'certificate_no' => 'CF-NCII-2021-0551',
+                        'issued_at' => '2021-08-02',
+                        'expires_at' => '2029-08-02',
+                    ],
+                ],
+            ],
             [
                 'employee_code' => 'ADC-0007',
                 'email' => 'ma.arcenas@arcenasdev.ph',
@@ -129,6 +155,9 @@ class EmployeeSeeder extends Seeder
             ['ADC-0906', 'Rhoda', 'Malinao', 'Suyo', 'worker', 'Rebar', 'Site 07 — Mandaue Viaduct', '2025-09-15', 'probationary'],
             ['ADC-0907', 'Greggy', 'Bandala', 'Rosquillos', 'worker', 'Steelwork', 'Site 07 — Mandaue Viaduct', '2026-02-10', 'seasonal'],
             ['ADC-0908', 'Cherry', 'Nocete', 'Patalinghug', 'worker', 'Masonry', 'Site 11 — Talisay Housing', '2024-10-21', 'regular'],
+            // A Site Foreman on record with no HRIS sign-in: shown in the acting
+            // foreman picker but not selectable, since they could not open roll call.
+            ['ADC-0640', 'Jeffrey', 'Roska', 'Lopez', 'foreman', 'Rebar', 'Site 07 — Mandaue Viaduct', '2023-02-20', 'regular'],
         ];
 
         foreach ($workers as [$code, $first, $last, $middle, $roleSlug, $trade, $siteName, $hired, $status]) {
