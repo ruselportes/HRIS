@@ -342,7 +342,7 @@ class PayrollEngine
     {
         return [
             'start' => config('attendance.shift_start', '07:00'),
-            'end' => config('payroll.shift.end', '16:00'),
+            'end' => config('attendance.shift_end', '16:00'),
             'meal_start' => config('payroll.shift.meal_start', '12:00'),
             'meal_end' => config('payroll.shift.meal_end', '13:00'),
         ];

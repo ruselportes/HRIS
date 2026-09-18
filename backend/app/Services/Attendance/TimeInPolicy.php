@@ -76,12 +76,14 @@ class TimeInPolicy
      * timezone database. Safe because Asia/Manila has no DST; if the site
      * timezone ever observed DST, the offset would need to be per date.
      *
-     * @return array{start:string, late_override_grace_minutes:int, timezone:string, utc_offset_minutes:int}
+     * @return array{start:string, end:string, late_override_grace_minutes:int, timezone:string, utc_offset_minutes:int}
      */
     public function shiftConfig(): array
     {
         return [
             'start' => config('attendance.shift_start', '07:00'),
+            // Close shift is offered from here, and credits exactly this.
+            'end' => config('attendance.shift_end', '16:00'),
             'late_override_grace_minutes' => (int) config('attendance.late_override_grace_minutes', 15),
             'timezone' => $this->timezone(),
             'utc_offset_minutes' => Carbon::now($this->timezone())->utcOffset(),

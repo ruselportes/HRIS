@@ -50,7 +50,8 @@ return [
      | paid only from an approved overtime request's time window.
      */
     'shift' => [
-        'end' => env('HRIS_SHIFT_END', '16:00'),
+        // Start and end live in config/attendance.php, beside the rules that
+        // enforce them; only the meal hour is payroll's alone.
         'meal_start' => env('HRIS_MEAL_START', '12:00'),
         'meal_end' => env('HRIS_MEAL_END', '13:00'),
     ],

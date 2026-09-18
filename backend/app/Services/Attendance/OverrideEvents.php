@@ -38,7 +38,22 @@ class OverrideEvents
         $actionType = self::ACTION_FOR_OVERRIDE[$overrideType]
             ?? throw new InvalidArgumentException("Unknown override type [{$overrideType}].");
 
-        $capturedAt = $attendance->captured_at ?? Carbon::now();
+        return $this->attach($attendance, $actionType, $actorId, $attendance->captured_at, 'override_audit_id');
+    }
+
+    /**
+     * Attach a record whose time-out the foreman stated to its review — one
+     * per foreman, crew and day, like the time-in overrides. Linked through
+     * its own column, so a record can be under both reviews at once.
+     */
+    public function recordTimeOut(Attendance $attendance, int $actorId): AuditLog
+    {
+        return $this->attach($attendance, AuditLog::MANUAL_TIME_OUT, $actorId, $attendance->time_out_captured_at, 'time_out_audit_id');
+    }
+
+    private function attach(Attendance $attendance, string $actionType, int $actorId, $capturedAt, string $link): AuditLog
+    {
+        $capturedAt ??= Carbon::now();
         $date = substr((string) $attendance->date, 0, 10);
 
         $event = AuditLog::query()->firstOrCreate(
@@ -87,7 +102,7 @@ class OverrideEvents
             }
         }
 
-        $attendance->update(['override_audit_id' => $event->audit_id]);
+        $attendance->update([$link => $event->audit_id]);
 
         return $event;
     }
@@ -118,6 +133,14 @@ class OverrideEvents
 
     private function describe(string $actionType, int $crewId, string $date): string
     {
+        if ($actionType === AuditLog::MANUAL_TIME_OUT) {
+            return sprintf(
+                'Time-outs set by the foreman for crew %s on %s instead of tapped. Awaiting HR review before payroll.',
+                $crewId,
+                $date,
+            );
+        }
+
         return $actionType === AuditLog::LATE_OVERRIDE
             ? sprintf(
                 'Late roll call: crew %s on %s credited from shift start (%s) instead of the tap time. '

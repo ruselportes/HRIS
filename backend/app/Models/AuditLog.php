@@ -23,6 +23,9 @@ class AuditLog extends Model
 
     public const MANUAL_TIME_OVERRIDE = 'MANUAL_TIME_OVERRIDE';
 
+    /** A time-out the foreman stated rather than tapped (as in the Late Override Audit prototype). */
+    public const MANUAL_TIME_OUT = 'MANUAL_TIME_OUT';
+
     /** A Site Engineer handed a crew to an acting foreman (UC-06, TC-05). */
     public const ACTING_FOREMAN_ASSIGNED = 'ACTING_FOREMAN_ASSIGNED';
 
@@ -48,7 +51,7 @@ class AuditLog extends Model
     public const PAYROLL_APPROVED = 'PAYROLL_APPROVED';
 
     /** Action types that group override records and go through HR review. */
-    public const OVERRIDE_TYPES = [self::LATE_OVERRIDE, self::MANUAL_TIME_OVERRIDE];
+    public const OVERRIDE_TYPES = [self::LATE_OVERRIDE, self::MANUAL_TIME_OVERRIDE, self::MANUAL_TIME_OUT];
 
     public const REVIEW_PENDING = 'pending';
 
@@ -105,6 +108,18 @@ class AuditLog extends Model
     public function overriddenAttendances(): HasMany
     {
         return $this->hasMany(Attendance::class, 'override_audit_id', 'audit_id');
+    }
+
+    /** Records whose manual time-out this event reviews. */
+    public function timeOutAttendances(): HasMany
+    {
+        return $this->hasMany(Attendance::class, 'time_out_audit_id', 'audit_id');
+    }
+
+    /** The records under review: time-outs for a manual time-out event, credited time ins otherwise. */
+    public function reviewedAttendances()
+    {
+        return $this->action_type === self::MANUAL_TIME_OUT ? $this->timeOutAttendances : $this->overriddenAttendances;
     }
 
     public function scopeOverrideEvents(Builder $query): Builder

@@ -21,6 +21,12 @@ class Attendance extends Model
 {
     use HasFactory;
 
+    /** A time-out credited at shift end by Close shift. */
+    public const TIME_OUT_SHIFT_END = 'shift_end';
+
+    /** A time-out the foreman stated; reviewed by HR. */
+    public const TIME_OUT_MANUAL = 'manual_time';
+
     /** sync_status and override_flag of a record rebuilt through recovery (UC-07). */
     public const RECONSTRUCTED = 'reconstructed';
 
@@ -32,6 +38,9 @@ class Attendance extends Model
         'time_in',
         'captured_at',
         'time_out',
+        'time_out_type',
+        'time_out_captured_at',
+        'time_out_audit_id',
         'monotonic_timestamp',
         'sync_status',
         'override_flag',
@@ -46,8 +55,15 @@ class Attendance extends Model
             'time_in' => 'datetime',
             'captured_at' => 'datetime',
             'time_out' => 'datetime',
+            'time_out_captured_at' => 'datetime',
             'monotonic_timestamp' => 'integer',
         ];
+    }
+
+    /** HR's review of a manual time-out on this record. */
+    public function timeOutEvent(): BelongsTo
+    {
+        return $this->belongsTo(AuditLog::class, 'time_out_audit_id', 'audit_id');
     }
 
     /** The override event (audit entry) this record's credited time belongs to. */
@@ -72,6 +88,16 @@ class Attendance extends Model
         }
 
         if ($this->cryptoSignature?->verified !== true) {
+            return false;
+        }
+
+        // A time-out the foreman stated is held, like a stated time in, until
+        // HR has decided on it.
+        if ($this->time_out_type === self::TIME_OUT_MANUAL && ! in_array(
+            $this->timeOutEvent?->review_status,
+            [AuditLog::REVIEW_APPROVED, AuditLog::REVIEW_REJECTED],
+            true,
+        )) {
             return false;
         }
 
@@ -116,6 +142,25 @@ class Attendance extends Model
     public function isReconstructed(): bool
     {
         return $this->sync_status === self::RECONSTRUCTED;
+    }
+
+    /**
+     * The time-out payroll should use, or null for none. A rejected manual
+     * time-out falls back to when it was actually entered, as a rejected time
+     * in falls back to the real tap.
+     */
+    public function effectiveTimeOut(): ?Carbon
+    {
+        if (! $this->isPayrollReady() || $this->time_out === null) {
+            return null;
+        }
+
+        if ($this->time_out_type === self::TIME_OUT_MANUAL
+            && $this->timeOutEvent?->review_status === AuditLog::REVIEW_REJECTED) {
+            return $this->time_out_captured_at;
+        }
+
+        return $this->time_out;
     }
 
     public function employee(): BelongsTo

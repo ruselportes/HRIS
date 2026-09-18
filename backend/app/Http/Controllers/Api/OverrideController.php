@@ -86,7 +86,7 @@ class OverrideController extends Controller
 
         $event = $this->overrideEvents->decide($event, $request->user(), $decision, $note);
 
-        $event->load(['actor', 'crew.site', 'reviewer', 'overriddenAttendances.employee']);
+        $event->load(['actor', 'crew.site', 'reviewer', 'overriddenAttendances.employee', 'timeOutAttendances.employee']);
 
         return response()->json(['data' => new OverrideEventResource($event)]);
     }
@@ -100,8 +100,8 @@ class OverrideController extends Controller
     {
         return AuditLog::query()
             ->overrideEvents()
-            ->whereHas('overriddenAttendances')
-            ->with(['actor', 'crew.site', 'reviewer', 'overriddenAttendances.employee'])
+            ->where(fn (Builder $q) => $q->whereHas('overriddenAttendances')->orWhereHas('timeOutAttendances'))
+            ->with(['actor', 'crew.site', 'reviewer', 'overriddenAttendances.employee', 'timeOutAttendances.employee'])
             ->when(
                 $viewer->role?->slug === 'foreman',
                 fn (Builder $q) => $q->where('actor_id', $viewer->employee_id),

@@ -21,7 +21,8 @@ class OverrideEventResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $records = $this->overriddenAttendances->map(fn (Attendance $a) => self::record($a));
+        $timeOut = $this->action_type === AuditLog::MANUAL_TIME_OUT;
+        $records = $this->reviewedAttendances()->map(fn (Attendance $a) => $timeOut ? self::timeOutRecord($a) : self::record($a));
 
         return [
             'audit_id' => $this->audit_id,
@@ -84,6 +85,41 @@ class OverrideEventResource extends JsonResource
             'credited_minutes' => $creditedMinutes,
             'credited_hours' => round($creditedHours, 2),
             'amount_at_stake' => $hoursPerDay > 0 ? round($creditedHours * $dailyRate / $hoursPerDay, 2) : 0.0,
+        ];
+    }
+
+    /**
+     * A manual time-out under review: the time the foreman stated, and when
+     * they actually entered it. What it is worth depends on the day's hours
+     * and any overtime, so it is shown as the gap, not priced.
+     *
+     * @return array<string, mixed>
+     */
+    public static function timeOutRecord(Attendance $attendance): array
+    {
+        $gapMinutes = 0;
+
+        if ($attendance->time_out !== null && $attendance->time_out_captured_at !== null) {
+            $gapMinutes = max(0, (int) round(
+                ($attendance->time_out_captured_at->getTimestamp() - $attendance->time_out->getTimestamp()) / 60
+            ));
+        }
+
+        return [
+            'attendance_id' => $attendance->attendance_id,
+            'employee' => [
+                'employee_id' => $attendance->employee?->employee_id,
+                'employee_code' => $attendance->employee?->employee_code,
+                'full_name' => $attendance->employee?->full_name,
+                'trade_skill' => $attendance->employee?->trade_skill,
+            ],
+            'status' => $attendance->status,
+            'stated_time_out' => $attendance->time_out,
+            'entered_at' => $attendance->time_out_captured_at,
+            'gap_minutes' => $gapMinutes,
+            'credited_minutes' => 0,
+            'credited_hours' => 0.0,
+            'amount_at_stake' => 0.0,
         ];
     }
 

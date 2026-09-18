@@ -9,6 +9,7 @@ use App\Models\DeviceKey;
 use App\Services\Attendance\CrewLeadership;
 use App\Services\Attendance\OverrideEvents;
 use App\Services\Attendance\TimeInPolicy;
+use App\Services\Attendance\TimeOutPolicy;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -42,6 +43,7 @@ class AttendanceSyncService
         private TimeInPolicy $timeInPolicy,
         private CrewLeadership $crewLeadership,
         private OverrideEvents $overrideEvents,
+        private TimeOutPolicy $timeOutPolicy,
     ) {}
 
     public const STATUS_ACCEPTED = 'accepted';
@@ -247,16 +249,14 @@ class AttendanceSyncService
             return ['status' => self::STATUS_REFUSED, 'reason' => 'not_crew_foreman', 'drift_seconds' => null];
         }
 
-        if ($this->eventTypeOf($event) === self::TIME_OUT) {
-            // Time-out capture is being introduced in steps; until its
-            // policy is in place, a time-out is authentic but not accepted.
-            return ['status' => self::STATUS_REFUSED, 'reason' => 'time_out_not_supported', 'drift_seconds' => null];
-        }
+        // A roll call is judged on its own; a time-out against the record it
+        // closes, which an earlier event in this batch may have just written.
+        $policy = $this->eventTypeOf($event) === self::TIME_OUT
+            ? $this->timeOutPolicy->evaluate($event, $this->storedRecord($event))
+            : $this->timeInPolicy->evaluate($event);
 
-        $timeIn = $this->timeInPolicy->evaluate($event);
-
-        if (! $timeIn['valid']) {
-            return ['status' => self::STATUS_REFUSED, 'reason' => $timeIn['reason'], 'drift_seconds' => null];
+        if (! $policy['valid']) {
+            return ['status' => self::STATUS_REFUSED, 'reason' => $policy['reason'], 'drift_seconds' => null];
         }
 
         $clock = $this->clockVerifier->verify($event, $previousClock);
@@ -343,6 +343,12 @@ class AttendanceSyncService
      */
     private function commit(DeviceKey $deviceKey, array $event, bool $verified): void
     {
+        if ($this->eventTypeOf($event) === self::TIME_OUT) {
+            $this->commitTimeOut($deviceKey, $event, $verified);
+
+            return;
+        }
+
         DB::transaction(function () use ($deviceKey, $event, $verified) {
             if (! $verified) {
                 $existing = Attendance::query()
@@ -381,6 +387,12 @@ class AttendanceSyncService
                     // override. An ordinary re-tap supersedes an earlier credit,
                     // so the worker must leave that override's review.
                     'override_audit_id' => null,
+                    // A new roll call — a re-mark or an Undo — closes nothing:
+                    // any time-out recorded against the earlier status goes.
+                    'time_out' => null,
+                    'time_out_type' => null,
+                    'time_out_captured_at' => null,
+                    'time_out_audit_id' => null,
                 ],
             );
 
@@ -398,6 +410,47 @@ class AttendanceSyncService
                 ],
             );
         });
+    }
+
+    /**
+     * Apply a time-out to the record it closes.
+     *
+     * Only a trusted time-out is applied. A flagged one is audit-logged by the
+     * caller and otherwise ignored, so payroll treats the day as having no
+     * time-out rather than paying on an untrusted clock. And a time-out never
+     * touches the record's signature ledger entry: that entry vouches for the
+     * roll call — status and time in — and a verified time-out must not make a
+     * flagged time in look trusted.
+     */
+    private function commitTimeOut(DeviceKey $deviceKey, array $event, bool $verified): void
+    {
+        if (! $verified) {
+            return;
+        }
+
+        DB::transaction(function () use ($deviceKey, $event) {
+            $record = $this->storedRecord($event);
+            $cleared = $event['time_out'] === null;
+
+            $record->update([
+                'time_out' => $cleared ? null : Carbon::createFromTimestampMs((int) $event['time_out']),
+                'time_out_type' => $event['time_out_type'],
+                'time_out_captured_at' => $cleared ? null : Carbon::createFromTimestampMs((int) $event['captured_at']),
+                'time_out_audit_id' => null,
+            ]);
+
+            if ($event['time_out_type'] === TimeOutPolicy::MANUAL_TIME) {
+                $this->overrideEvents->recordTimeOut($record, (int) $deviceKey->employee_id);
+            }
+        });
+    }
+
+    private function storedRecord(array $event): ?Attendance
+    {
+        return Attendance::query()
+            ->where('employee_id', $event['employee_id'])
+            ->where('date', $event['date'])
+            ->first();
     }
 
     /**

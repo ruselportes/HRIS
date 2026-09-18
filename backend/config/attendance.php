@@ -21,6 +21,20 @@ return [
     'shift_start' => env('HRIS_SHIFT_START', '07:00'),
 
     /*
+     | When the shift ends — what Close shift credits, and the end of a paid
+     | day. Kept beside the start so one place defines the shift; payroll reads
+     | it from here.
+     */
+    'shift_end' => env('HRIS_SHIFT_END', '16:00'),
+
+    /*
+     | The first day phones capture time-outs. From this date payroll warns HR
+     | about a worked day with no time-out; before it, no day could have one.
+     | Set to the day the time-out update reaches the foremen's phones.
+     */
+    'time_out_tracked_from' => env('HRIS_TIME_OUT_TRACKED_FROM', '2026-09-21'),
+
+    /*
      | How long after shift start the override is first offered. The prototype
      | triggers on "first roll call opened after 07:15", so a foreman a few
      | minutes behind records real tap times instead of reaching for a credit.
