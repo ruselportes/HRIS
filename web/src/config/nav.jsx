@@ -17,6 +17,7 @@ export const NAV = [
   { key: 'attendance', label: 'Attendance & DTR', icon: 'clock', group: 'Workforce', note: 'Daily time records', access: { hr: 'full', foreman: 'full', engineer: 'full', admin: 'view', exec: 'view' } },
   { key: 'rollcall', label: 'Roll Call', icon: 'crew', group: 'Workforce', note: 'Crew capture, offline-first', access: { hr: 'none', foreman: 'full', engineer: 'view', admin: 'none', exec: 'none' } },
   { key: 'leave', label: 'Leave Requests', icon: 'leave', group: 'Workforce', note: 'File, endorse, approve', access: { hr: 'full', foreman: 'full', engineer: 'full', admin: 'none', exec: 'view' } },
+  { key: 'recovery', label: 'Attendance Recovery', icon: 'calendar', group: 'Workforce', note: 'Crew-days with no roll call, signed by engineer and HR', access: { hr: 'full', foreman: 'none', engineer: 'full', admin: 'view', exec: 'none' } },
   { key: 'overrides', label: 'Overrides & Audit', icon: 'flag', group: 'Workforce', note: 'Late-start credits and manual times for HR review', access: { hr: 'full', foreman: 'view', engineer: 'view', admin: 'view', exec: 'none' } },
   { key: 'payroll', label: 'Payroll Runs', icon: 'card', group: 'Payroll', note: 'Cut-off, computation, release', access: { hr: 'full', foreman: 'none', engineer: 'none', admin: 'none', exec: 'view' } },
   { key: 'gov', label: "Gov't Remittances", icon: 'doc', group: 'Payroll', note: 'SSS, PhilHealth, Pag-IBIG, BIR', access: { hr: 'full', foreman: 'none', engineer: 'none', admin: 'none', exec: 'view' } },

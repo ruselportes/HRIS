@@ -3,7 +3,7 @@
 Each phase below is weighted **10%** of total project completion (10 phases = 100%).
 Check off tasks as they're completed; a phase counts as done once every task under it is checked.
 
-**Overall progress: ~60% (Phases 1–6 complete: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5.)** Verified by 122 backend tests and 126 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works.
+**Overall progress: ~70% (Phases 1–7 complete: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8.)** Verified by 190 backend tests (passing on both SQLite and MySQL 8.0) and 164 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works.
 
 ---
 
@@ -132,10 +132,10 @@ Check off tasks as they're completed; a phase counts as done once every task und
 
 - [x] Late Foreman Override — default 7:00 AM shift credit + `FOREMAN_LATE_OVERRIDE` audit flag (mobile late-start prompt, "Set each time myself" manual times, server override events with HR approve/reject gating payroll)
 - [x] 1-click Absent Foreman crew re-assignment (acting foreman cover: Today / This week, auto-reverts, engineer can end early)
-- [ ] Retroactive Crew Recovery sign-off workflow
-- [ ] `Audit Log` table + service — override events (`OverrideEvents`) and acting foreman covers (`ACTING_FOREMAN_ASSIGNED` / `_ENDED`) done; recovery sign-off entries still to come
+- [x] Retroactive Crew Recovery sign-off workflow (Site Engineer reconstructs, HR signs off or returns; reconstructed records paid only after both)
+- [x] `Audit Log` table + service — override events (`OverrideEvents`), acting foreman covers (`ACTING_FOREMAN_ASSIGNED` / `_ENDED`), recovery cases (`RETROACTIVE_RECOVERY`) and each recovery step
 - [x] Web: Acting Foreman Reassignment screen (panel on Manpower Allocation's deployment board)
-- [ ] Web: Attendance Recovery Signoff screen
+- [x] Web: Attendance Recovery Signoff screen (`/recovery`, Attendance Recovery)
 - [x] Web: Late Override Audit screen (`/overrides`, Overrides & Audit)
 - [x] Tests: TC-04 late foreman override (`LateOverrideTest`, `RollCallScreen.test.tsx`), TC-05 absent foreman re-assignment (`ActingForemanTest`) — automated; device runs still owed
 
@@ -180,6 +180,21 @@ Check off tasks as they're completed; a phase counts as done once every task und
 >
 > **Still owed:** TC-04 and TC-05 executed on devices (automated tests cover
 > the logic, not the emulator runs).
+>
+> **UC-07 — retroactive recovery.** A gap is a deployed crew's working day
+> (Mon–Sat, `attendance.work_days`) in the last 14 days (`recovery_lookback_days`)
+> with no attendance for anyone. The Site Engineer reconstructs it from the
+> roster with a cause and a note — the first signature — and HR signs it off or
+> returns it with a reason. Reconstructed records carry
+> `sync_status = reconstructed`, no device signature, and are paid only once HR
+> has signed; roll call that later arrives from the phone replaces them. "No
+> work that day" writes no records but still needs HR, since it means nobody is
+> paid for the day. Scoped as decided: no gate biometrics, so the prototype's
+> "evidence strength" is replaced by a **phone check** — the foreman's phone
+> sends records strictly in chain order, so once the server holds a tap from a
+> later day, nothing from this day is still waiting on the phone. The case is an
+> `audit_logs` entry (as with override events), plus one entry per step.
+> Schema: `audit_logs.reason_code` (the cause) — add to the SDD data dictionary.
 >
 > **Dev environment moved to Docker (2026-09-18).** `compose.yaml` runs the API,
 > MySQL 8.0 (the fixed stack's database; XAMPP had MariaDB 10.4), the web

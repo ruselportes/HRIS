@@ -8,6 +8,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { EmployeesPage } from './pages/EmployeesPage'
 import { ManpowerPage } from './pages/ManpowerPage'
 import { OverridesPage } from './pages/OverridesPage'
+import { RecoveryPage } from './pages/RecoveryPage'
 import { ComingSoonPage } from './pages/ComingSoonPage'
 import { NAV, ROLES } from './config/nav'
 
@@ -80,6 +81,15 @@ function ManpowerRoute() {
   return <ManpowerPage />
 }
 
+function RecoveryRoute() {
+  const { user } = useAuth()
+  const access = NAV.find((n) => n.key === 'recovery').access[roleKey(user?.role?.slug)]
+  if (access === 'none') {
+    return <Navigate to="/" replace />
+  }
+  return <RecoveryPage />
+}
+
 function OverridesRoute() {
   const { user } = useAuth()
   const access = NAV.find((n) => n.key === 'overrides').access[roleKey(user?.role?.slug)]
@@ -102,6 +112,7 @@ function App() {
               <Route path="employees" element={<EmployeeRoute />} />
               <Route path="manpower" element={<ManpowerRoute />} />
               <Route path="overrides" element={<OverridesRoute />} />
+              <Route path="recovery" element={<RecoveryRoute />} />
               <Route path=":page" element={<ComingSoonPageShell />} />
             </Route>
           </Route>
