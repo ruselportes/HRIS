@@ -70,6 +70,57 @@ class TimeWorkedTest extends TestCase
         $this->assertEqualsWithDelta($night, $window['night_hours'], 1e-9);
     }
 
+    public static function timeOuts(): array
+    {
+        return [
+            // status, arrival, left at, paid hours
+            'left at 14:00' => ['present', null, '14:00', 6.0],
+            'left during the meal hour' => ['present', null, '12:30', 5.0],
+            'left after shift end' => ['present', null, '18:30', 8.0],
+            'late and left early' => ['late', '08:00', '15:00', 6.0],
+            'left before the shift began' => ['present', null, '06:50', 0.0],
+        ];
+    }
+
+    #[DataProvider('timeOuts')]
+    public function test_a_time_out_ends_the_paid_day(string $status, ?string $arrival, string $leftAt, float $hours): void
+    {
+        $paid = $this->time->regularHours(
+            $status,
+            $arrival === null ? null : $this->time->minutes($arrival),
+            self::SHIFT,
+            $this->time->minutes($leftAt),
+        );
+
+        $this->assertEqualsWithDelta($hours, $paid, 1e-9);
+    }
+
+    public static function cappedWindows(): array
+    {
+        return [
+            // window, left at, hours, night hours
+            'left partway' => ['16:00', '19:00', '18:00', 2.0, 0.0],
+            'left before it began' => ['16:00', '18:00', '15:30', 0.0, 0.0],
+            'left after it ended' => ['16:00', '18:00', '18:30', 2.0, 0.0],
+            'left partway through the night hours' => ['20:00', '00:00', '23:00', 3.0, 1.0],
+            'early-morning window, left in the afternoon' => ['04:00', '07:00', '16:00', 3.0, 2.0],
+        ];
+    }
+
+    #[DataProvider('cappedWindows')]
+    public function test_overtime_ends_when_the_worker_was_timed_out(
+        string $start,
+        string $end,
+        string $leftAt,
+        float $hours,
+        float $night,
+    ): void {
+        $window = $this->time->overtime($start, $end, self::SHIFT, self::NIGHT, $this->time->minutes($leftAt));
+
+        $this->assertEqualsWithDelta($hours, $window['hours'], 1e-9);
+        $this->assertEqualsWithDelta($night, $window['night_hours'], 1e-9);
+    }
+
     public function test_database_times_with_seconds_are_read(): void
     {
         $this->assertEqualsWithDelta(2.0, $this->time->overtime('16:00:00', '18:00:00', self::SHIFT, self::NIGHT)['hours'], 1e-9);

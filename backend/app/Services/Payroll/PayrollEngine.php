@@ -20,14 +20,17 @@ use Illuminate\Support\Facades\DB;
  *
  * For each worker with attendance in a cut-off, day by day: classify the day
  * (ordinary, rest day, special or regular holiday, or combinations), pay the
- * regular hours at the day rate, pay approved overtime on top of the day rate
- * with its night hours on top of that, and pay unworked regular holidays to
- * those entitled. Then the statutory deductions and tax.
+ * regular hours at the day rate — to the time-out if the worker left early —
+ * pay approved overtime on top of the day rate with its night hours on top of
+ * that, and pay unworked regular holidays to those entitled. Then the
+ * statutory deductions and tax.
  *
  * Only attendance payroll may use is paid (Attendance::isPayrollReady): an
- * override HR has not reviewed, a recovery HR has not signed, or a record the
- * clock check flagged holds that worker's row as Blocked, with the reason, so
- * nobody is paid short on data that may still change.
+ * override or stated time-out HR has not reviewed, a recovery HR has not
+ * signed, or a record the clock check flagged holds that worker's row as
+ * Blocked, with the reason, so nobody is paid short on data that may still
+ * change. A worked day with no time-out is paid to shift end with a warning,
+ * not held: before phones captured time-outs, no day had one.
  *
  * Every figure is recorded day by day in the breakdown, so a payslip can be
  * traced back to the roll call and overtime that produced it.
@@ -57,7 +60,7 @@ class PayrollEngine
 
         $attendance = Attendance::query()
             ->whereBetween('date', [$lookBack, $period->end])
-            ->with('employee', 'cryptoSignature', 'overrideEvent')
+            ->with('employee', 'cryptoSignature', 'overrideEvent', 'timeOutEvent')
             ->get()
             ->groupBy('employee_id');
 
@@ -163,15 +166,44 @@ class PayrollEngine
 
             if ($worked) {
                 $recovered = $recovered || $record->isReconstructed();
+                $leftAt = $this->siteMinutes($record->effectiveTimeOut());
 
-                $hours = $this->time->regularHours($record->status, $this->arrival($record), $shift);
+                if ($leftAt === null && $this->expectsTimeOut($record, $date)) {
+                    $warnings[] = "No time-out recorded on {$date}: paid to the end of the shift.";
+                }
+
+                $hours = $this->time->regularHours($record->status, $this->arrival($record), $shift, $leftAt);
                 $multiplier = $this->calculator->multiplier($dayType, false, false, $premiums);
-                $lines[] = $this->line($date, 'regular', $dayType, $hours, $multiplier, $hourly);
+                $line = $this->line($date, 'regular', $dayType, $hours, $multiplier, $hourly);
+
+                if ($leftAt !== null && $leftAt < $this->time->minutes($shift['end'])) {
+                    // Undertime: say where the day was cut short.
+                    $line['time_out'] = $this->clock($leftAt);
+                }
+
+                $lines[] = $line;
                 $basic += $this->calculator->pay($hourly, $hours, 1.0);
                 $buckets[$this->bucketFor($dayType)] += $hours;
 
+                // Close shift credits shift end to everyone still on site; it
+                // says nobody left early, not when anyone left after. Only a
+                // time-out that records the actual leaving can cut overtime.
+                $overtimeCap = $record->time_out_type === Attendance::TIME_OUT_SHIFT_END ? null : $leftAt;
+
                 foreach ($overtimeByDate->get($date, []) as $request) {
-                    $window = $this->time->overtime($request->start_time, $request->end_time, $shift, $night);
+                    $window = $this->time->overtime($request->start_time, $request->end_time, $shift, $night, $overtimeCap);
+
+                    if ($overtimeCap !== null) {
+                        $approved = $this->time->overtime($request->start_time, $request->end_time, $shift, $night);
+
+                        if ($window['hours'] < $approved['hours'] - 1e-9) {
+                            $at = $this->clock($overtimeCap);
+                            $warnings[] = $window['hours'] > 1e-9
+                                ? "Approved overtime on {$date} paid only to {$at}, when the worker was timed out."
+                                : "Approved overtime on {$date} not paid: the worker was timed out at {$at}, before it began.";
+                        }
+                    }
+
                     $dayHours = $window['hours'] - $window['night_hours'];
 
                     if ($dayHours > 1e-9) {
@@ -312,15 +344,35 @@ class PayrollEngine
     /** Minutes from midnight, site time, of a Late worker's credited arrival. */
     private function arrival(Attendance $record): ?int
     {
-        $timeIn = $record->effectiveTimeIn();
+        return $record->status === 'late' ? $this->siteMinutes($record->effectiveTimeIn()) : null;
+    }
 
-        if ($record->status !== 'late' || $timeIn === null) {
+    /** Minutes from midnight, site time, of an instant on the day. */
+    private function siteMinutes(?Carbon $at): ?int
+    {
+        if ($at === null) {
             return null;
         }
 
-        $site = $timeIn->copy()->setTimezone(config('attendance.timezone', 'Asia/Manila'));
+        $site = $at->copy()->setTimezone(config('attendance.timezone', 'Asia/Manila'));
 
         return $site->hour * 60 + $site->minute;
+    }
+
+    private function clock(int $minutes): string
+    {
+        return sprintf('%02d:%02d', intdiv($minutes, 60), $minutes % 60);
+    }
+
+    /**
+     * Whether a worked day should have had a time-out. Not before phones could
+     * capture one, and not for a day rebuilt through recovery, which records
+     * arrival only.
+     */
+    private function expectsTimeOut(Attendance $record, string $date): bool
+    {
+        return ! $record->isReconstructed()
+            && $date >= (string) config('attendance.time_out_tracked_from', '2026-09-21');
     }
 
     private function notReadyReason(Attendance $record): string
@@ -331,6 +383,16 @@ class PayrollEngine
 
         if ($record->cryptoSignature?->verified !== true) {
             return 'Attendance flagged by the clock check, awaiting HR review';
+        }
+
+        $timeInUndecided = $record->override_flag !== null && ! in_array(
+            $record->overrideEvent?->review_status,
+            [AuditLog::REVIEW_APPROVED, AuditLog::REVIEW_REJECTED],
+            true,
+        );
+
+        if (! $timeInUndecided) {
+            return 'Foreman-set time-out awaiting HR review';
         }
 
         return $record->overrideEvent?->action_type === AuditLog::LATE_OVERRIDE
