@@ -193,10 +193,12 @@ Both are named per `C:\capstone\internal\Request-Letter-to-Conduct-a-Study.docx`
   signature forgery, TC-04 late foreman override, TC-05 absent foreman
   re-assignment, TC-06 holiday payroll — each traced to an FR/UC in Table 9.0.
   **Actual Result / Pass/Fail / Comments are intentionally blank**: it is a
-  test *plan*, to be filled in at execution. Four of the six depend on modules
-  not yet built (Phases 5, 7, 8), so they cannot be run yet. The docx is
-  generated, not hand-edited — regenerate it from `STD.md` rather than editing
-  the Word file, or the two will drift.
+  test *plan*, to be filled in at execution. All six cases now have the
+  modules they need and automated tests behind them; the manual runs are
+  still owed. **TC-06 was revised on 2026-09-18 with the team** — its original
+  setup (₱2,932.50) could not arise from this system's data — to real days
+  totalling ₱5,141.25. The docx has no build script: keep it in step with
+  `STD.md` (the TC-06 change was written into both), or the two will drift.
 - `/docs/CRYPTOGRAPHY_EXPLAINED.md` — plain-English explainer for the 4-layer
   attendance integrity engine, written 2026-09-12 against the actual Phase 5
   code (not a design sketch). Defines every term (TEE, HMAC, ECDSA, monotonic

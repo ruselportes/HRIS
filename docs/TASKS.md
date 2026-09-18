@@ -3,7 +3,7 @@
 Each phase below is weighted **10%** of total project completion (10 phases = 100%).
 Check off tasks as they're completed; a phase counts as done once every task under it is checked.
 
-**Overall progress: ~70% (Phases 1–7 complete: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8.)** Verified by 190 backend tests (passing on both SQLite and MySQL 8.0) and 164 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works.
+**Overall progress: ~80% (Phases 1–8 complete: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8, Phase 8 5/5.)** Verified by 242 backend tests (passing on both SQLite and MySQL 8.0) and 164 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works.
 
 ---
 
@@ -207,8 +207,8 @@ Check off tasks as they're completed; a phase counts as done once every task und
 - [x] `Payroll`, `Payroll Detail` tables — extended: itemised deductions, employer shares, basic/premium pay, readiness, day-by-day breakdown; new `holidays` table; overtime request time windows
 - [x] Payroll computation service — regular, OT (1.25x), Night Diff (1.10x), Rest Day (1.30x), Regular Holiday (2.0x), Special Day (1.30x), compounding per the DOLE matrix, unworked regular holidays (Art. 94)
 - [x] Deductions / statutory benefits — SSS, PhilHealth, Pag-IBIG, withholding tax (MWE exemption recorded); effective-dated rate sets, all `[VERIFY]`
-- [ ] Web: Payroll Run screen
-- [ ] Tests: TC-06 holiday payroll computation — automated and passing on real days (`PayrollEngineTest`, ₱5,141.25); STD.md rewrite of TC-06 still owed
+- [x] Web: Payroll Run screen (`/payroll`) — cut-off picker, compute/recompute, totals, rows with premium hours, payslip with every day and deduction, approval that holds Blocked rows, CSV register export; plus a Holiday calendar tab HR maintains
+- [x] Tests: TC-06 holiday payroll computation — revised with the team onto days the system produces (STD.md and STD.docx updated), automated and passing at ₱5,141.25 (`PayrollEngineTest`); run workflow and holiday calendar in `PayrollRunTest`
 
 > **Decided with the team (2026-09-18):** overtime and night differential are
 > paid only from approved overtime requests with a start and end time (roll
@@ -223,6 +223,14 @@ Check off tasks as they're completed; a phase counts as done once every task und
 > not payroll-ready (override awaiting HR, recovery awaiting sign-off, clock
 > flag) or their crew has a day awaiting recovery — so nobody is paid short on
 > data that may still change. Recovered days show as **Recovered**.
+>
+> **Run workflow:** a run is every payroll row of one cut-off (`run_code`,
+> e.g. `2026-09-A`). HR computes it, and may recompute draft rows at any
+> time; approving takes the Ready and Recovered rows (recorded with who and
+> when, and in the audit log) and leaves Blocked rows in draft to approve
+> once resolved. Approved rows are final. Seeded dev workers now carry daily
+> rates, and the 2026 holiday calendar is seeded (`[VERIFY]` against the
+> proclamation; the two Eid holidays are added by HR when announced).
 >
 > Not in Phase 8: 13th month pay (needs a year of basic pay; the `basic_pay`
 > column is there for it), SIL conversion, and paid leave counting toward
