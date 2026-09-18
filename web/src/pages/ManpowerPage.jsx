@@ -3,6 +3,8 @@ import { useAuth } from '../auth/AuthContext'
 import { http, errorMessage } from '../api/client'
 import { NAV } from '../config/nav'
 import { Icon } from '../components/icons'
+import { ActingForemanPanel } from '../components/ActingForemanPanel'
+import { coverUntil } from '../utils/siteTime'
 import { tone } from '../config/nav'
 
 function roleKey(slug) {
@@ -85,6 +87,7 @@ export function ManpowerPage() {
   const [search, setSearch] = useState('')
   const [trade, setTrade] = useState('')
   const [newCrewOpen, setNewCrewOpen] = useState(false)
+  const [actingFor, setActingFor] = useState(null)
   const [notice, setNotice] = useState(null)
   const [busy, setBusy] = useState(false)
 
@@ -211,6 +214,15 @@ export function ManpowerPage() {
       await http.post(`/crews/${selected.crew_id}/deploy`)
       await refresh(selected.crew_id)
     }, 'Crew deployed.')
+  }
+
+  // Phase 7 (UC-06): end an acting foreman cover before it runs out.
+  const endCover = (crew) => {
+    if (!window.confirm(`Give ${crew.crew_name} back to ${crew.acting?.regular_foreman?.full_name ?? 'its regular foreman'} now?`)) return
+    runMutation(async () => {
+      await http.delete(`/crews/${crew.crew_id}/acting-foreman`)
+      await refresh(selected?.crew_id)
+    }, 'Cover ended.')
   }
 
   const createCrew = (payload) => {
@@ -585,6 +597,11 @@ export function ManpowerPage() {
                         <>
                           <Icon name="people" size={13} />
                           <span className="text-primary-800">{crew.foreman.full_name}</span>
+                          {crew.acting ? (
+                            <Tag bg={tone.flagged.bg} fg={tone.flagged.fg} className="ml-auto flex-none">
+                              Acting · until {coverUntil(crew.acting.until)}
+                            </Tag>
+                          ) : null}
                         </>
                       ) : (
                         <>
@@ -593,6 +610,18 @@ export function ManpowerPage() {
                         </>
                       )}
                     </div>
+                    {crew.acting ? (
+                      <div className="mt-1 text-[11px] text-neutral-700">Covering for {crew.acting.regular_foreman?.full_name}</div>
+                    ) : null}
+                    {canManage && crew.status === 'deployed' && crew.foreman ? (
+                      <button
+                        className="mt-2 inline-flex items-center gap-1.5 border border-neutral-400 px-2.5 py-1 text-xs text-ink disabled:opacity-40"
+                        disabled={busy}
+                        onClick={() => (crew.acting ? endCover(crew) : setActingFor(crew))}
+                      >
+                        {crew.acting ? 'End cover' : 'Foreman absent? Assign acting'}
+                      </button>
+                    ) : null}
                   </div>
                 ))}
                 {canManage ? (
@@ -608,6 +637,18 @@ export function ManpowerPage() {
           ))}
         </div>
       </section>
+
+      {actingFor ? (
+        <ActingForemanPanel
+          crew={actingFor}
+          onClose={() => setActingFor(null)}
+          onAssigned={(message) => {
+            setActingFor(null)
+            flash(message)
+            refresh(selected?.crew_id)
+          }}
+        />
+      ) : null}
 
       {newCrewOpen !== false ? (
         <NewCrewModal
