@@ -297,22 +297,37 @@ function overrideNote(row: SyncQueueRow): string {
   return '';
 }
 
+/** How the day ended, if it has: " · out 16:00 (shift closed)". */
+function timeOutNote(row: SyncQueueRow): string {
+  if (row.timeOut === null) {
+    return '';
+  }
+  if (row.timeOutType === 'shift_end') {
+    return ` · out ${formatTime(row.timeOut)} (shift closed)`;
+  }
+  if (row.timeOutType === 'manual_time') {
+    return ` · out ${formatTime(row.timeOut)}, time set by you`;
+  }
+  return ` · out ${formatTime(row.timeOut)}`;
+}
+
 function QueueRow({row}: {row: SyncQueueRow}) {
   const tag = TAG[row.syncStatus] ?? TAG.pending;
   const statusWord = row.status.charAt(0).toUpperCase() + row.status.slice(1);
+  const out = timeOutNote(row);
 
   // "A failure names the person" — the worker's name leads, and the detail line
   // says plainly what happened rather than showing a reason code.
   const detail =
     row.syncStatus === 'flagged'
-      ? `${statusWord} · ${formatTime(row.timeIn)} · sent for HR review`
+      ? `${statusWord} · ${formatTime(row.timeIn)}${out} · sent for HR review`
       : row.syncStatus === 'rejected'
-      ? `${statusWord} · ${formatTime(row.timeIn)} · not accepted — HR needs to check this`
+      ? `${statusWord} · ${formatTime(row.timeIn)}${out} · not accepted — HR needs to check this`
       : row.syncStatus === 'refused'
       ? // Authentic but not permitted — most often the crew was reassigned.
         // Said plainly, and distinct from rejected, which suggests tampering.
         `${statusWord} · not accepted — this record wasn't allowed (the crew may have a different foreman now)`
-      : `${statusWord}${row.timeIn ? ` · ${formatTime(row.timeIn)}` : ''}${overrideNote(row)}`;
+      : `${statusWord}${row.timeIn ? ` · ${formatTime(row.timeIn)}` : ''}${overrideNote(row)}${out}`;
 
   const failed = row.syncStatus === 'rejected' || row.syncStatus === 'refused';
 

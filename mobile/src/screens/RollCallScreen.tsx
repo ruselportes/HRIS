@@ -11,34 +11,49 @@
  * arrival time. Late and Absent under the credit, and Absent always, stay
  * ordinary taps — neither is an arrival the credit can speak for.
  *
+ * Time-out (payload v3): a worker on site is tapped Out as they leave, or
+ * given a stated time-out (HR-reviewed) if nobody tapped them out. From shift
+ * end, Close shift times out everyone still on site at exactly shift end.
+ * Undo takes back the time-out first, then the mark.
+ *
  * @format
  */
 
-import React, {useCallback, useState} from 'react';
-import {FlatList, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import React, {useCallback, useEffect, useState} from 'react';
+import {Alert, FlatList, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {useFocusEffect} from '@react-navigation/native';
 import {useAuth} from '../auth/AuthContext';
-import {AttendanceStatus, todayLocalDate} from '../db/attendanceLogic';
+import {AttendanceStatus, NO_TIME_OUT, isOnSite, todayLocalDate} from '../db/attendanceLogic';
 import {
   CachedCrew,
   DeviceNotBoundError,
   LateStartChoice,
   LateStartMode,
+  TimeOutRefusedError,
   TodayRecord,
+  closeShift,
   getCachedCrew,
   getLateStartChoice,
   getShiftConfig,
   hasRollCallStarted,
   listTodayAttendance,
   recordManualTime,
+  recordManualTimeOut,
   recordShiftCredit,
   recordStatus,
+  recordTimeOut,
   saveLateStartChoice,
   undoAttendance,
 } from '../db/attendanceRepository';
-import {DEFAULT_SHIFT, ShiftConfig, formatSiteTime, isLateStart} from '../db/shiftRules';
+import {
+  DEFAULT_SHIFT,
+  ShiftConfig,
+  canCloseShift,
+  formatSiteTime,
+  isLateStart,
+} from '../db/shiftRules';
 import {LateStartPrompt} from './rollCall/LateStartPrompt';
-import {ManualTimeModal} from './rollCall/ManualTimeModal';
+import {ManualTimeKind, ManualTimeModal} from './rollCall/ManualTimeModal';
 
 type RowState = {
   employeeId: number;
@@ -49,6 +64,22 @@ type RowState = {
 
 type Choice = 'present' | 'late' | 'absent';
 
+/** How often the screen re-reads the clock, so Close shift appears at shift end. */
+const CLOCK_TICK_MS = 30_000;
+
+/** A failure said plainly; a refused time-out already carries its own words. */
+function captureError(err: unknown): string {
+  if (err instanceof DeviceNotBoundError) {
+    return 'This device is not bound yet — bind it before recording attendance.';
+  }
+
+  if (err instanceof TimeOutRefusedError) {
+    return err.message;
+  }
+
+  return 'Could not record that tap. It was not saved; try again.';
+}
+
 export function RollCallScreen() {
   const {user} = useAuth();
   const [crew, setCrew] = useState<CachedCrew | null>(null);
@@ -58,9 +89,17 @@ export function RollCallScreen() {
   const [date, setDate] = useState(todayLocalDate());
   const [lateStart, setLateStart] = useState<LateStartChoice | null>(null);
   const [prompt, setPrompt] = useState<{openedAt: number} | null>(null);
-  const [manual, setManual] = useState<{row: RowState; status: 'present' | 'late'} | null>(
-    null,
-  );
+  const [manual, setManual] = useState<{
+    row: RowState;
+    status: 'present' | 'late';
+    purpose: ManualTimeKind;
+  } | null>(null);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), CLOCK_TICK_MS);
+    return () => clearInterval(timer);
+  }, []);
 
   /*
    * On focus rather than on mount: Roll Call is a tab, so it stays mounted,
@@ -98,13 +137,17 @@ export function RollCallScreen() {
           timeIn: null,
           overrideType: null,
           capturedAt: null,
+          ...NO_TIME_OUT,
         },
       })),
     );
 
-    const now = Date.now();
+    const openedAt = Date.now();
+    setNow(openedAt);
     setPrompt(
-      choice === null && !started && isLateStart(now, today, shiftConfig) ? {openedAt: now} : null,
+      choice === null && !started && isLateStart(openedAt, today, shiftConfig)
+        ? {openedAt}
+        : null,
     );
   }, []);
 
@@ -127,13 +170,17 @@ export function RollCallScreen() {
         prev.map(row => (row.employeeId === employeeId ? {...row, record: updated} : row)),
       );
     } catch (err) {
-      setError(
-        err instanceof DeviceNotBoundError
-          ? 'This device is not bound yet — bind it before recording attendance.'
-          : 'Could not record that tap. It was not saved; try again.',
-      );
+      setError(captureError(err));
     }
   };
+
+  const merge = (records: TodayRecord[]) =>
+    setRows(prev =>
+      prev.map(row => {
+        const updated = records.find(record => record.employeeId === row.employeeId);
+        return updated ? {...row, record: updated} : row;
+      }),
+    );
 
   const mark = (row: RowState, status: Choice) => {
     if (!crew) {
@@ -144,7 +191,7 @@ export function RollCallScreen() {
     const mode = lateStart?.mode;
 
     if (mode === 'manual' && status !== 'absent') {
-      setManual({row, status});
+      setManual({row, status, purpose: {kind: 'arrival'}});
       return;
     }
 
@@ -158,6 +205,52 @@ export function RollCallScreen() {
 
   const undo = (employeeId: number) =>
     crew && applyCapture(employeeId, () => undoAttendance(employeeId, crew.crewId));
+
+  const timeOut = (employeeId: number) =>
+    crew && applyCapture(employeeId, () => recordTimeOut(employeeId, crew.crewId));
+
+  const setTimeOut = (row: RowState) => {
+    const {status, timeIn} = row.record;
+
+    if ((status === 'present' || status === 'late') && timeIn !== null) {
+      setManual({row, status, purpose: {kind: 'time_out', timeIn}});
+    }
+  };
+
+  const onSite = rows.filter(row => isOnSite(row.record));
+
+  const runCloseShift = async () => {
+    if (!crew) {
+      return;
+    }
+
+    setError(null);
+    try {
+      merge(await closeShift(crew.crewId, onSite.map(row => row.employeeId)));
+    } catch (err) {
+      // Each worker is a separate event, so some may already be closed.
+      setError(
+        err instanceof TimeOutRefusedError || err instanceof DeviceNotBoundError
+          ? captureError(err)
+          : 'Close shift stopped partway. Anyone still shown on site was not timed out; try again.',
+      );
+      await load();
+    }
+  };
+
+  const confirmCloseShift = () => {
+    const count = onSite.length;
+
+    Alert.alert(
+      'Close shift?',
+      `${count} ${count === 1 ? 'worker' : 'workers'} still on site will be timed out at ` +
+        `${shift.end}. Tap Out first for anyone who left earlier.`,
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {text: 'Close shift', onPress: runCloseShift},
+      ],
+    );
+  };
 
   const choose = async (mode: LateStartMode) => {
     if (!crew) {
@@ -204,6 +297,18 @@ export function RollCallScreen() {
 
       {error && <Text style={styles.error}>{error}</Text>}
 
+      {onSite.length > 0 && canCloseShift(now, date, shift) && (
+        <TouchableOpacity
+          style={styles.closeShift}
+          accessibilityRole="button"
+          onPress={confirmCloseShift}>
+          <Text style={styles.closeShiftTitle}>Close shift</Text>
+          <Text style={styles.closeShiftMeta}>
+            Time out {onSite.length} still on site at {shift.end}
+          </Text>
+        </TouchableOpacity>
+      )}
+
       <FlatList
         data={rows}
         keyExtractor={item => String(item.employeeId)}
@@ -214,6 +319,8 @@ export function RollCallScreen() {
             mode={lateStart?.mode ?? null}
             onMark={mark}
             onUndo={undo}
+            onTimeOut={timeOut}
+            onSetTimeOut={setTimeOut}
           />
         )}
         contentContainerStyle={styles.list}
@@ -226,12 +333,15 @@ export function RollCallScreen() {
           status={manual.status}
           date={date}
           shift={shift}
+          purpose={manual.purpose}
           onCancel={() => setManual(null)}
-          onConfirm={timeInMs => {
-            const {row, status} = manual;
+          onConfirm={epochMs => {
+            const {row, status, purpose} = manual;
             setManual(null);
             applyCapture(row.employeeId, () =>
-              recordManualTime(row.employeeId, crew.crewId, status, timeInMs),
+              purpose.kind === 'time_out'
+                ? recordManualTimeOut(row.employeeId, crew.crewId, epochMs)
+                : recordManualTime(row.employeeId, crew.crewId, status, epochMs),
             );
           }}
         />
@@ -279,16 +389,23 @@ function RollCallRow({
   mode,
   onMark,
   onUndo,
+  onTimeOut,
+  onSetTimeOut,
 }: {
   row: RowState;
   shift: ShiftConfig;
   mode: LateStartMode | null;
   onMark: (row: RowState, status: Choice) => void;
   onUndo: (employeeId: number) => void;
+  onTimeOut: (employeeId: number) => void;
+  onSetTimeOut: (row: RowState) => void;
 }) {
   const {status} = row.record;
   const marked = status !== 'pending';
+  const out = row.record.timeOut !== null;
+  const onSite = isOnSite(row.record);
   const detail = timeDetail(row.record, shift);
+  const outText = outDetail(row.record, shift);
 
   return (
     <View style={styles.row}>
@@ -310,33 +427,68 @@ function RollCallRow({
           {detail}
         </Text>
       )}
+      {outText && (
+        <Text
+          style={[
+            styles.rowDetail,
+            row.record.timeOutType === 'manual_time' && styles.rowDetailOverride,
+          ]}>
+          {outText}
+        </Text>
+      )}
 
-      <View style={styles.buttonsRow}>
-        {(['present', 'late', 'absent'] as const)
-          // Under manual times the current status stays tappable, to correct the time.
-          .filter(option => option !== status || (mode === 'manual' && option !== 'absent'))
-          .map(option => {
-            const hint = buttonHint(option, mode, shift);
+      {/* A closed day is changed by undoing its time-out first, so it offers nothing else. */}
+      {!out && (
+        <View style={styles.buttonsRow}>
+          {(['present', 'late', 'absent'] as const)
+            // Under manual times the current status stays tappable, to correct the time.
+            .filter(option => option !== status || (mode === 'manual' && option !== 'absent'))
+            .map(option => {
+              const hint = buttonHint(option, mode, shift);
 
-            return (
-              <TouchableOpacity
-                key={option}
-                style={[styles.choiceButton, choiceButtonStyleFor(option)]}
-                accessibilityRole="button"
-                onPress={() => onMark(row, option)}>
-                <Text style={[styles.choiceButtonText, choiceTextStyleFor(option)]}>
-                  {statusLabel(option)}
-                </Text>
-                {hint && <Text style={styles.choiceButtonHint}>{hint}</Text>}
-              </TouchableOpacity>
-            );
-          })}
-        {marked && (
-          <TouchableOpacity style={styles.undoButton} onPress={() => onUndo(row.employeeId)}>
-            <Text style={styles.undoButtonText}>Undo</Text>
+              return (
+                <TouchableOpacity
+                  key={option}
+                  style={[styles.choiceButton, choiceButtonStyleFor(option)]}
+                  accessibilityRole="button"
+                  onPress={() => onMark(row, option)}>
+                  <Text style={[styles.choiceButtonText, choiceTextStyleFor(option)]}>
+                    {statusLabel(option)}
+                  </Text>
+                  {hint && <Text style={styles.choiceButtonHint}>{hint}</Text>}
+                </TouchableOpacity>
+              );
+            })}
+          {onSite && (
+            <TouchableOpacity
+              style={[styles.choiceButton, styles.outButton]}
+              accessibilityRole="button"
+              onPress={() => onTimeOut(row.employeeId)}>
+              <Text style={[styles.choiceButtonText, styles.outButtonText]}>Out</Text>
+              <Text style={styles.choiceButtonHint}>leaving now</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {marked && (
+        <View style={styles.secondaryRow}>
+          {onSite && (
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              accessibilityRole="button"
+              onPress={() => onSetTimeOut(row)}>
+              <Text style={styles.secondaryButtonText}>Set out time</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            accessibilityRole="button"
+            onPress={() => onUndo(row.employeeId)}>
+            <Text style={styles.secondaryButtonText}>{out ? 'Undo out' : 'Undo'}</Text>
           </TouchableOpacity>
-        )}
-      </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -363,6 +515,32 @@ function timeDetail(record: TodayRecord, shift: ShiftConfig): string | null {
   }
 
   return `Tapped ${credited}`;
+}
+
+/**
+ * How the day ended. A stated time-out shows the tap beside it, as a stated
+ * arrival does, since that is what HR compares.
+ */
+function outDetail(record: TodayRecord, shift: ShiftConfig): string | null {
+  if (record.timeOut === null) {
+    return null;
+  }
+
+  const out = formatSiteTime(record.timeOut, shift);
+
+  if (record.timeOutType === 'shift_end') {
+    return `Out ${out} · shift closed`;
+  }
+
+  if (record.timeOutType === 'manual_time') {
+    const tapped =
+      record.timeOutCapturedAt === null
+        ? ''
+        : ` · tapped ${formatSiteTime(record.timeOutCapturedAt, shift)}`;
+    return `Out set to ${out}${tapped}`;
+  }
+
+  return `Out ${out}`;
 }
 
 function buttonHint(option: Choice, mode: LateStartMode | null, shift: ShiftConfig): string | null {
@@ -457,10 +635,25 @@ const styles = StyleSheet.create({
   },
   choiceButtonText: {fontSize: 15, fontWeight: '600'},
   choiceButtonHint: {fontSize: 11, color: '#5d5d60', marginTop: 1},
-  undoButton: {
+  outButton: {borderColor: '#1d2d3d'},
+  outButtonText: {color: '#1d2d3d'},
+  secondaryRow: {flexDirection: 'row', justifyContent: 'flex-end', gap: 4, marginTop: 4},
+  secondaryButton: {
     minHeight: 44,
     justifyContent: 'center',
     paddingHorizontal: 12,
   },
-  undoButtonText: {fontSize: 14, color: '#5d5d60'},
+  secondaryButtonText: {fontSize: 14, color: '#5d5d60'},
+  closeShift: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    minHeight: 60,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 4,
+    backgroundColor: '#1d2d3d',
+    justifyContent: 'center',
+  },
+  closeShiftTitle: {fontSize: 16, fontWeight: '700', color: '#f2f2f3'},
+  closeShiftMeta: {fontSize: 13, color: '#c9ced4', marginTop: 2},
 });

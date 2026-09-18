@@ -2,15 +2,18 @@
  * @format
  */
 
-import {blankRecordFor} from '../attendanceLogic';
+import {NO_TIME_OUT, blankRecordFor, isOnSite} from '../attendanceLogic';
 import {
   DEFAULT_SHIFT,
+  canCloseShift,
   creditAtShiftStart,
+  earliestTimeOut,
   formatGap,
   formatSiteTime,
   formatSiteWeekday,
   isLateStart,
   minutesSinceShiftStart,
+  shiftEndMs,
   shiftStartMs,
   siteDateOf,
   siteTimeMs,
@@ -112,5 +115,52 @@ describe('site calendar', () => {
 
   test('00:30 Manila is already the next site day, though still the day before in UTC', () => {
     expect(siteDateOf(siteTimeMs('2026-09-14', 0, 30, DEFAULT_SHIFT), DEFAULT_SHIFT)).toBe('2026-09-14');
+  });
+});
+
+describe('time-out', () => {
+  /*
+   * Pinned to the server: TimeOutPolicyTest asserts 16:00 +08:00 is 08:00 UTC
+   * on this date. A Close-shift time-out must equal it exactly.
+   */
+  test('shift end is 16:00 Manila time, whatever timezone the phone is in', () => {
+    expect(shiftEndMs(DATE, DEFAULT_SHIFT)).toBe(Date.UTC(2026, 8, 12, 8, 0));
+  });
+
+  test('Close shift opens exactly at shift end and stays open for the rest of the day', () => {
+    const end = shiftEndMs(DATE, DEFAULT_SHIFT);
+
+    expect(canCloseShift(end - 1, DATE, DEFAULT_SHIFT)).toBe(false);
+    expect(canCloseShift(end, DATE, DEFAULT_SHIFT)).toBe(true);
+    expect(canCloseShift(siteTimeMs(DATE, 21, 30, DEFAULT_SHIFT), DATE, DEFAULT_SHIFT)).toBe(true);
+  });
+
+  test('a stated time-out starts the minute after the time in', () => {
+    const timeIn = siteTimeMs(DATE, 6, 58, DEFAULT_SHIFT) + 23_000;
+
+    expect(earliestTimeOut(timeIn)).toBe(siteTimeMs(DATE, 6, 59, DEFAULT_SHIFT));
+    // On the minute exactly: the next minute, since equal is not after.
+    expect(earliestTimeOut(siteTimeMs(DATE, 7, 0, DEFAULT_SHIFT))).toBe(
+      siteTimeMs(DATE, 7, 1, DEFAULT_SHIFT),
+    );
+  });
+
+  test('stepping a time-out cannot go back to the time in', () => {
+    const earliest = siteTimeMs(DATE, 7, 1, DEFAULT_SHIFT);
+    const now = siteTimeMs(DATE, 17, 0, DEFAULT_SHIFT);
+
+    expect(stepManualTime(earliest, -60, DATE, now, DEFAULT_SHIFT, earliest)).toBe(earliest);
+    expect(stepManualTime(earliest, 5, DATE, now, DEFAULT_SHIFT, earliest)).toBe(earliest + 5 * MINUTE);
+  });
+
+  test('only a worker marked and not yet out is on site', () => {
+    const blank = {...blankRecordFor(1, DATE), ...NO_TIME_OUT};
+    const present = {...blank, status: 'present' as const, timeIn: siteTimeMs(DATE, 7, 0, DEFAULT_SHIFT)};
+
+    expect(isOnSite(blank)).toBe(false);
+    expect(isOnSite({...blank, status: 'absent'})).toBe(false);
+    expect(isOnSite(present)).toBe(true);
+    expect(isOnSite({...present, status: 'late'})).toBe(true);
+    expect(isOnSite({...present, timeOut: shiftEndMs(DATE, DEFAULT_SHIFT)})).toBe(false);
   });
 });

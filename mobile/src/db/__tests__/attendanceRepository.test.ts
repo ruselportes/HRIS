@@ -24,18 +24,24 @@ import {computeHmac, hmacKeyFromBase64} from '../../crypto/hashChain';
 import {getDatabase, resetDatabaseInstanceForTests} from '../database';
 import {
   DeviceNotBoundError,
+  TimeOutRefusedError,
   clearRosterCache,
+  closeShift,
   countPendingEvents,
   getShiftConfig,
+  getSyncSummary,
   hasRollCallStarted,
+  listTodayAttendance,
   recordManualTime,
+  recordManualTimeOut,
   recordShiftCredit,
   recordStatus,
+  recordTimeOut,
   saveLateStartChoice,
   saveRosterCache,
   undoAttendance,
 } from '../attendanceRepository';
-import {DEFAULT_SHIFT, shiftStartMs, siteTimeMs} from '../shiftRules';
+import {DEFAULT_SHIFT, shiftEndMs, shiftStartMs, siteTimeMs} from '../shiftRules';
 import {todayLocalDate} from '../attendanceLogic';
 import * as deviceCredentials from '../../crypto/deviceCredentials';
 import {createSigningKey} from '../../crypto/teeSigner';
@@ -82,6 +88,21 @@ function eventRow(): Record<string, any> {
   const bound = columns.filter(column => column !== 'sync_status');
 
   return Object.fromEntries(bound.map((column, i) => [column, insert.params[i]]));
+}
+
+/** Every event INSERT, keyed by column, in order. */
+function eventRows(): Record<string, any>[] {
+  return dbCalls()
+    .filter(call => call.sql.includes('INSERT INTO attendance_events'))
+    .map(insert => {
+      const columns = insert.sql
+        .match(/INSERT INTO attendance_events\s*\(([^)]*)\)/)![1]
+        .split(',')
+        .map(column => column.trim())
+        .filter(column => column !== 'sync_status');
+
+      return Object.fromEntries(columns.map((column, i) => [column, insert.params[i]]));
+    });
 }
 
 beforeEach(async () => {
@@ -283,6 +304,7 @@ describe('late start', () => {
 
   const CACHED_SHIFT = {
     start: '06:30',
+    end: '15:30',
     late_override_grace_minutes: 10,
     timezone: 'Asia/Manila',
     utc_offset_minutes: 480,
@@ -394,5 +416,262 @@ describe('roster ownership', () => {
 
     expect(await countPendingEvents('epoch-f1')).toBe(3);
     expect(dbCalls().at(-1)!.params).toEqual(['epoch-f1']);
+  });
+});
+
+/*
+ * Time-out (payload v3). The server's TimeOutPolicy re-checks each of these on
+ * sync; what is tested here is that the phone signs what it expects, and
+ * refuses before signing what it would refuse.
+ */
+describe('time-out', () => {
+  const today = todayLocalDate();
+  const timeIn = siteTimeMs(today, 6, 58, DEFAULT_SHIFT);
+  const shiftEnd = shiftEndMs(today, DEFAULT_SHIFT);
+
+  /** A roll-call row as STATE_SQL returns it, with any newer time-out as out_*. */
+  const dayRow = (overrides: Record<string, any> = {}) => ({
+    event_id: 11,
+    employee_id: 42,
+    date: today,
+    status: 'present',
+    time_in: timeIn,
+    override_type: null,
+    captured_at: timeIn,
+    out_time_out: null,
+    out_time_out_type: null,
+    out_captured_at: null,
+    ...overrides,
+  });
+
+  /** Answer the current-state query with `rows`; everything else stays empty. */
+  async function withDay(...rows: Record<string, any>[]): Promise<void> {
+    const db = await getDatabase();
+
+    (db.execute as jest.Mock).mockImplementation(async (sql: string, params: any[] = []) => {
+      if (/out_time_out/.test(sql)) {
+        // One employee's state is asked for by id; the day's, by date alone.
+        const wanted = params.length > 1 ? rows.filter(row => row.employee_id === params[1]) : rows;
+        return {rows: wanted, rowsAffected: 0};
+      }
+
+      return {rows: [], rowsAffected: 0};
+    });
+  }
+
+  test('Out signs a time-out event at the tap itself, restating the status and not the arrival', async () => {
+    await withDay(dayRow());
+
+    const record = await recordTimeOut(42, 7);
+
+    const row = eventRow();
+    expect(row.event_type).toBe('time_out');
+    expect(row.payload_version).toBe('v3');
+    expect(row.status).toBe('present');
+    expect(row.time_in).toBeNull();
+    expect(row.override_type).toBeNull();
+    expect(row.time_out).toBe(row.captured_at);
+    expect(row.time_out_type).toBeNull();
+    expect(__signedPayloads[0]).toContain('event_type=time_out');
+
+    // The arrival is kept on the record the screen shows.
+    expect(record.timeIn).toBe(timeIn);
+    expect(record.timeOut).toBe(row.captured_at);
+  });
+
+  test('a worker not on site cannot be timed out, and nothing is signed', async () => {
+    await withDay(dayRow({status: 'absent', time_in: null}));
+    await expect(recordTimeOut(42, 7)).rejects.toThrow(TimeOutRefusedError);
+
+    await withDay(dayRow({out_time_out: shiftEnd, out_time_out_type: 'shift_end'}));
+    await expect(recordTimeOut(42, 7)).rejects.toThrow('already timed out');
+
+    await withDay();
+    await expect(recordTimeOut(42, 7)).rejects.toThrow(TimeOutRefusedError);
+
+    expect(eventInsert()).toBeUndefined();
+    expect(__signedPayloads).toHaveLength(0);
+  });
+
+  test('a stated time-out is signed as manual_time, after the time in and not after the tap', async () => {
+    const at = siteTimeMs(today, 6, 59, DEFAULT_SHIFT);
+    jest.spyOn(Date, 'now').mockReturnValue(siteTimeMs(today, 18, 30, DEFAULT_SHIFT));
+    await withDay(dayRow());
+
+    await recordManualTimeOut(42, 7, at);
+
+    const row = eventRow();
+    expect(row.time_out).toBe(at);
+    expect(row.time_out_type).toBe('manual_time');
+    expect(row.captured_at).toBe(siteTimeMs(today, 18, 30, DEFAULT_SHIFT));
+  });
+
+  test('a stated time-out at or before the time in, or after now, is refused before signing', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(siteTimeMs(today, 15, 0, DEFAULT_SHIFT));
+    await withDay(dayRow());
+
+    await expect(recordManualTimeOut(42, 7, timeIn)).rejects.toThrow('after the time in');
+    await expect(
+      recordManualTimeOut(42, 7, siteTimeMs(today, 15, 1, DEFAULT_SHIFT)),
+    ).rejects.toThrow('later than now');
+
+    expect(__signedPayloads).toHaveLength(0);
+  });
+
+  test('Close shift times out everyone still on site at exactly shift end', async () => {
+    const tapped = shiftEnd + 25 * 60_000;
+    jest.spyOn(Date, 'now').mockReturnValue(tapped);
+    await withDay(
+      dayRow(),
+      dayRow({event_id: 12, employee_id: 43, status: 'late'}),
+      dayRow({event_id: 13, employee_id: 44, status: 'absent', time_in: null}),
+      dayRow({event_id: 14, employee_id: 45, out_time_out: timeIn + 60_000}),
+    );
+
+    const closed = await closeShift(7, [42, 43, 44, 45, 46]);
+
+    // Absent, already out and never marked are left alone.
+    expect(closed.map(record => record.employeeId)).toEqual([42, 43]);
+
+    const rows = eventRows();
+    expect(rows).toHaveLength(2);
+    expect(rows.map(row => row.status)).toEqual(['present', 'late']);
+    for (const row of rows) {
+      expect(row.time_out).toBe(shiftEnd);
+      expect(row.time_out_type).toBe('shift_end');
+      expect(row.captured_at).toBe(tapped);
+    }
+  });
+
+  test('Close shift before shift end is refused before anything is signed', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(shiftEnd - 60_000);
+    await withDay(dayRow());
+
+    await expect(closeShift(7, [42])).rejects.toThrow('Close shift opens at 16:00');
+    expect(__signedPayloads).toHaveLength(0);
+  });
+
+  test('Undo on a timed-out worker reopens the day rather than unmarking them', async () => {
+    await withDay(
+      dayRow({out_time_out: shiftEnd, out_time_out_type: 'shift_end', out_captured_at: shiftEnd}),
+    );
+
+    const record = await undoAttendance(42, 7);
+
+    const row = eventRow();
+    expect(row.event_type).toBe('time_out');
+    expect(row.status).toBe('present');
+    expect(row.time_out).toBeNull();
+    expect(row.time_out_type).toBeNull();
+    expect(record.status).toBe('present');
+    expect(record.timeOut).toBeNull();
+  });
+
+  test('a new roll call clears the time-out on the record it returns', async () => {
+    await withDay(dayRow({out_time_out: shiftEnd, out_time_out_type: 'shift_end'}));
+
+    const record = await recordStatus(42, 7, 'late');
+
+    expect(eventRow().event_type).toBe('roll_call');
+    expect(eventRow().time_out).toBeNull();
+    expect(record.timeOut).toBeNull();
+    expect(record.timeOutType).toBeNull();
+  });
+
+  test('the state of the day is the latest roll call with its newer time-out', async () => {
+    await withDay(
+      dayRow({out_time_out: shiftEnd, out_time_out_type: 'shift_end', out_captured_at: shiftEnd + 1}),
+      // Cleared by Undo: an event with no time, so the day is open again.
+      dayRow({event_id: 12, employee_id: 43, out_time_out: null, out_captured_at: shiftEnd}),
+    );
+
+    const state = await listTodayAttendance();
+
+    const closed = state.get(42)!;
+    expect(closed.timeIn).toBe(timeIn);
+    expect(closed.timeOut).toBe(shiftEnd);
+    expect(closed.timeOutType).toBe('shift_end');
+    expect(closed.timeOutCapturedAt).toBe(shiftEnd + 1);
+
+    const reopened = state.get(43)!;
+    expect(reopened.timeOut).toBeNull();
+    expect(reopened.timeOutCapturedAt).toBeNull();
+
+    const query = dbCalls().find(call => /out_time_out/.test(call.sql))!;
+    expect(query.sql).toMatch(/event_type = 'roll_call'/);
+    expect(query.sql).toMatch(/event_type = 'time_out' AND event_id > r\.event_id/);
+  });
+
+  test('a shift config cached before the server sent an end takes the default end', async () => {
+    const db = await getDatabase();
+    const cached: Partial<typeof DEFAULT_SHIFT> = {...DEFAULT_SHIFT, start: '06:30'};
+    delete cached.end;
+    (db.execute as jest.Mock).mockResolvedValueOnce({
+      rows: [{value: JSON.stringify(cached)}],
+      rowsAffected: 0,
+    });
+
+    expect(await getShiftConfig()).toEqual({...DEFAULT_SHIFT, start: '06:30'});
+  });
+});
+
+describe('sync summary', () => {
+  /** Rows as the summary query returns them: a roll call and its newer time-out. */
+  async function withSummary(rows: Record<string, any>[]): Promise<void> {
+    const db = await getDatabase();
+
+    (db.execute as jest.Mock).mockImplementation(async (sql: string) =>
+      /out_sync_status/.test(sql) ? {rows, rowsAffected: 0} : {rows: [], rowsAffected: 0},
+    );
+  }
+
+  const summaryRow = (overrides: Record<string, any>) => ({
+    event_id: 1,
+    status: 'present',
+    time_in: 1,
+    captured_at: 1,
+    sync_status: 'synced',
+    override_type: null,
+    time_out: null,
+    time_out_type: null,
+    out_sync_status: null,
+    first_name: 'Elmer',
+    last_name: 'Bacus',
+    ...overrides,
+  });
+
+  test('a record shows the worse of its roll call and its time-out, failures first', async () => {
+    await withSummary([
+      summaryRow({
+        event_id: 1,
+        time_out: 5,
+        time_out_type: 'shift_end',
+        out_sync_status: 'pending',
+      }),
+      summaryRow({event_id: 2, sync_status: 'flagged', time_out: 5, out_sync_status: 'synced'}),
+      summaryRow({event_id: 3, time_out: 5, out_sync_status: 'refused'}),
+      summaryRow({event_id: 4}),
+    ]);
+
+    const {rows} = await getSyncSummary('epoch');
+
+    expect(rows.map(row => [row.eventId, row.syncStatus])).toEqual([
+      [3, 'refused'],
+      [1, 'pending'],
+      // A time-out sent cleanly does not hide the roll call HR is reviewing.
+      [2, 'flagged'],
+      [4, 'synced'],
+    ]);
+    expect(rows[1].timeOut).toBe(5);
+    expect(rows[1].timeOutType).toBe('shift_end');
+  });
+
+  test('records are built from roll calls, so a time-out never stands alone as one', async () => {
+    await withSummary([]);
+
+    await getSyncSummary('epoch');
+
+    const query = dbCalls().find(call => /out_sync_status/.test(call.sql))!;
+    expect(query.sql).toMatch(/WHERE chain_epoch = \? AND event_type = 'roll_call'/);
   });
 });

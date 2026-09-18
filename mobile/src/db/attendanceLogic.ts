@@ -12,7 +12,7 @@
  * @format
  */
 
-import type {OverrideType} from '../crypto/payload';
+import type {OverrideType, TimeOutType} from '../crypto/payload';
 
 export type AttendanceStatus = 'pending' | 'present' | 'late' | 'absent';
 
@@ -24,6 +24,35 @@ export interface AttendanceRecord {
   timeIn: number | null;
   /** Why timeIn differs from the tap — null for an ordinary tap. */
   overrideType: OverrideType | null;
+}
+
+/**
+ * How a worker's day ended, once it has. A time-out is its own signed event,
+ * later than the roll call it closes; a new roll call (a re-mark or an Undo)
+ * clears it, as the server does.
+ */
+export interface TimeOut {
+  /** Epoch ms. The tap itself unless timeOutType says otherwise. */
+  timeOut: number | null;
+  /** shift_end for Close shift, manual_time for a time the foreman stated. */
+  timeOutType: TimeOutType | null;
+  /** When the time-out was tapped — beside a stated time, what HR compares. */
+  timeOutCapturedAt: number | null;
+}
+
+export const NO_TIME_OUT: TimeOut = {timeOut: null, timeOutType: null, timeOutCapturedAt: null};
+
+/**
+ * Marked as arrived and not yet out: the workers a time-out can close. Absent
+ * and pending workers have no arrival, so the server refuses a time-out for
+ * them.
+ */
+export function isOnSite(record: AttendanceRecord & TimeOut): boolean {
+  return (
+    (record.status === 'present' || record.status === 'late') &&
+    record.timeIn !== null &&
+    record.timeOut === null
+  );
 }
 
 /**

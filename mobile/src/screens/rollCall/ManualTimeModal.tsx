@@ -1,9 +1,11 @@
 /**
- * Arrival time entry for "Set each time myself" (Phase 7 — UC-05).
+ * Time entry for a time the foreman states: an arrival under "Set each time
+ * myself" (Phase 7 — UC-05), or a time-out for a worker nobody tapped out.
  *
  * Plain steppers rather than a native time picker: the stack has no picker
  * library, and steppers cannot produce a time the server would refuse — they
- * stop at the start of the day and at the current minute.
+ * stop at the start of the day (for a time-out, just after the time in) and at
+ * the current minute.
  *
  * @format
  */
@@ -12,10 +14,15 @@ import React, {useState} from 'react';
 import {Modal, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {
   ShiftConfig,
+  earliestTimeOut,
   formatSiteTime,
+  shiftEndMs,
   shiftStartMs,
   stepManualTime,
 } from '../../db/shiftRules';
+
+/** What is being stated: an arrival, or a time-out after a known time in. */
+export type ManualTimeKind = {kind: 'arrival'} | {kind: 'time_out'; timeIn: number};
 
 type Props = {
   visible: boolean;
@@ -23,13 +30,29 @@ type Props = {
   status: 'present' | 'late';
   date: string;
   shift: ShiftConfig;
+  purpose?: ManualTimeKind;
   onCancel: () => void;
-  onConfirm: (timeInMs: number) => void;
+  onConfirm: (epochMs: number) => void;
 };
 
-/** A sensible starting point: shift start for Present, now for Late. */
-function initialTime(status: 'present' | 'late', date: string, shift: ShiftConfig): number {
+const ARRIVAL: ManualTimeKind = {kind: 'arrival'};
+
+/**
+ * A sensible starting point: shift start for a Present arrival, shift end for
+ * a time-out ("forgot to tap out at the end of the day"), otherwise now.
+ */
+function initialTime(
+  purpose: ManualTimeKind,
+  status: 'present' | 'late',
+  date: string,
+  shift: ShiftConfig,
+): number {
   const now = Date.now();
+
+  if (purpose.kind === 'time_out') {
+    return stepManualTime(shiftEndMs(date, shift), 0, date, now, shift, earliestTimeOut(purpose.timeIn));
+  }
+
   const start = status === 'present' ? shiftStartMs(date, shift) : now;
 
   return stepManualTime(start, 0, date, now, shift);
@@ -41,27 +64,42 @@ export function ManualTimeModal({
   status,
   date,
   shift,
+  purpose = ARRIVAL,
   onCancel,
   onConfirm,
 }: Props) {
-  // Mounted per worker by Roll Call, so the starting value is set once here.
-  const [value, setValue] = useState(() => initialTime(status, date, shift));
+  const timeOut = purpose.kind === 'time_out';
+  const earliest = timeOut ? earliestTimeOut(purpose.timeIn) : null;
 
-  const step = (minutes: number) =>
-    setValue(current => stepManualTime(current, minutes, date, Date.now(), shift));
+  // Mounted per worker by Roll Call, so the starting value is set once here.
+  const [value, setValue] = useState(() => initialTime(purpose, status, date, shift));
+
+  const clamp = (ms: number, minutes = 0) =>
+    stepManualTime(ms, minutes, date, Date.now(), shift, earliest);
+
+  const step = (minutes: number) => setValue(current => clamp(current, minutes));
 
   const statusLabel = status === 'present' ? 'Present' : 'Late';
+  const shown = formatSiteTime(value, shift);
+  // Only when the time in was this very minute: nothing after it has passed yet.
+  const tooSoon = timeOut && value <= purpose.timeIn;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
-          <Text style={styles.eyebrow}>Set arrival time</Text>
+          <Text style={styles.eyebrow}>{timeOut ? 'Set time-out' : 'Set arrival time'}</Text>
           <Text style={styles.worker}>{workerName}</Text>
-          <Text style={styles.meta}>Marking {statusLabel}</Text>
+          <Text style={styles.meta}>
+            {timeOut
+              ? `${statusLabel} · in ${formatSiteTime(purpose.timeIn, shift)}`
+              : `Marking ${statusLabel}`}
+          </Text>
 
-          <Text style={styles.value} accessibilityLabel={`Arrival ${formatSiteTime(value, shift)}`}>
-            {formatSiteTime(value, shift)}
+          <Text
+            style={styles.value}
+            accessibilityLabel={`${timeOut ? 'Time-out' : 'Arrival'} ${shown}`}>
+            {shown}
           </Text>
 
           <View style={styles.stepRow}>
@@ -76,28 +114,28 @@ export function ManualTimeModal({
           </View>
           <View style={styles.stepRow}>
             <StepButton
-              label={shift.start}
+              label={timeOut ? shift.end : shift.start}
               onPress={() =>
-                setValue(stepManualTime(shiftStartMs(date, shift), 0, date, Date.now(), shift))
+                setValue(clamp(timeOut ? shiftEndMs(date, shift) : shiftStartMs(date, shift)))
               }
             />
-            <StepButton
-              label="Now"
-              onPress={() => setValue(stepManualTime(Date.now(), 0, date, Date.now(), shift))}
-            />
+            <StepButton label="Now" onPress={() => setValue(clamp(Date.now()))} />
           </View>
 
           <Text style={styles.note}>
-            Flagged for HR review as MANUAL_TIME_OVERRIDE. Your actual tap time is recorded beside
-            it.
+            {timeOut
+              ? 'Flagged for HR review as MANUAL_TIME_OUT. Your actual tap time is recorded beside it. For everyone still on site at the end of the day, use Close shift instead.'
+              : 'Flagged for HR review as MANUAL_TIME_OVERRIDE. Your actual tap time is recorded beside it.'}
           </Text>
 
           <TouchableOpacity
-            style={styles.confirm}
+            style={[styles.confirm, tooSoon && styles.confirmDisabled]}
             accessibilityRole="button"
+            accessibilityState={{disabled: tooSoon}}
+            disabled={tooSoon}
             onPress={() => onConfirm(value)}>
             <Text style={styles.confirmText}>
-              Mark {statusLabel} at {formatSiteTime(value, shift)}
+              {timeOut ? `Time out at ${shown}` : `Mark ${statusLabel} at ${shown}`}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.cancel} accessibilityRole="button" onPress={onCancel}>
@@ -144,6 +182,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  confirmDisabled: {opacity: 0.4},
   confirmText: {color: '#f2f2f3', fontSize: 17, fontWeight: '600'},
   cancel: {minHeight: 48, alignItems: 'center', justifyContent: 'center', marginTop: 6},
   cancelText: {fontSize: 16, color: '#5d5d60'},

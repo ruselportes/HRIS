@@ -8,9 +8,10 @@
  * property STD TC-02 relies on. Undo is therefore an appended event, not a
  * deletion.
  *
- * Current UI state is derived (latest event per employee+date) rather than
- * stored, so there is a single source of truth instead of two representations
- * that can drift apart.
+ * Current UI state is derived rather than stored, so there is a single source
+ * of truth instead of two representations that can drift apart: a worker's
+ * day is their latest roll-call event, closed by any time-out event newer
+ * than it.
  *
  * @format
  */
@@ -19,7 +20,10 @@ import {getDatabase} from './database';
 import {
   AttendanceRecord,
   AttendanceStatus,
+  NO_TIME_OUT,
+  TimeOut,
   blankRecordFor,
+  isOnSite,
   selectStatus,
   todayLocalDate,
   undoStatus,
@@ -30,11 +34,19 @@ import {computeHmac, hmacKeyFromBase64} from '../crypto/hashChain';
 import {
   DEFAULT_SHIFT,
   ShiftConfig,
+  canCloseShift,
   creditAtShiftStart,
+  formatSiteTime,
+  shiftEndMs,
   withManualTime,
 } from './shiftRules';
 import {signAttendance} from '../crypto/teeSigner';
-import {AttendancePayloadRecord, OverrideType, PAYLOAD_VERSION} from '../crypto/payload';
+import {
+  AttendancePayloadRecord,
+  OverrideType,
+  PAYLOAD_VERSION,
+  TimeOutType,
+} from '../crypto/payload';
 
 export interface RosterMember {
   employeeId: number;
@@ -60,8 +72,11 @@ export interface CachedCrew {
   acting: ActingCover | null;
 }
 
-/** A record as roll call shows it: what was credited, and when it was tapped. */
-export type TodayRecord = AttendanceRecord & {capturedAt: number | null};
+/**
+ * A record as roll call shows it: what was credited, when it was tapped, and
+ * how the day ended.
+ */
+export type TodayRecord = AttendanceRecord & TimeOut & {capturedAt: number | null};
 
 /** Raised when capture is attempted before the device has been bound. */
 export class DeviceNotBoundError extends Error {
@@ -70,6 +85,17 @@ export class DeviceNotBoundError extends Error {
       'This device is not bound. Complete device binding before recording attendance.',
     );
     this.name = 'DeviceNotBoundError';
+  }
+}
+
+/**
+ * A time-out the server would refuse, caught before it is signed. Its message
+ * is written for the foreman.
+ */
+export class TimeOutRefusedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TimeOutRefusedError';
   }
 }
 
@@ -172,7 +198,10 @@ export async function getCachedCrew(): Promise<CachedCrew | null> {
   };
 }
 
+/** A row of STATE_SQL: the latest roll call, with its newer time-out as out_*. */
 function rowToRecord(row: any): TodayRecord {
+  const timeOut = row.out_time_out ?? null;
+
   return {
     employeeId: row.employee_id,
     date: row.date,
@@ -180,8 +209,35 @@ function rowToRecord(row: any): TodayRecord {
     timeIn: row.time_in,
     overrideType: row.override_type ?? null,
     capturedAt: row.captured_at ?? null,
+    // A cleared time-out (Undo) is an event with no time: the day is open again.
+    timeOut,
+    timeOutType: timeOut === null ? null : row.out_time_out_type ?? null,
+    timeOutCapturedAt: timeOut === null ? null : row.out_captured_at ?? null,
   };
 }
+
+/**
+ * Current state per worker on a date: the latest roll-call event, and the
+ * latest time-out event if it is newer than that roll call. A time-out older
+ * than the latest roll call closed a status that has since been re-marked or
+ * undone, so it no longer applies — the server drops it the same way.
+ *
+ * Events written before payload v3 are roll calls (schema v5 defaults them).
+ */
+const STATE_SQL = `
+  SELECT r.*, t.time_out AS out_time_out, t.time_out_type AS out_time_out_type,
+         t.captured_at AS out_captured_at
+    FROM attendance_events r
+    LEFT JOIN attendance_events t ON t.event_id = (
+      SELECT MAX(event_id) FROM attendance_events
+       WHERE employee_id = r.employee_id AND date = r.date
+         AND event_type = 'time_out' AND event_id > r.event_id
+    )
+   WHERE r.event_id IN (
+      SELECT MAX(event_id) FROM attendance_events
+       WHERE date = ? AND event_type = 'roll_call' /*employee*/
+       GROUP BY employee_id
+   );`;
 
 /**
  * The chain tip: hmac_hash of the most recent event in the CURRENT binding's
@@ -205,56 +261,55 @@ async function currentChainTip(epoch: string): Promise<string | null> {
   return result.rows.length === 0 ? null : (result.rows[0] as any).hmac_hash;
 }
 
-/** Latest event for one employee on a date, or a blank record if none. */
-async function latestEvent(
-  employeeId: number,
-  date: string,
-): Promise<AttendanceRecord> {
+async function currentRecords(date: string, employeeId?: number): Promise<TodayRecord[]> {
   const db = await getDatabase();
-  const result = await db.execute(
-    `SELECT * FROM attendance_events
-      WHERE employee_id = ? AND date = ?
-      ORDER BY event_id DESC LIMIT 1;`,
-    [employeeId, date],
-  );
+  const result =
+    employeeId === undefined
+      ? await db.execute(STATE_SQL.replace('/*employee*/', ''), [date])
+      : await db.execute(STATE_SQL.replace('/*employee*/', 'AND employee_id = ?'), [
+          date,
+          employeeId,
+        ]);
 
-  return result.rows.length === 0
-    ? blankRecordFor(employeeId, date)
-    : rowToRecord(result.rows[0]);
+  return (result.rows as any[]).map(rowToRecord);
 }
 
-export async function getTodayAttendance(
-  employeeId: number,
-): Promise<AttendanceRecord> {
-  return latestEvent(employeeId, todayLocalDate());
+/** One employee's current state on a date, or a blank record if none. */
+async function currentRecord(employeeId: number, date: string): Promise<TodayRecord> {
+  const [record] = await currentRecords(date, employeeId);
+
+  return record ?? {...blankRecordFor(employeeId, date), ...NO_TIME_OUT, capturedAt: null};
+}
+
+export async function getTodayAttendance(employeeId: number): Promise<TodayRecord> {
+  return currentRecord(employeeId, todayLocalDate());
 }
 
 /**
- * Current state for every employee marked today — the latest event each.
- * Earlier events for the same employee remain in the log; they are history,
- * not current state.
+ * Current state for every employee marked today. Earlier events for the same
+ * employee remain in the log; they are history, not current state.
  */
 export async function listTodayAttendance(): Promise<Map<number, TodayRecord>> {
-  const db = await getDatabase();
-  const date = todayLocalDate();
-
-  const result = await db.execute(
-    `SELECT e.* FROM attendance_events e
-      JOIN (
-        SELECT employee_id, MAX(event_id) AS latest_id
-        FROM attendance_events WHERE date = ?
-        GROUP BY employee_id
-      ) newest ON newest.latest_id = e.event_id;`,
-    [date],
-  );
-
   const map = new Map<number, TodayRecord>();
-  for (const row of result.rows as any[]) {
-    map.set(row.employee_id, rowToRecord(row));
+  for (const record of await currentRecords(todayLocalDate())) {
+    map.set(record.employeeId, record);
   }
 
   return map;
 }
+
+/** The signed fields that say what an event records; the rest is chain and clock. */
+type EventFields = Pick<
+  AttendancePayloadRecord,
+  | 'employee_id'
+  | 'date'
+  | 'event_type'
+  | 'status'
+  | 'time_in'
+  | 'override_type'
+  | 'time_out'
+  | 'time_out_type'
+>;
 
 /**
  * Append one chained, signed event.
@@ -263,11 +318,15 @@ export async function listTodayAttendance(): Promise<Map<number, TodayRecord>> {
  * the tap), then chain, then sign. Signing is the slow step and happens last,
  * over values already fixed — so its latency cannot influence what was
  * attested.
+ *
+ * `fieldsAt` receives the captured tap time, so an ordinary tap can be
+ * recorded at exactly that instant. It may throw to refuse the event; nothing
+ * has been written by then.
  */
 async function appendEvent(
-  record: AttendanceRecord,
   crewId: number,
-): Promise<TodayRecord> {
+  fieldsAt: (tapMs: number) => EventFields,
+): Promise<{fields: EventFields; capturedAt: number}> {
   const credentials = await loadCredentials();
 
   if (credentials === null) {
@@ -277,32 +336,14 @@ async function appendEvent(
   }
 
   const clock = captureClock();
+  const fields = fieldsAt(clock.wallClockMs);
   const epoch = chainEpoch(credentials);
   const prevHash = await currentChainTip(epoch);
 
-  /*
-   * An ordinary arrival is credited at the captured tap itself, not at the
-   * Date.now() the state machine read earlier — those are separate reads with
-   * awaits in between, and the server refuses a time_in that drifts from
-   * captured_at. Only an override may carry a different time, and it says so
-   * in the signed override_type.
-   */
-  const timeIn =
-    record.timeIn === null || record.overrideType !== null
-      ? record.timeIn
-      : clock.wallClockMs;
-
   const payload: AttendancePayloadRecord = {
-    employee_id: record.employeeId,
+    ...fields,
     crew_id: crewId,
-    date: record.date,
-    event_type: 'roll_call',
-    status: record.status,
-    time_in: timeIn,
-    time_out: null,
     captured_at: clock.wallClockMs,
-    override_type: record.overrideType,
-    time_out_type: null,
     monotonic_timestamp: Math.round(clock.monotonicMs),
     boot_id: clock.bootId,
     device_id: credentials.deviceId,
@@ -364,9 +405,68 @@ async function appendEvent(
     [insert.insertId ?? null, credentials.deviceId, Date.now()],
   );
 
+  return {fields, capturedAt: payload.captured_at};
+}
+
+/**
+ * Append a roll-call event. A roll call closes nothing, so it also clears any
+ * time-out recorded against the earlier status — the server does the same.
+ */
+async function appendRollCall(record: AttendanceRecord, crewId: number): Promise<TodayRecord> {
+  const {fields, capturedAt} = await appendEvent(crewId, tapMs => ({
+    employee_id: record.employeeId,
+    date: record.date,
+    event_type: 'roll_call',
+    status: record.status,
+    /*
+     * An ordinary arrival is credited at the captured tap itself, not at the
+     * Date.now() the state machine read earlier — those are separate reads
+     * with awaits in between, and the server refuses a time_in that drifts
+     * from captured_at. Only an override may carry a different time, and it
+     * says so in the signed override_type.
+     */
+    time_in: record.timeIn === null || record.overrideType !== null ? record.timeIn : tapMs,
+    override_type: record.overrideType,
+    time_out: null,
+    time_out_type: null,
+  }));
+
   // What was actually signed, so the UI shows the stored times, not the
   // state machine's earlier reading.
-  return {...record, timeIn, capturedAt: payload.captured_at};
+  return {...record, ...NO_TIME_OUT, timeIn: fields.time_in, capturedAt};
+}
+
+/**
+ * Append a time-out event closing (or, with a null time, reopening) the
+ * worker's day. It restates the status it closes — the server refuses one
+ * that disagrees with the record — and nothing about arrival.
+ */
+async function appendTimeOut(
+  current: TodayRecord,
+  crewId: number,
+  timeOutAt: (tapMs: number) => {timeOut: number | null; timeOutType: TimeOutType | null},
+): Promise<TodayRecord> {
+  const {fields, capturedAt} = await appendEvent(crewId, tapMs => {
+    const {timeOut, timeOutType} = timeOutAt(tapMs);
+
+    return {
+      employee_id: current.employeeId,
+      date: current.date,
+      event_type: 'time_out',
+      status: current.status,
+      time_in: null,
+      override_type: null,
+      time_out: timeOut,
+      time_out_type: timeOutType,
+    };
+  });
+
+  return {
+    ...current,
+    timeOut: fields.time_out,
+    timeOutType: fields.time_out_type,
+    timeOutCapturedAt: fields.time_out === null ? null : capturedAt,
+  };
 }
 
 /**
@@ -379,24 +479,122 @@ export async function recordStatus(
   status: 'present' | 'late' | 'absent',
 ): Promise<TodayRecord> {
   const date = todayLocalDate();
-  const current = await latestEvent(employeeId, date);
+  const current = await currentRecord(employeeId, date);
 
-  return appendEvent(selectStatus(current, status, Date.now()), crewId);
+  return appendRollCall(selectStatus(current, status, Date.now()), crewId);
 }
 
 /**
  * Undo — appends a reverting event rather than deleting anything. The original
  * event stays in the log and in the chain, which is what makes the correction
  * itself auditable rather than invisible.
+ *
+ * Undo takes back the last thing done: a time-out first, reopening the day,
+ * and only then the mark itself.
  */
 export async function undoAttendance(
   employeeId: number,
   crewId: number,
 ): Promise<TodayRecord> {
   const date = todayLocalDate();
-  const current = await latestEvent(employeeId, date);
+  const current = await currentRecord(employeeId, date);
 
-  return appendEvent(undoStatus(current), crewId);
+  if (current.timeOut !== null) {
+    return appendTimeOut(current, crewId, () => ({timeOut: null, timeOutType: null}));
+  }
+
+  return appendRollCall(undoStatus(current), crewId);
+}
+
+/* ------------------------------------------------------------------------ *
+ * Time-out (payload v3)
+ *
+ * The device-side mirror of backend TimeOutPolicy: each writer refuses, before
+ * signing, a time-out the server would refuse on sync.
+ * ------------------------------------------------------------------------ */
+
+async function onSiteRecord(employeeId: number, date: string): Promise<TodayRecord> {
+  const current = await currentRecord(employeeId, date);
+
+  if (!isOnSite(current)) {
+    throw new TimeOutRefusedError(
+      current.timeOut === null
+        ? 'Only a worker marked Present or Late can be timed out.'
+        : 'This worker is already timed out. Undo it first to change it.',
+    );
+  }
+
+  return current;
+}
+
+/** "Out", tapped as the worker leaves: timed out at the tap itself. */
+export async function recordTimeOut(employeeId: number, crewId: number): Promise<TodayRecord> {
+  const current = await onSiteRecord(employeeId, todayLocalDate());
+
+  return appendTimeOut(current, crewId, tapMs => ({timeOut: tapMs, timeOutType: null}));
+}
+
+/**
+ * A time-out the foreman states ("forgot to tap out"). After the time in, and
+ * not after the tap — a departure cannot be stated for a moment that has not
+ * happened yet. Held for HR review as MANUAL_TIME_OUT.
+ */
+export async function recordManualTimeOut(
+  employeeId: number,
+  crewId: number,
+  timeOutMs: number,
+): Promise<TodayRecord> {
+  const current = await onSiteRecord(employeeId, todayLocalDate());
+
+  return appendTimeOut(current, crewId, tapMs => {
+    if (current.timeIn !== null && timeOutMs <= current.timeIn) {
+      throw new TimeOutRefusedError('A time-out has to be after the time in.');
+    }
+
+    if (timeOutMs > tapMs) {
+      throw new TimeOutRefusedError('A time-out cannot be later than now.');
+    }
+
+    return {timeOut: timeOutMs, timeOutType: 'manual_time'};
+  });
+}
+
+/**
+ * Close shift: everyone still on site is timed out at exactly shift end. Not
+ * reviewed — it asserts only that nobody left early, and a worker who did is
+ * tapped Out first.
+ *
+ * Skips workers already out, absent or unmarked. Each worker is a separate
+ * signed event; if one fails the ones before it stand, so the screen reloads
+ * rather than trusting the returned list.
+ */
+export async function closeShift(crewId: number, employeeIds: number[]): Promise<TodayRecord[]> {
+  const date = todayLocalDate();
+  const shift = await getShiftConfig();
+  const end = shiftEndMs(date, shift);
+  const closed: TodayRecord[] = [];
+
+  for (const employeeId of employeeIds) {
+    const current = await currentRecord(employeeId, date);
+
+    if (!isOnSite(current)) {
+      continue;
+    }
+
+    closed.push(
+      await appendTimeOut(current, crewId, tapMs => {
+        if (!canCloseShift(tapMs, date, shift)) {
+          throw new TimeOutRefusedError(
+            `Close shift opens at ${formatSiteTime(end, shift)}. Tap Out for anyone leaving earlier.`,
+          );
+        }
+
+        return {timeOut: end, timeOutType: 'shift_end'};
+      }),
+    );
+  }
+
+  return closed;
 }
 
 /* ------------------------------------------------------------------------ *
@@ -419,15 +617,21 @@ async function writeSetting(key: string, value: string): Promise<void> {
   );
 }
 
-/** Cached from GET /api/me/crew, so the late-start rules work offline. */
+/** Cached from GET /api/me/crew, so the late-start and Close-shift rules work offline. */
 export async function saveShiftConfig(shift: ShiftConfig): Promise<void> {
   await writeSetting('shift_config', JSON.stringify(shift));
 }
+
+const isClockTime = (value: unknown): value is string =>
+  typeof value === 'string' && /^\d{2}:\d{2}$/.test(value);
 
 /**
  * The server's shift rules as last fetched, or its defaults before the first
  * fetch. A malformed cache falls back rather than throwing: roll call must
  * still open, and the server re-checks every override on sync regardless.
+ *
+ * A cache saved before the server sent a shift end lacks one until the next
+ * roster fetch, and takes the default end meanwhile.
  */
 export async function getShiftConfig(): Promise<ShiftConfig> {
   const raw = await readSetting('shift_config');
@@ -439,11 +643,10 @@ export async function getShiftConfig(): Promise<ShiftConfig> {
   try {
     const parsed = JSON.parse(raw);
 
-    return typeof parsed.start === 'string' &&
-      /^\d{2}:\d{2}$/.test(parsed.start) &&
+    return isClockTime(parsed.start) &&
       Number.isInteger(parsed.late_override_grace_minutes) &&
       Number.isInteger(parsed.utc_offset_minutes)
-      ? parsed
+      ? {...parsed, end: isClockTime(parsed.end) ? parsed.end : DEFAULT_SHIFT.end}
       : DEFAULT_SHIFT;
   } catch {
     return DEFAULT_SHIFT;
@@ -530,9 +733,9 @@ export async function recordShiftCredit(
   crewId: number,
 ): Promise<TodayRecord> {
   const date = todayLocalDate();
-  const [current, shift] = await Promise.all([latestEvent(employeeId, date), getShiftConfig()]);
+  const [current, shift] = await Promise.all([currentRecord(employeeId, date), getShiftConfig()]);
 
-  return appendEvent(creditAtShiftStart(current, date, shift), crewId);
+  return appendRollCall(creditAtShiftStart(current, date, shift), crewId);
 }
 
 /** Present or Late at an arrival time the foreman states ("Set each time myself"). */
@@ -542,9 +745,9 @@ export async function recordManualTime(
   status: 'present' | 'late',
   timeInMs: number,
 ): Promise<TodayRecord> {
-  const current = await latestEvent(employeeId, todayLocalDate());
+  const current = await currentRecord(employeeId, todayLocalDate());
 
-  return appendEvent(withManualTime(current, status, timeInMs), crewId);
+  return appendRollCall(withManualTime(current, status, timeInMs), crewId);
 }
 
 /* ------------------------------------------------------------------------ *
@@ -711,9 +914,31 @@ export type SyncQueueRow = {
   status: string;
   timeIn: number | null;
   capturedAt: number;
+  /** The record's standing: the worse of its roll call and its time-out. */
   syncStatus: EventSyncStatus;
   overrideType: OverrideType | null;
+  timeOut: number | null;
+  timeOutType: TimeOutType | null;
 };
+
+/**
+ * Which of two events' outcomes a record shows: a failure before anything
+ * still waiting, and anything waiting before a review — so a time-out sent
+ * cleanly never hides a roll call that was not.
+ */
+const SYNC_STATUS_WEIGHT: Record<EventSyncStatus, number> = {
+  rejected: 4,
+  refused: 3,
+  pending: 2,
+  flagged: 1,
+  synced: 0,
+};
+
+function worseOf(a: EventSyncStatus, b: EventSyncStatus | null): EventSyncStatus {
+  return b !== null && SYNC_STATUS_WEIGHT[b] > SYNC_STATUS_WEIGHT[a] ? b : a;
+}
+
+const failed = (status: EventSyncStatus) => status === 'rejected' || status === 'refused';
 
 export type SyncSummary = {
   pending: number;
@@ -728,10 +953,12 @@ export type SyncSummary = {
 /**
  * Everything the Sync Queue screen shows.
  *
- * Only the latest event per employee+day is listed, matching what the foreman
- * thinks of as "a record" — an Undo followed by a re-tap is one person, not
- * three rows. Failed sorts first ("Failed first", per the prototype), then
- * oldest first within each group ("As marked, oldest first").
+ * One row per employee+day, matching what the foreman thinks of as "a record"
+ * — an Undo followed by a re-tap is one person, not three rows. A record is
+ * its latest roll call and any newer time-out, as on Roll Call; the time-out
+ * is the latest event, but the arrival it closes still has to reach the
+ * server. Failed sorts first ("Failed first", per the prototype), then oldest
+ * first within each group ("As marked, oldest first").
  *
  * Names come from the roster cache so a failure names the person rather than a
  * hash ("A failure names the person").
@@ -752,15 +979,21 @@ export async function getSyncSummary(epoch: string): Promise<SyncSummary> {
 
   const rows = await db.execute(
     `SELECT e.event_id, e.status, e.time_in, e.captured_at, e.sync_status,
-            e.override_type, r.first_name, r.last_name
+            e.override_type, t.time_out, t.time_out_type, t.sync_status AS out_sync_status,
+            r.first_name, r.last_name
        FROM attendance_events e
        JOIN (
          SELECT employee_id, date, MAX(event_id) AS latest_id
-           FROM attendance_events WHERE chain_epoch = ?
+           FROM attendance_events WHERE chain_epoch = ? AND event_type = 'roll_call'
           GROUP BY employee_id, date
        ) newest ON newest.latest_id = e.event_id
+       LEFT JOIN attendance_events t ON t.event_id = (
+         SELECT MAX(event_id) FROM attendance_events
+          WHERE chain_epoch = e.chain_epoch AND employee_id = e.employee_id
+            AND date = e.date AND event_type = 'time_out' AND event_id > e.event_id
+       )
        LEFT JOIN crew_roster_cache r ON r.employee_id = e.employee_id
-      ORDER BY CASE WHEN e.sync_status IN ('rejected', 'refused') THEN 0 ELSE 1 END, e.event_id;`,
+      ORDER BY e.event_id;`,
     [epoch],
   );
 
@@ -776,17 +1009,22 @@ export async function getSyncSummary(epoch: string): Promise<SyncSummary> {
     rejected: tally.rejected ?? 0,
     lastSuccessfulSync:
       last.rows.length === 0 ? null : Number((last.rows[0] as any).value),
-    rows: (rows.rows as any[]).map(row => ({
-      eventId: row.event_id,
-      employeeName:
-        row.last_name && row.first_name
-          ? `${row.last_name}, ${row.first_name}`
-          : `Employee #${row.event_id}`,
-      status: row.status,
-      timeIn: row.time_in,
-      capturedAt: row.captured_at,
-      syncStatus: row.sync_status,
-      overrideType: row.override_type ?? null,
-    })),
+    rows: (rows.rows as any[])
+      .map(row => ({
+        eventId: row.event_id,
+        employeeName:
+          row.last_name && row.first_name
+            ? `${row.last_name}, ${row.first_name}`
+            : `Employee #${row.event_id}`,
+        status: row.status,
+        timeIn: row.time_in,
+        capturedAt: row.captured_at,
+        syncStatus: worseOf(row.sync_status, row.out_sync_status ?? null),
+        overrideType: row.override_type ?? null,
+        timeOut: row.time_out ?? null,
+        timeOutType: row.time_out == null ? null : row.time_out_type ?? null,
+      }))
+      // Stable, so each group keeps the query's oldest-first order.
+      .sort((a, b) => Number(failed(b.syncStatus)) - Number(failed(a.syncStatus))),
   };
 }
