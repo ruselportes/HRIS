@@ -25,7 +25,13 @@ class AttendanceSyncController extends Controller
             return $deviceKey;
         }
 
-        $result = $this->sync->ingest($deviceKey, $request->validated()['events']);
+        // validated() builds the events array rule by rule, so a key only some
+        // events carry (payload_version on v3 events) creates those entries
+        // first. The array order IS the chain order, so restore it by index.
+        $events = $request->validated()['events'];
+        ksort($events);
+
+        $result = $this->sync->ingest($deviceKey, $events);
 
         $clean = $result['flagged'] === 0 && $result['refused'] === 0 && $result['rejected'] === 0;
 

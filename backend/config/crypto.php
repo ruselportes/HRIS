@@ -14,13 +14,19 @@ return [
     */
 
     /*
+     | Payload versions the server verifies. Each event says which it was
+     | signed under, and the version is the first line of the signed text.
+     |
      | v2 (Phase 7) signs captured_at and override_type. v1 left both outside
      | the signature, so an override — which changes what a worker is paid —
      | could be flipped in the local database or in transit without breaking
-     | anything. Clean cut, no v1 acceptance: nothing has shipped past the
-     | emulator, so there are no v1 events in the field to honour.
+     | anything. v1 is not accepted: nothing had shipped past the emulator.
+     |
+     | v3 (time-out capture) adds event_type, time_out and time_out_type.
+     | v2 stays accepted so events already queued on a phone when it updates
+     | still verify: they were signed as v2 and must be checked as v2.
      */
-    'payload_version' => 'v2',
+    'accepted_payload_versions' => ['v2', 'v3'],
 
     /*
      | How far the device's wall clock may disagree with its own monotonic

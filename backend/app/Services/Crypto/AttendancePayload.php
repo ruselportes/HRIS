@@ -13,8 +13,9 @@ use InvalidArgumentException;
  * and the failure looks like a crypto bug rather than a serialization bug, so
  * both sides are pinned to the shared test vectors in
  * tests/Unit/Crypto/AttendancePayloadTest.php and payload.test.ts. Change the
- * format only by bumping `crypto.payload_version` and updating both sides and
- * both vector sets together.
+ * format only by adding a new version to FIELDS below (and to
+ * `crypto.accepted_payload_versions`), updating both sides and both vector sets
+ * together.
  *
  * Why not JSON: key ordering, unicode escaping, and float/int rendering all
  * differ between PHP's json_encode and JS's JSON.stringify. A newline-
@@ -29,14 +30,21 @@ use InvalidArgumentException;
 class AttendancePayload
 {
     /**
-     * Fields in fixed order. Order is part of the format — do not sort.
+     * Fields in fixed order, per payload version. Order is part of the format —
+     * do not sort.
      *
      * v2 added captured_at and override_type. Both change what a worker is
      * paid or how their time is judged, so both must be covered: captured_at
      * is the real tap time the clock check runs against, and override_type is
      * what licenses a time_in that differs from it.
+     *
+     * v3 (time-out capture) adds event_type — a roll call, or a time-out
+     * recorded for a worker already on roll call — plus time_out and
+     * time_out_type. A time-out is its own event rather than a roll call
+     * restating time_in, because TimeInPolicy requires an ordinary time_in to
+     * be the tap itself.
      */
-    public const FIELDS = [
+    public const FIELDS_V2 = [
         'employee_id',
         'crew_id',
         'date',
@@ -50,16 +58,58 @@ class AttendancePayload
         'prev_hash',
     ];
 
+    public const FIELDS_V3 = [
+        'employee_id',
+        'crew_id',
+        'date',
+        'event_type',
+        'status',
+        'time_in',
+        'time_out',
+        'captured_at',
+        'override_type',
+        'time_out_type',
+        'monotonic_timestamp',
+        'boot_id',
+        'device_id',
+        'prev_hash',
+    ];
+
+    /**
+     * The version a record was signed under. It travels with each event and
+     * is itself the first line of the signed text, so an event cannot be
+     * relabelled to another version without breaking its HMAC and signature.
+     * An event with no version is v2: what phones built before v3 send.
+     */
+    public static function versionOf(array $record): string
+    {
+        return $record['payload_version'] ?? 'v2';
+    }
+
+    /** @return list<string> */
+    public static function fields(string $version): array
+    {
+        return match ($version) {
+            'v2' => self::FIELDS_V2,
+            'v3' => self::FIELDS_V3,
+            default => throw new InvalidArgumentException("Unknown attendance payload version [{$version}]."),
+        };
+    }
+
     /**
      * @param  array<string, mixed>  $record
      */
     public static function canonicalize(array $record): string
     {
-        $version = config('crypto.payload_version', 'v2');
+        $version = self::versionOf($record);
+
+        if (! in_array($version, config('crypto.accepted_payload_versions', ['v2', 'v3']), true)) {
+            throw new InvalidArgumentException("Attendance payload version [{$version}] is not accepted.");
+        }
 
         $lines = ["version={$version}"];
 
-        foreach (self::FIELDS as $field) {
+        foreach (self::fields($version) as $field) {
             if (! array_key_exists($field, $record)) {
                 throw new InvalidArgumentException(
                     "Attendance payload is missing required field [{$field}]."

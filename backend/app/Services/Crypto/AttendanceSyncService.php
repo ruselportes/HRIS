@@ -48,6 +48,10 @@ class AttendanceSyncService
 
     public const STATUS_FLAGGED = 'flagged';
 
+    public const ROLL_CALL = 'roll_call';
+
+    public const TIME_OUT = 'time_out';
+
     public const STATUS_REFUSED = 'refused';
 
     public const STATUS_REJECTED = 'rejected';
@@ -243,6 +247,12 @@ class AttendanceSyncService
             return ['status' => self::STATUS_REFUSED, 'reason' => 'not_crew_foreman', 'drift_seconds' => null];
         }
 
+        if ($this->eventTypeOf($event) === self::TIME_OUT) {
+            // Time-out capture is being introduced in steps; until its
+            // policy is in place, a time-out is authentic but not accepted.
+            return ['status' => self::STATUS_REFUSED, 'reason' => 'time_out_not_supported', 'drift_seconds' => null];
+        }
+
         $timeIn = $this->timeInPolicy->evaluate($event);
 
         if (! $timeIn['valid']) {
@@ -270,7 +280,10 @@ class AttendanceSyncService
      */
     private function payloadOf(array $event): array
     {
-        return [
+        $version = AttendancePayload::versionOf($event);
+
+        $payload = [
+            'payload_version' => $version,
             'employee_id' => $event['employee_id'],
             'crew_id' => $event['crew_id'],
             'date' => $event['date'],
@@ -283,6 +296,25 @@ class AttendanceSyncService
             'device_id' => $event['device_id'],
             'prev_hash' => $event['prev_hash'] ?? null,
         ];
+
+        if ($version === 'v3') {
+            $payload += [
+                'event_type' => $event['event_type'],
+                'time_out' => $event['time_out'] ?? null,
+                'time_out_type' => $event['time_out_type'] ?? null,
+            ];
+        }
+
+        return $payload;
+    }
+
+    /**
+     * What an event records. Read from the signed v3 field; a v2 event can
+     * only be a roll call, whatever unsigned keys it carries.
+     */
+    private function eventTypeOf(array $event): string
+    {
+        return AttendancePayload::versionOf($event) === 'v3' ? $event['event_type'] : self::ROLL_CALL;
     }
 
     private function previousClockState(DeviceKey $deviceKey): ?array

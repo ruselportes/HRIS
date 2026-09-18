@@ -14,32 +14,43 @@ import {
   digest,
 } from '../payload';
 
-/** Must equal AttendancePayloadTest::VECTOR_RECORD exactly. */
+/**
+ * Must equal AttendancePayloadTest::V3_RECORD exactly: a Close-shift time-out
+ * tapped at 16:05 site time (08:05 UTC), crediting 16:00. The device only
+ * produces v3 now; the server's v2 vector stays pinned there for events
+ * queued before the update.
+ */
 const VECTOR_RECORD: AttendancePayloadRecord = {
   employee_id: 42,
   crew_id: 7,
   date: '2026-09-12',
+  event_type: 'time_out',
   status: 'present',
-  time_in: 1789200000000,
-  captured_at: 1789200000000,
+  time_in: null,
+  time_out: 1789200000000,
+  captured_at: 1789200300000,
   override_type: null,
-  monotonic_timestamp: 86400000,
+  time_out_type: 'shift_end',
+  monotonic_timestamp: 86700000,
   boot_id: 'b7f3c1a2',
   device_id: 'dev-mgk3f1-a83bd0e1',
   prev_hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
 };
 
-/** Must equal AttendancePayloadTest::VECTOR_CANONICAL exactly. */
+/** Must equal AttendancePayloadTest::V3_CANONICAL exactly. */
 const VECTOR_CANONICAL =
-  'version=v2\n' +
+  'version=v3\n' +
   'employee_id=42\n' +
   'crew_id=7\n' +
   'date=2026-09-12\n' +
+  'event_type=time_out\n' +
   'status=present\n' +
-  'time_in=1789200000000\n' +
-  'captured_at=1789200000000\n' +
+  'time_in=\n' +
+  'time_out=1789200000000\n' +
+  'captured_at=1789200300000\n' +
   'override_type=\n' +
-  'monotonic_timestamp=86400000\n' +
+  'time_out_type=shift_end\n' +
+  'monotonic_timestamp=86700000\n' +
   'boot_id=b7f3c1a2\n' +
   'device_id=dev-mgk3f1-a83bd0e1\n' +
   'prev_hash=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
@@ -50,7 +61,7 @@ const VECTOR_CANONICAL =
  * Hardcoded rather than derived so a matching bug on both sides cannot hide.
  */
 const VECTOR_DIGEST =
-  '75122198dee74d1e87c91d7d29d75c53ee3d6237cc3d53a5725f22ca9e7dfffd';
+  '2d35f5f2b143db1c3d48e7b8b1d3603540d81bc0ad64ffebca5dfb7659cc1395';
 
 describe('canonicalize', () => {
   test('matches the shared vector byte for byte', () => {

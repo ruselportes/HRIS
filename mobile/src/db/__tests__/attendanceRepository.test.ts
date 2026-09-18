@@ -130,16 +130,22 @@ describe('recordStatus', () => {
       employee_id: row.employee_id,
       crew_id: row.crew_id,
       date: row.date,
+      event_type: row.event_type,
       status: row.status,
       time_in: row.time_in,
+      time_out: row.time_out,
       captured_at: row.captured_at,
       override_type: row.override_type,
+      time_out_type: row.time_out_type,
       monotonic_timestamp: row.monotonic_timestamp,
       boot_id: row.boot_id,
       device_id: row.device_id,
       prev_hash: row.prev_hash,
     };
 
+    // Stored with the version it was signed under, so it is resent as that.
+    expect(row.payload_version).toBe('v3');
+    expect(row.event_type).toBe('roll_call');
     expect(__signedPayloads).toHaveLength(1);
     expect(__signedPayloads[0]).toBe(canonicalize(payload));
     expect(row.hmac_hash).toBe(computeHmac(payload, hmacKeyFromBase64(KEY_BASE64)));

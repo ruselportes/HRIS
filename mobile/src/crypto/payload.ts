@@ -19,13 +19,19 @@ import {sha256} from '@noble/hashes/sha2.js';
 import {bytesToHex, utf8ToBytes} from '@noble/hashes/utils.js';
 
 /**
- * Must match config('crypto.payload_version') on the server.
+ * The version this device signs new events under. The server accepts every
+ * version in config('crypto.accepted_payload_versions'); each event carries
+ * its own, and the version is the first line of what is signed.
  *
  * v2 (Phase 7) signs captured_at and override_type. In v1 both sat outside the
  * signature, so an override — which changes what a worker is paid — could be
  * switched on in local storage or in transit without breaking anything.
+ *
+ * v3 (time-out capture) adds event_type, time_out and time_out_type. Events
+ * stored before the update keep the version they were signed under and are
+ * resent as such (see attendance_events.payload_version).
  */
-export const PAYLOAD_VERSION = 'v2';
+export const PAYLOAD_VERSION = 'v3';
 
 /**
  * Why the credited time_in differs from the tap, if it does. Null for an
@@ -33,15 +39,31 @@ export const PAYLOAD_VERSION = 'v2';
  */
 export type OverrideType = 'shift_credit' | 'manual_time';
 
-/** Fixed order — the order is part of the format. Do not sort. */
+/** A roll call, or a time-out recorded for a worker already on roll call. */
+export type EventType = 'roll_call' | 'time_out';
+
+/**
+ * Why a time-out differs from the tap, if it does: credited at shift end by
+ * Close shift, or a time the foreman set. Null for an "Out" tapped as the
+ * worker leaves.
+ */
+export type TimeOutType = 'shift_end' | 'manual_time';
+
+/**
+ * Fixed order — the order is part of the format. Do not sort. Mirrors
+ * AttendancePayload::FIELDS_V3 on the server.
+ */
 export const PAYLOAD_FIELDS = [
   'employee_id',
   'crew_id',
   'date',
+  'event_type',
   'status',
   'time_in',
+  'time_out',
   'captured_at',
   'override_type',
+  'time_out_type',
   'monotonic_timestamp',
   'boot_id',
   'device_id',
@@ -54,12 +76,16 @@ export type AttendancePayloadRecord = {
   employee_id: number;
   crew_id: number;
   date: string;
+  event_type: EventType;
   status: string;
   /** What the worker is credited with. Equals captured_at unless overridden. */
   time_in: number | null;
+  /** Set only on a time_out event; a time_out event with null clears it. */
+  time_out: number | null;
   /** When the tap really happened (wall clock) — what the clock check runs on. */
   captured_at: number;
   override_type: OverrideType | null;
+  time_out_type: TimeOutType | null;
   monotonic_timestamp: number;
   boot_id: string;
   device_id: string;

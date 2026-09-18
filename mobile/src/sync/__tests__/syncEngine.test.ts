@@ -38,6 +38,10 @@ function row(n: number) {
     ecdsa_signature: `s${n}`,
     override_type: null,
     captured_at: 1789200000000 + n,
+    payload_version: 'v3',
+    event_type: 'roll_call',
+    time_out: null,
+    time_out_type: null,
   };
 }
 
@@ -160,6 +164,29 @@ test('sends events in chain order with the exact wire shape', async () => {
   expect(body.events[0]).toHaveProperty('captured_at', 1789200000001);
   // The unsigned v1 boolean is no longer sent at all.
   expect(body.events[0]).not.toHaveProperty('override_flag');
+  // v3: the version it was signed under, and the time-out fields, present even when null.
+  expect(body.events[0]).toHaveProperty('payload_version', 'v3');
+  expect(body.events[0]).toHaveProperty('event_type', 'roll_call');
+  expect(body.events[0]).toHaveProperty('time_out', null);
+  expect(body.events[0]).toHaveProperty('time_out_type', null);
+});
+
+/*
+ * An event queued before the app updated was signed as v2. It must go out as
+ * v2 — the server verifies against the version named — and without the v3
+ * fields, which were never part of what it signed.
+ */
+test('an event signed before the update is sent as v2', async () => {
+  const legacy = {...row(1), payload_version: 'v2', event_type: 'roll_call', time_out: null, time_out_type: null};
+  (repo.listPendingEvents as jest.Mock).mockResolvedValue([legacy]);
+  postSpy.mockResolvedValue(accepting([legacy]));
+
+  await runSync();
+
+  const [, body] = postSpy.mock.calls[0];
+  expect(body.events[0]).toHaveProperty('payload_version', 'v2');
+  expect(body.events[0]).not.toHaveProperty('event_type');
+  expect(body.events[0]).not.toHaveProperty('time_out');
 });
 
 test('an absent worker is sent with time_in present as null, not omitted', async () => {

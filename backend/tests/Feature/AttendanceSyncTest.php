@@ -606,4 +606,45 @@ class AttendanceSyncTest extends TestCase
 
         $this->sync($events)->assertStatus(422)->assertJsonValidationErrors('events.0.captured_at');
     }
+
+    /* ---------------------------------------------------------------------
+     | Payload v3 (time-out capture)
+     * --------------------------------------------------------------------- */
+
+    public function test_a_v3_roll_call_is_accepted(): void
+    {
+        $events = $this->buildBatch([$this->worker()->employee_id], null, [['payload_version' => 'v3']]);
+
+        $this->sync($events)->assertOk()->assertJsonPath('accepted', 1);
+    }
+
+    /** v2 events still queued on a phone when it updates must still verify. */
+    public function test_v2_and_v3_events_verify_in_one_chain(): void
+    {
+        $events = $this->buildBatch(
+            [$this->worker()->employee_id, $this->worker()->employee_id],
+            null,
+            [1 => ['payload_version' => 'v3']],
+        );
+
+        // Also the regression for request validation reordering the batch:
+        // only the second event carries payload_version.
+        $this->sync($events)->assertOk()->assertJsonPath('accepted', 2);
+    }
+
+    public function test_relabelling_a_v3_event_as_v2_breaks_its_hmac(): void
+    {
+        $events = $this->buildBatch([$this->worker()->employee_id], null, [['payload_version' => 'v3']]);
+        $events[0]['payload_version'] = 'v2';
+
+        $this->sync($events)->assertJsonPath('rejected', 1)->assertJsonPath('results.0.reason', 'hmac_mismatch');
+    }
+
+    public function test_a_v3_event_must_send_its_v3_fields(): void
+    {
+        $events = $this->buildBatch([$this->worker()->employee_id], null, [['payload_version' => 'v3']]);
+        unset($events[0]['time_out']);
+
+        $this->sync($events)->assertUnprocessable();
+    }
 }

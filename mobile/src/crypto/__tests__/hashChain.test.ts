@@ -28,23 +28,26 @@ const VECTOR_RECORD: AttendancePayloadRecord = {
   employee_id: 42,
   crew_id: 7,
   date: '2026-09-12',
+  event_type: 'time_out',
   status: 'present',
-  time_in: 1789200000000,
-  captured_at: 1789200000000,
+  time_in: null,
+  time_out: 1789200000000,
+  captured_at: 1789200300000,
   override_type: null,
-  monotonic_timestamp: 86400000,
+  time_out_type: 'shift_end',
+  monotonic_timestamp: 86700000,
   boot_id: 'b7f3c1a2',
   device_id: 'dev-mgk3f1-a83bd0e1',
   prev_hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
 };
 
 /**
- * Computed independently with PHP over the v2 canonical form:
+ * Computed independently with PHP over the v3 canonical form:
  *   hash_hmac('sha256', canonical, base64_decode(KEY_BASE64))
  * Also asserted by AttendancePayloadTest on the server.
  */
 const VECTOR_HMAC =
-  '576e11103aaa6f32b71fe58d84f34360724a96821fe06186f661c1ad5d190f3c';
+  '63a6c707b3179539fed2dc54984636150f905b224c17af31be2b3de93792b9bb';
 
 function buildChain(count: number): ChainedRecord[] {
   const records: ChainedRecord[] = [];
@@ -56,8 +59,11 @@ function buildChain(count: number): ChainedRecord[] {
         employee_id: 100 + i,
         crew_id: 7,
         date: '2026-09-12',
+        event_type: 'roll_call',
         status: 'present',
         time_in: 1789200000000 + i * 60_000,
+        time_out: null,
+        time_out_type: null,
         captured_at: 1789200000000 + i * 60_000,
         override_type: null,
         monotonic_timestamp: 86400000 + i * 60_000,

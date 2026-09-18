@@ -59,7 +59,12 @@ export type SyncRunResult =
 
 /** Map a stored row to the exact wire shape the server validates. */
 function toWireEvent(row: any) {
-  return {
+  // Sent as the version it was SIGNED under, not the app's current one: an
+  // event queued before an update verifies only against the older format.
+  const version = row.payload_version ?? 'v2';
+
+  const event: Record<string, unknown> = {
+    payload_version: version,
     employee_id: row.employee_id,
     crew_id: row.crew_id,
     date: row.date,
@@ -77,6 +82,14 @@ function toWireEvent(row: any) {
     hmac_hash: row.hmac_hash,
     ecdsa_signature: row.ecdsa_signature,
   };
+
+  if (version === 'v3') {
+    event.event_type = row.event_type ?? 'roll_call';
+    event.time_out = row.time_out ?? null;
+    event.time_out_type = row.time_out_type ?? null;
+  }
+
+  return event;
 }
 
 export async function runSync(): Promise<SyncRunResult> {

@@ -34,7 +34,7 @@ import {
   withManualTime,
 } from './shiftRules';
 import {signAttendance} from '../crypto/teeSigner';
-import {AttendancePayloadRecord, OverrideType} from '../crypto/payload';
+import {AttendancePayloadRecord, OverrideType, PAYLOAD_VERSION} from '../crypto/payload';
 
 export interface RosterMember {
   employeeId: number;
@@ -296,10 +296,13 @@ async function appendEvent(
     employee_id: record.employeeId,
     crew_id: crewId,
     date: record.date,
+    event_type: 'roll_call',
     status: record.status,
     time_in: timeIn,
+    time_out: null,
     captured_at: clock.wallClockMs,
     override_type: record.overrideType,
+    time_out_type: null,
     monotonic_timestamp: Math.round(clock.monotonicMs),
     boot_id: clock.bootId,
     device_id: credentials.deviceId,
@@ -321,8 +324,9 @@ async function appendEvent(
     `INSERT INTO attendance_events
       (employee_id, crew_id, date, status, time_in, monotonic_timestamp,
        boot_id, boot_id_system_backed, chain_epoch, device_id, prev_hash,
-       hmac_hash, ecdsa_signature, override_type, captured_at, sync_status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending');`,
+       hmac_hash, ecdsa_signature, override_type, captured_at,
+       payload_version, event_type, time_out, time_out_type, sync_status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending');`,
     [
       payload.employee_id,
       payload.crew_id,
@@ -339,6 +343,10 @@ async function appendEvent(
       signature,
       payload.override_type,
       payload.captured_at,
+      PAYLOAD_VERSION,
+      payload.event_type,
+      payload.time_out,
+      payload.time_out_type,
     ],
   );
 

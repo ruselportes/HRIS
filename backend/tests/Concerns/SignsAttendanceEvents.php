@@ -92,6 +92,12 @@ trait SignsAttendanceEvents
                 'prev_hash' => $prevHash,
             ], $override);
 
+            // A v3 event carries the time-out fields too; a roll call leaves
+            // them empty. Events without a version are v2, as older phones send.
+            if (($payload['payload_version'] ?? 'v2') === 'v3') {
+                $payload += ['event_type' => 'roll_call', 'time_out' => null, 'time_out_type' => null];
+            }
+
             // An ordinary tap captures at its own time_in, so a test that moves
             // time_in (a clock rollback) moves captured_at with it — exactly as
             // a real Settings change would. Absent has no time_in but still a

@@ -53,7 +53,7 @@ export async function getDatabase(): Promise<DB> {
  * in-place `attendance` table with the append-only `attendance_events` log —
  * see the migration below for why that was forced rather than chosen.
  */
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 async function currentSchemaVersion(db: DB): Promise<number> {
   await db.execute(`
@@ -155,7 +155,11 @@ async function initSchema(db: DB): Promise<void> {
       override_flag INTEGER NOT NULL DEFAULT 0,
       override_type TEXT,
       captured_at INTEGER NOT NULL,
-      sync_status TEXT NOT NULL DEFAULT 'pending'
+      sync_status TEXT NOT NULL DEFAULT 'pending',
+      payload_version TEXT NOT NULL DEFAULT 'v2',
+      event_type TEXT NOT NULL DEFAULT 'roll_call',
+      time_out INTEGER,
+      time_out_type TEXT
     );
   `);
 
@@ -215,6 +219,24 @@ async function initSchema(db: DB): Promise<void> {
    */
   if (from === 2 || from === 3) {
     await db.execute('ALTER TABLE attendance_events ADD COLUMN override_type TEXT;');
+  }
+
+  /*
+   * v4 -> v5: payload v3 (time-out capture). Each row now records the version
+   * it was signed under, because that is what the server must verify it
+   * against: rows already queued when the app updates were signed as v2 and
+   * are resent as v2 — hence DEFAULT 'v2' for existing rows. New rows are
+   * written as v3 explicitly.
+   */
+  if (from >= 2 && from <= 4) {
+    await db.execute(
+      "ALTER TABLE attendance_events ADD COLUMN payload_version TEXT NOT NULL DEFAULT 'v2';",
+    );
+    await db.execute(
+      "ALTER TABLE attendance_events ADD COLUMN event_type TEXT NOT NULL DEFAULT 'roll_call';",
+    );
+    await db.execute('ALTER TABLE attendance_events ADD COLUMN time_out INTEGER;');
+    await db.execute('ALTER TABLE attendance_events ADD COLUMN time_out_type TEXT;');
   }
 
   // Tip lookup and sync draining are both scoped to the current binding.
