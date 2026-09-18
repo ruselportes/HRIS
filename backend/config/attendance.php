@@ -46,4 +46,24 @@ return [
      */
     'time_in_capture_tolerance_seconds' => (int) env('HRIS_TIME_IN_CAPTURE_TOLERANCE', 5),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Retroactive recovery (Phase 7 — UC-07)
+    |--------------------------------------------------------------------------
+    */
+
+    /*
+     | Days a deployed crew is expected to hold roll call, as ISO weekdays
+     | (1 = Monday ... 7 = Sunday). A working day with no attendance at all is
+     | a gap to recover; a rest day is not. Mon-Sat is the six-day construction
+     | week; a holiday calendar (Phase 8) can narrow this later.
+     */
+    'work_days' => array_map('intval', explode(',', env('HRIS_WORK_DAYS', '1,2,3,4,5,6'))),
+
+    /*
+     | How far back gaps are looked for. Two weeks spans a semi-monthly payroll
+     | cut-off; older gaps belong to a payroll that has already been run.
+     */
+    'recovery_lookback_days' => (int) env('HRIS_RECOVERY_LOOKBACK_DAYS', 14),
+
 ];

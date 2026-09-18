@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\ForemanController;
 use App\Http\Controllers\Api\OverrideController;
+use App\Http\Controllers\Api\RecoveryController;
 use App\Http\Controllers\Api\ReferenceController;
 use Illuminate\Support\Facades\Route;
 
@@ -93,6 +94,16 @@ Route::middleware(['auth:sanctum', 'acting.expire'])->group(function () {
         Route::get('{override}', [OverrideController::class, 'show'])->whereNumber('override')->name('overrides.show');
         Route::post('{override}/approve', [OverrideController::class, 'approve'])->whereNumber('override')->middleware('role:hr');
         Route::post('{override}/reject', [OverrideController::class, 'reject'])->whereNumber('override')->middleware('role:hr');
+    });
+
+    // Attendance Recovery (Phase 7, UC-07). The engineer reconstructs a
+    // crew-day and HR signs it off — each signature held to its own role.
+    Route::prefix('recovery')->middleware('role:hr,engineer,admin')->group(function () {
+        Route::get('/', [RecoveryController::class, 'index']);
+        Route::get('{crew}/{date}', [RecoveryController::class, 'show'])->where('date', '\d{4}-\d{2}-\d{2}');
+        Route::post('{crew}/{date}', [RecoveryController::class, 'submit'])->where('date', '\d{4}-\d{2}-\d{2}')->middleware('role:engineer');
+        Route::post('cases/{case}/sign-off', [RecoveryController::class, 'signOff'])->whereNumber('case')->middleware('role:hr');
+        Route::post('cases/{case}/return', [RecoveryController::class, 'returnToEngineer'])->whereNumber('case')->middleware('role:hr');
     });
 
     // Must precede apiResource so 'next-code' isn't captured as {employee}.

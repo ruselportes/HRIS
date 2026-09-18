@@ -14,7 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * Phase 7 additions (all nullable, unused by ordinary entries): an override
  * event also names its crew and day, and carries HR's review decision, since
- * TC-04 makes the audit entry itself the record of the override.
+ * TC-04 makes the audit entry itself the record of the override. A recovery
+ * case (UC-07) works the same way, with its cause in reason_code.
  */
 class AuditLog extends Model
 {
@@ -28,6 +29,21 @@ class AuditLog extends Model
     /** The cover ended — early by the engineer, or on its own at expiry. */
     public const ACTING_FOREMAN_ENDED = 'ACTING_FOREMAN_ENDED';
 
+    /**
+     * A reconstructed crew-day (UC-07): one per crew and day, signed by a Site
+     * Engineer and then by HR. Its current state lives on this row.
+     */
+    public const RETROACTIVE_RECOVERY = 'RETROACTIVE_RECOVERY';
+
+    /** Each step of a recovery, kept as its own entry so the history survives. */
+    public const RECOVERY_SUBMITTED = 'RECOVERY_SUBMITTED';
+
+    public const RECOVERY_RETURNED = 'RECOVERY_RETURNED';
+
+    public const RECOVERY_SIGNED_OFF = 'RECOVERY_SIGNED_OFF';
+
+    public const RECOVERY_STEPS = [self::RECOVERY_SUBMITTED, self::RECOVERY_RETURNED, self::RECOVERY_SIGNED_OFF];
+
     /** Action types that group override records and go through HR review. */
     public const OVERRIDE_TYPES = [self::LATE_OVERRIDE, self::MANUAL_TIME_OVERRIDE];
 
@@ -36,6 +52,9 @@ class AuditLog extends Model
     public const REVIEW_APPROVED = 'approved';
 
     public const REVIEW_REJECTED = 'rejected';
+
+    /** Recovery only: HR sent it back to the engineer to correct. */
+    public const REVIEW_RETURNED = 'returned';
 
     protected $primaryKey = 'audit_id';
 
@@ -50,6 +69,7 @@ class AuditLog extends Model
         'reviewed_by',
         'reviewed_at',
         'review_note',
+        'reason_code',
     ];
 
     protected function casts(): array
@@ -98,5 +118,11 @@ class AuditLog extends Model
     public function overrideCode(): string
     {
         return sprintf('OVR-%s-%04d', $this->timestamp?->format('Y') ?? now()->format('Y'), $this->audit_id);
+    }
+
+    /** "REC-2026-0012" — how a recovery case is referred to on screen. */
+    public function recoveryCode(): string
+    {
+        return sprintf('REC-%s-%04d', substr((string) $this->subject_date, 0, 4) ?: now()->format('Y'), $this->audit_id);
     }
 }

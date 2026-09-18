@@ -21,6 +21,9 @@ class Attendance extends Model
 {
     use HasFactory;
 
+    /** sync_status and override_flag of a record rebuilt through recovery (UC-07). */
+    public const RECONSTRUCTED = 'reconstructed';
+
     protected $primaryKey = 'attendance_id';
 
     protected $fillable = [
@@ -62,6 +65,12 @@ class Attendance extends Model
      */
     public function isPayrollReady(): bool
     {
+        // Reconstructed (UC-07): no device ever signed it, so the two human
+        // signatures are the whole of its trust — paid only once HR has signed.
+        if ($this->isReconstructed()) {
+            return $this->overrideEvent?->review_status === AuditLog::REVIEW_APPROVED;
+        }
+
         if ($this->cryptoSignature?->verified !== true) {
             return false;
         }
@@ -91,12 +100,22 @@ class Attendance extends Model
             return null;
         }
 
-        if ($this->override_flag !== null
+        if (! $this->isReconstructed()
+            && $this->override_flag !== null
             && $this->overrideEvent?->review_status === AuditLog::REVIEW_REJECTED) {
             return $this->captured_at;
         }
 
         return $this->time_in;
+    }
+
+    /**
+     * Rebuilt by a Site Engineer for a day with no roll call (UC-07), rather
+     * than captured and signed on a foreman's phone.
+     */
+    public function isReconstructed(): bool
+    {
+        return $this->sync_status === self::RECONSTRUCTED;
     }
 
     public function employee(): BelongsTo

@@ -55,6 +55,21 @@ class CrewLeadership
     }
 
     /**
+     * Who led the crew at an instant: the leadership period covering it, or the
+     * current foreman for a crew whose leadership has never changed hands.
+     */
+    public function leaderAt(Crew $crew, CarbonInterface $at): ?int
+    {
+        $period = $this->periods($crew->crew_id)
+            ->where('started_at', '<=', $at)
+            ->where(fn (Builder $q) => $q->whereNull('ended_at')->orWhere('ended_at', '>', $at))
+            ->orderByDesc('started_at')
+            ->first();
+
+        return $period?->employee_id ?? $crew->foreman_id;
+    }
+
+    /**
      * End whoever leads the crew now and start the given employee, as of $at.
      * Ended rows are kept: they are the history.
      */
