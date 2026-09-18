@@ -9,7 +9,7 @@ Web frontend for the Arcenas Development Corporation HRIS.
   (no `tailwind.config.js`; plugins registered in `vite.config.js` via
   `@tailwindcss/vite`). This is a deliberate choice — do not re-add a JS config.
 - React Router (`react-router-dom`)
-- Axios for API calls (dev proxy `/api` → `http://127.0.0.1:8000`)
+- Axios for API calls (dev proxy `/api` → `http://127.0.0.1:8090`; override with `VITE_API_TARGET`, as `compose.yaml` does inside Docker. Not 8000 — that port is held by a Windows service on the dev machine, and proxying there returns 502 Bad Gateway)
 
 ## Design tokens
 

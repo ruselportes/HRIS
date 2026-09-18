@@ -15,7 +15,7 @@ See [`CLAUDE.md`](CLAUDE.md) for full project context, and [`docs/TASKS.md`](doc
 | Backend / API | Laravel 13 (PHP 8.4) |
 | Web frontend | React.js + TailwindCSS v4 (Vite) |
 | Mobile app | React Native (Android primary, iOS secondary) |
-| Central DB | MySQL 8.0 / MariaDB (local dev via XAMPP) |
+| Central DB | MySQL 8.0 (local dev in Docker) |
 | Mobile local DB | SQLite (SQLCipher/AES-256 planned for Phase 5) |
 | Crypto | HMAC-SHA256 hash chaining, ECDSA P-256 signing |
 | Hardware security | Android Keystore TEE / iOS Secure Enclave |
@@ -32,24 +32,37 @@ capstone_hris/
 
 ## Getting Started
 
-### Backend (Laravel)
+The backend, database and web portal run in Docker ([`compose.yaml`](compose.yaml)); this replaced XAMPP. The mobile app runs on the host as before.
+
+### Backend, database and web (Docker)
+
+Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) (WSL 2 on Windows).
 
 ```bash
-cd backend
-composer install
-cp .env.example .env   # configure DB_DATABASE=hris, DB_USERNAME, DB_PASSWORD
-php artisan key:generate
-php artisan migrate
-php artisan serve
+docker compose up -d                           # first run builds and installs; takes a few minutes
+docker compose exec api php artisan db:seed    # first run only: sample data
 ```
 
-### Web (React)
+| Service | URL | Notes |
+|---|---|---|
+| Laravel API | http://localhost:8090 | migrations run on every start |
+| Web portal | http://localhost:5173 | hot reload |
+| phpMyAdmin | http://localhost:8081 | signs in automatically |
+| MySQL 8.0 | `127.0.0.1:3307` | user `hris` / `secret`, database `hris` (dev only) |
+
+A scheduler container runs Laravel's scheduler, which ends acting foreman covers on time.
+
+Everyday commands:
 
 ```bash
-cd web
-npm install
-npm run dev
+docker compose exec api php artisan test      # tests use in-memory SQLite, never the dev database
+docker compose exec api php artisan tinker
+docker compose logs -f api
+docker compose down                           # stop; the database is kept in the mysql-data volume
+docker compose down -v                        # stop and DELETE the database and installed packages
 ```
+
+`backend/.env` is still read inside the containers for everything except the database, whose `DB_*` values the containers set themselves. Its own `DB_*` lines point at the Docker MySQL on port 3307, for running `php artisan` on the host.
 
 ### Mobile (React Native)
 

@@ -1,0 +1,137 @@
+# Local development environment for the HRIS (replaces XAMPP).
+#
+#   docker compose up -d            start everything
+#   docker compose exec api php artisan db:seed     first run only: sample data
+#                                   (migrations run by themselves on every start)
+#   docker compose logs -f api      follow the API
+#   docker compose down             stop (data kept in the mysql-data volume)
+#
+# Ports on the host:
+#   8090  Laravel API    — the mobile app (10.0.2.2:8090) and the web proxy use it
+#   5173  Web portal     — React + Vite, hot reload
+#   8081  phpMyAdmin     — the XAMPP-style database browser
+#   3307  MySQL 8.0      — for a desktop client; 3307 so it never clashes with a
+#                          leftover XAMPP MySQL on 3306
+#
+# The React Native app is NOT containerised: Metro and the Android emulator run
+# on the host as before, and reach the API through the published 8090.
+#
+# Every credential here is a throwaway development value. Nothing in this file
+# is used by, or suitable for, a deployed server.
+
+x-api: &api
+  image: hris-api:dev
+  build: ./backend
+  working_dir: /var/www/html
+  volumes:
+    - ./backend:/var/www/html
+    # vendor/ in a named volume: built for Linux inside the container, and much
+    # faster than reading thousands of PHP files across the Windows bind mount.
+    - api-vendor:/var/www/html/vendor
+  environment: &api-env
+    # Real environment variables win over backend/.env (Laravel loads .env
+    # without overwriting), so the containers reach MySQL by service name while
+    # backend/.env stays usable from the host.
+    DB_CONNECTION: mysql
+    DB_HOST: mysql
+    DB_PORT: 3306
+    DB_DATABASE: hris
+    DB_USERNAME: hris
+    DB_PASSWORD: secret
+    APP_URL: http://localhost:8090
+
+services:
+  mysql:
+    # MySQL 8.0 per the fixed stack (CLAUDE.md §2). XAMPP shipped MariaDB 10.4.
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: hris
+      MYSQL_USER: hris
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  api:
+    <<: *api
+    environment:
+      <<: *api-env
+      # Migrations run on every start, so a teammate who pulls new ones only
+      # has to restart. Seeding stays manual: it would reset edited dev data.
+      HRIS_MIGRATE_ON_START: "true"
+      PHP_CLI_SERVER_WORKERS: 4
+    # --no-reload: without it, `artisan serve` strips every variable not on its
+    # passthrough list before starting PHP — including DB_HOST above — and the
+    # API would fall back to backend/.env. It is also required for the workers.
+    command: ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8090", "--no-reload"]
+    ports:
+      - "8090:8090"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8090/up') === false ? 1 : 0);"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+
+  scheduler:
+    # Runs the Laravel scheduler — Phase 7's crews:end-expired-covers ends
+    # acting foreman covers on time.
+    <<: *api
+    environment:
+      <<: *api-env
+      # The api container installs vendor/; two installs into one volume race.
+      HRIS_SKIP_INSTALL: "true"
+    command: ["php", "artisan", "schedule:work"]
+    depends_on:
+      api:
+        condition: service_healthy
+
+  web:
+    image: node:22-bookworm-slim
+    working_dir: /app
+    volumes:
+      - ./web:/app
+      # node_modules in a named volume: the host's copy holds Windows builds of
+      # native packages (Tailwind's oxide, Vite's bundler) that Linux cannot load.
+      - web-node-modules:/app/node_modules
+    environment:
+      VITE_API_TARGET: http://api:8090
+      # File change events do not cross from a Windows folder into a Linux
+      # container, so Vite polls instead or hot reload never fires.
+      VITE_USE_POLLING: "true"
+    command: ["sh", "docker/dev.sh"]
+    ports:
+      - "5173:5173"
+    depends_on:
+      # Healthy, not merely started: on a first run the API spends a minute
+      # installing packages, and the proxy would answer 502 until it is up.
+      api:
+        condition: service_healthy
+
+  phpmyadmin:
+    image: phpmyadmin:5
+    environment:
+      PMA_HOST: mysql
+      # Signs straight in, as XAMPP's did. Development only.
+      PMA_USER: root
+      PMA_PASSWORD: root
+    ports:
+      - "8081:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql-data:
+  api-vendor:
+  web-node-modules:

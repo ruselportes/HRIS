@@ -179,8 +179,13 @@ Check off tasks as they're completed; a phase counts as done once every task und
 > `audit_logs` review columns.
 >
 > **Still owed:** TC-04 and TC-05 executed on devices (automated tests cover
-> the logic, not the emulator runs), and `php artisan migrate` on the dev
-> database for `0005_01_01_000200_add_acting_foreman`.
+> the logic, not the emulator runs).
+>
+> **Dev environment moved to Docker (2026-09-18).** `compose.yaml` runs the API,
+> MySQL 8.0 (the fixed stack's database; XAMPP had MariaDB 10.4), the web
+> portal, phpMyAdmin and the Laravel scheduler. Moving to real MySQL surfaced
+> one test that only passed on SQLite (JSON key order); the suite now passes on
+> both.
 
 ## Phase 8 — Philippine Labor Code Payroll Engine (UC-08) (10%)
 

@@ -136,7 +136,10 @@ class EmployeeCrudTest extends TestCase
             ->assertJsonCount(1, 'data.certification')
             ->assertJsonPath('data.certification.0.issuer', 'TESDA');
 
-        $this->assertSame($certs, Employee::find($subject->employee_id)->certification);
+        // assertEquals, not assertSame: MySQL's JSON type stores object keys in
+        // its own order (by length, then bytewise), so every value round-trips
+        // but key order does not. SQLite keeps the order, which hid this.
+        $this->assertEquals($certs, Employee::find($subject->employee_id)->certification);
     }
 
     public function test_update_supports_emergency_contact(): void

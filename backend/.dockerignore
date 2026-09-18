@@ -1,0 +1,4 @@
+# The image needs only the entrypoint; the source is bind-mounted at runtime.
+# Ignoring the rest keeps vendor/ and storage/ out of every build context.
+*
+!docker/
