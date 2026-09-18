@@ -103,7 +103,7 @@ Manager are *different roles*, do not substitute one for the other),
 Efren S. Cabudbud Jr. (Database & QA Lead), CarlVey Sente (UI/UX Designer),
 Rayla G. Lanaza (Documentation Lead) — 6 members, spelled **CarlVey** (one
 word). Advisers: **Eric Bulala = Technical Adviser** (the adviser to name when
-a form or document asks for one); Engr. Clark Kevin V. Villamor = Subject
+a form or document asks for one); Clark Kevin V. Villamor = Subject
 Adviser / Head, College of Computer Studies, and Project Title Reviewer.
 Both are named per `C:\capstone\internal\Request-Letter-to-Conduct-a-Study.docx`.
 
