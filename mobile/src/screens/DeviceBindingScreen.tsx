@@ -26,7 +26,8 @@ import {
   BindingStep,
   bindThisDevice,
 } from '../crypto/deviceBinding';
-import {isBound} from '../crypto/deviceCredentials';
+import {boundEmployeeId, chainEpoch, loadCredentials} from '../crypto/deviceCredentials';
+import {countPendingEvents} from '../db/attendanceRepository';
 
 const STEP_LABELS: {key: BindingStep; label: string}[] = [
   {key: 'generating_key', label: "Creating this phone's safety lock"},
@@ -49,16 +50,29 @@ export function DeviceBindingScreen({onBound}: {onBound?: () => void}) {
     null,
   );
   const [alreadyBound, setAlreadyBound] = useState<boolean | null>(null);
+  // Set when this phone is bound to a different foreman (Phase 7, TC-05).
+  const [previousOwner, setPreviousOwner] = useState<{pending: number} | null>(null);
 
   useEffect(() => {
-    isBound().then(setAlreadyBound);
-  }, []);
+    (async () => {
+      const credentials = await loadCredentials();
+      const owner = await boundEmployeeId();
+
+      if (credentials !== null && user && owner !== user.employee_id) {
+        // Records still waiting in the old binding's chain can only be sent by
+        // the foreman who made them. Say so before they are stranded.
+        setPreviousOwner({pending: await countPendingEvents(chainEpoch(credentials))});
+      }
+
+      setAlreadyBound(credentials !== null && owner === user?.employee_id);
+    })();
+  }, [user]);
 
   const run = useCallback(async () => {
     setError(null);
     setResult(null);
     try {
-      const bound = await bindThisDevice(setStep);
+      const bound = await bindThisDevice(setStep, user?.employee_id ?? null);
       setResult(bound);
       onBound?.();
     } catch (err) {
@@ -72,7 +86,7 @@ export function DeviceBindingScreen({onBound}: {onBound?: () => void}) {
             },
       );
     }
-  }, [onBound]);
+  }, [onBound, user]);
 
   const running = step !== null && step !== 'complete' && result === null;
 
@@ -95,6 +109,17 @@ export function DeviceBindingScreen({onBound}: {onBound?: () => void}) {
           ? 'This phone is already set up. You only need to do this again if HR asks you to.'
           : 'This phone needs to be set up once before you can record attendance. It takes a few seconds.'}
       </Text>
+
+      {previousOwner && !result && (
+        <View style={styles.warnBox}>
+          <Text style={styles.warnTitle}>This phone was set up for another foreman</Text>
+          <Text style={styles.warnText}>
+            {previousOwner.pending > 0
+              ? `${previousOwner.pending} of their records have not been sent yet. Only they can send them: ask them to sign in and sync before you continue. If you set the phone up now, those records stay on the phone for HR to recover.`
+              : 'Everything they recorded has been sent. Setting the phone up for you is safe.'}
+          </Text>
+        </View>
+      )}
 
       {(running || result) && (
         <View style={styles.steps}>
@@ -184,6 +209,9 @@ export function DeviceBindingScreen({onBound}: {onBound?: () => void}) {
 }
 
 const styles = StyleSheet.create({
+  warnBox: {backgroundColor: '#fcece0', borderRadius: 4, padding: 14, marginBottom: 20},
+  warnTitle: {fontSize: 15, fontWeight: '700', color: '#96420e'},
+  warnText: {fontSize: 14, lineHeight: 20, color: '#3a3a3d', marginTop: 4},
   container: {flex: 1, backgroundColor: '#f2f2f3'},
   content: {padding: 24, paddingBottom: 48},
   centered: {

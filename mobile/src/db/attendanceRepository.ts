@@ -44,12 +44,20 @@ export interface RosterMember {
   tradeSkill: string | null;
 }
 
+/** Set when the signed-in foreman is covering for another (Phase 7, UC-06). */
+export interface ActingCover {
+  /** ISO 8601, when the cover ends on its own. */
+  until: string;
+  regularForemanName: string | null;
+}
+
 export interface CachedCrew {
   crewId: number;
   crewName: string;
   siteName: string | null;
   cachedAt: number;
   members: RosterMember[];
+  acting: ActingCover | null;
 }
 
 /** A record as roll call shows it: what was credited, and when it was tapped. */
@@ -71,12 +79,18 @@ export async function saveRosterCache(
   crewName: string,
   siteName: string | null,
   members: RosterMember[],
+  acting: ActingCover | null = null,
 ): Promise<void> {
   const db = await getDatabase();
   const cachedAt = Date.now();
 
   await db.transaction(async tx => {
     await tx.execute('DELETE FROM crew_roster_cache;');
+    await tx.execute(
+      "INSERT INTO app_settings (key, value) VALUES ('roster_acting', ?) " +
+        'ON CONFLICT(key) DO UPDATE SET value = excluded.value;',
+      [acting === null ? '' : JSON.stringify(acting)],
+    );
 
     for (const member of members) {
       await tx.execute(
@@ -99,6 +113,24 @@ export async function saveRosterCache(
   });
 }
 
+/**
+ * Forget the roster when the server says this foreman has no crew — the crew
+ * was handed to an acting foreman, or the cover they were running ended
+ * (Phase 7, TC-05). Keeping it would let them go on marking a crew they no
+ * longer lead, only for every record to be refused on sync.
+ *
+ * Attendance already recorded is untouched: it is signed history, and taps
+ * made while they still led the crew are still accepted when they sync.
+ */
+export async function clearRosterCache(): Promise<void> {
+  const db = await getDatabase();
+
+  await db.transaction(async tx => {
+    await tx.execute('DELETE FROM crew_roster_cache;');
+    await tx.execute("DELETE FROM app_settings WHERE key = 'roster_acting';");
+  });
+}
+
 export async function getCachedCrew(): Promise<CachedCrew | null> {
   const db = await getDatabase();
   const result = await db.execute(
@@ -107,6 +139,17 @@ export async function getCachedCrew(): Promise<CachedCrew | null> {
 
   if (result.rows.length === 0) {
     return null;
+  }
+
+  const actingRow = await db.execute(
+    "SELECT value FROM app_settings WHERE key = 'roster_acting';",
+  );
+  const actingRaw = actingRow.rows.length === 0 ? '' : String((actingRow.rows[0] as any).value);
+  let acting: ActingCover | null = null;
+  try {
+    acting = actingRaw ? JSON.parse(actingRaw) : null;
+  } catch {
+    acting = null;
   }
 
   const members: RosterMember[] = result.rows.map((row: any) => ({
@@ -125,6 +168,7 @@ export async function getCachedCrew(): Promise<CachedCrew | null> {
     siteName: first.site_name,
     cachedAt: first.cached_at,
     members,
+    acting,
   };
 }
 
@@ -603,6 +647,21 @@ export async function markSyncedThrough(
   );
 
   return result.rowsAffected ?? 0;
+}
+
+/**
+ * Unsent events in a binding's chain. Before a phone is set up for a different
+ * foreman, so they can be warned that the records still waiting belong to the
+ * previous foreman and only that foreman can send them.
+ */
+export async function countPendingEvents(epoch: string): Promise<number> {
+  const db = await getDatabase();
+  const result = await db.execute(
+    "SELECT COUNT(*) AS n FROM attendance_events WHERE sync_status = 'pending' AND chain_epoch = ?;",
+    [epoch],
+  );
+
+  return result.rows.length === 0 ? 0 : Number((result.rows[0] as any).n);
 }
 
 /** Record one attempt against the events it covered (ERD tbl_attendance_sync_queue). */

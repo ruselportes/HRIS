@@ -8,9 +8,11 @@ import {
   creditAtShiftStart,
   formatGap,
   formatSiteTime,
+  formatSiteWeekday,
   isLateStart,
   minutesSinceShiftStart,
   shiftStartMs,
+  siteDateOf,
   siteTimeMs,
   stepManualTime,
   withManualTime,
@@ -96,5 +98,19 @@ describe('manual time', () => {
   test('site time round-trips through formatting', () => {
     expect(formatSiteTime(siteTimeMs(DATE, 7, 5, DEFAULT_SHIFT), DEFAULT_SHIFT)).toBe('07:05');
     expect(formatSiteTime(shiftStartMs(DATE, DEFAULT_SHIFT), DEFAULT_SHIFT)).toBe('07:00');
+  });
+});
+
+describe('site calendar', () => {
+  // 23:59 Manila on Sun 13 Sep is 15:59 UTC — still Sunday, whatever the phone's zone.
+  const endOfSunday = siteTimeMs('2026-09-13', 23, 59, DEFAULT_SHIFT);
+
+  test('weekday and date are read in site time', () => {
+    expect(formatSiteWeekday(endOfSunday, DEFAULT_SHIFT)).toBe('Sun');
+    expect(siteDateOf(endOfSunday, DEFAULT_SHIFT)).toBe('2026-09-13');
+  });
+
+  test('00:30 Manila is already the next site day, though still the day before in UTC', () => {
+    expect(siteDateOf(siteTimeMs('2026-09-14', 0, 30, DEFAULT_SHIFT), DEFAULT_SHIFT)).toBe('2026-09-14');
   });
 });

@@ -55,6 +55,7 @@ const CREW = {
   crewName: 'Formwork crew B',
   siteName: 'Site 07',
   cachedAt: 0,
+  acting: null,
   members: [
     {employeeId: 1, employeeCode: 'ADC-0001', firstName: 'Elmer', lastName: 'Bacus', tradeSkill: 'Mason'},
   ],

@@ -56,6 +56,7 @@ export class BindingError extends Error {
  */
 export async function bindThisDevice(
   onStep?: (step: BindingStep) => void,
+  ownerEmployeeId: number | null = null,
 ): Promise<BindingResult> {
   const deviceId = await getOrCreateDeviceId();
 
@@ -100,10 +101,13 @@ export async function bindThisDevice(
 
   onStep?.('saving');
 
-  await saveCredentials({
-    deviceId,
-    hmacKeyBase64: response.data.hmac_key,
-  });
+  await saveCredentials(
+    {
+      deviceId,
+      hmacKeyBase64: response.data.hmac_key,
+    },
+    ownerEmployeeId,
+  );
 
   onStep?.('complete');
 

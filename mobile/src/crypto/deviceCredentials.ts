@@ -28,6 +28,26 @@ import {bytesToHex, utf8ToBytes} from '@noble/hashes/utils.js';
 
 const KEY_DEVICE_ID = 'hris.device.id';
 const KEY_HMAC_SECRET = 'hris.device.hmac_key';
+const KEY_OWNER = 'hris.device.owner_employee_id';
+
+/*
+ * Told when this phone's binding changes, so the navigator can send the
+ * foreman back to setup without an app restart (Phase 7: "Set up this phone
+ * again" on the Sync screen, and a second foreman signing in — TC-05).
+ */
+type BindingListener = () => void;
+const listeners = new Set<BindingListener>();
+
+export function onBindingChange(listener: BindingListener): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function notifyBindingChange(): void {
+  listeners.forEach(listener => listener());
+}
 
 export type DeviceCredentials = {
   deviceId: string;
@@ -38,16 +58,34 @@ export type DeviceCredentials = {
 /**
  * Persist what POST /api/me/devices returned. Called once per binding.
  *
+ * The owner is recorded because the server binds a device to ONE foreman: a
+ * second foreman signing in on this phone (an acting foreman borrowing it,
+ * Phase 7) would otherwise sign with the first one's binding, and every record
+ * would be refused as coming from a device that is not theirs.
+ *
  * Uses AsyncStorage v3's object-based setMany/getMany/removeMany — v3 dropped
  * the older multiSet/multiGet/multiRemove array API.
  */
 export async function saveCredentials(
   credentials: DeviceCredentials,
+  ownerEmployeeId: number | null = null,
 ): Promise<void> {
   await AsyncStorage.setMany({
     [KEY_DEVICE_ID]: credentials.deviceId,
     [KEY_HMAC_SECRET]: credentials.hmacKeyBase64,
+    [KEY_OWNER]: ownerEmployeeId === null ? '' : String(ownerEmployeeId),
   });
+  notifyBindingChange();
+}
+
+/** The foreman this phone is bound to, or null (unbound, or bound before this was recorded). */
+export async function boundEmployeeId(): Promise<number | null> {
+  if ((await loadCredentials()) === null) {
+    return null;
+  }
+
+  const stored = await AsyncStorage.getItem(KEY_OWNER);
+  return stored ? Number(stored) : null;
 }
 
 /**
@@ -89,11 +127,20 @@ export function chainEpoch(credentials: DeviceCredentials): string {
   return bytesToHex(sha256(utf8ToBytes(credentials.hmacKeyBase64))).slice(0, 16);
 }
 
-export async function isBound(): Promise<boolean> {
-  return (await loadCredentials()) !== null;
+/**
+ * Whether this phone can record for the given foreman: bound, and bound to
+ * them. Without an employee id, only whether it is bound at all.
+ */
+export async function isBound(employeeId?: number): Promise<boolean> {
+  if (employeeId === undefined) {
+    return (await loadCredentials()) !== null;
+  }
+
+  return (await boundEmployeeId()) === employeeId;
 }
 
 /** Clear on revoke or rebind. The old secret must not outlive its binding. */
 export async function clearCredentials(): Promise<void> {
-  await AsyncStorage.removeMany([KEY_DEVICE_ID, KEY_HMAC_SECRET]);
+  await AsyncStorage.removeMany([KEY_DEVICE_ID, KEY_HMAC_SECRET, KEY_OWNER]);
+  notifyBindingChange();
 }

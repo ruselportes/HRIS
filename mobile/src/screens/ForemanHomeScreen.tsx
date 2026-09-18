@@ -1,8 +1,12 @@
 /**
  * Foreman Home (docs/prototypes/HRIS Foreman Home.dc.html) — roll-call stat
  * summary + entry point to the checklist. "File Overtime Request" (Phase 9)
- * and "Report Absent Foreman" (Phase 7) are shown per the prototype but
- * disabled — out of scope here, not silently omitted.
+ * is shown per the prototype but disabled. "Report Absent Foreman" stays
+ * disabled too: in Phase 7 an absent foreman is covered by the Site Engineer
+ * assigning an acting foreman on the web (UC-06), not from this phone.
+ *
+ * An acting foreman sees whose crew they are covering and until when; a
+ * foreman whose crew was handed over has the roster removed (TC-05).
  *
  * @format
  */
@@ -24,11 +28,20 @@ import {apiClient} from '../api/client';
 import {useAuth} from '../auth/AuthContext';
 import {
   CachedCrew,
+  clearRosterCache,
   getCachedCrew,
+  getShiftConfig,
   listTodayAttendance,
   saveRosterCache,
   saveShiftConfig,
 } from '../db/attendanceRepository';
+import {
+  DEFAULT_SHIFT,
+  ShiftConfig,
+  formatSiteTime,
+  formatSiteWeekday,
+  siteDateOf,
+} from '../db/shiftRules';
 
 export function ForemanHomeScreen() {
   const {user, signOut} = useAuth();
@@ -38,6 +51,7 @@ export function ForemanHomeScreen() {
   const [online, setOnline] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [shift, setShift] = useState<ShiftConfig>(DEFAULT_SHIFT);
 
   const refreshCounts = useCallback(async (rosterSize: number) => {
     const attendance = await listTodayAttendance();
@@ -82,7 +96,17 @@ export function ForemanHomeScreen() {
               lastName: m.last_name,
               tradeSkill: m.trade_skill,
             })),
+            data.crew.acting
+              ? {
+                  until: data.crew.acting.until,
+                  regularForemanName: data.crew.acting.regular_foreman?.full_name ?? null,
+                }
+              : null,
           );
+        } else if (data.crew === null) {
+          // The server answered: no crew. It was handed to an acting foreman,
+          // or a cover ended (Phase 7, TC-05) — don't keep marking it.
+          await clearRosterCache();
         }
       } catch {
         // Fetch failed (server down, token expired, etc.) — fall through to
@@ -93,6 +117,7 @@ export function ForemanHomeScreen() {
 
     const cached = await getCachedCrew();
     setCrew(cached);
+    setShift(await getShiftConfig());
     await refreshCounts(cached?.members.length ?? 0);
   }, [refreshCounts]);
 
@@ -133,8 +158,19 @@ export function ForemanHomeScreen() {
         {user ? `${user.first_name} ${user.last_name}` : 'Foreman'}
       </Text>
       <Text style={styles.crewLine}>
-        {crew ? `${crew.crewName} · ${crew.siteName ?? 'Unassigned site'}` : 'No crew cached yet'}
+        {crew ? `${crew.crewName} · ${crew.siteName ?? 'Unassigned site'}` : 'No crew assigned to you'}
       </Text>
+
+      {crew?.acting && (
+        <View style={styles.actingBanner}>
+          <Text style={styles.actingTitle}>Acting foreman</Text>
+          <Text style={styles.actingBody}>
+            Covering for {crew.acting.regularForemanName ?? 'the regular foreman'} until{' '}
+            {describeUntil(Date.parse(crew.acting.until), shift)}. The crew goes back to them
+            automatically.
+          </Text>
+        </View>
+      )}
 
       <Text style={styles.sectionLabel}>Roll call today</Text>
       <View style={styles.statsRow}>
@@ -158,7 +194,7 @@ export function ForemanHomeScreen() {
       />
       <DisabledAction
         label="Report Absent Foreman"
-        note="Phase 7 — Foreman Edge Case Handling"
+        note="Your Site Engineer assigns an acting foreman from the web portal"
       />
 
       <TouchableOpacity style={styles.signOut} onPress={() => signOut()}>
@@ -166,6 +202,14 @@ export function ForemanHomeScreen() {
       </TouchableOpacity>
     </ScrollView>
   );
+}
+
+/** "23:59" when the cover ends today, "Sun 23:59" when it runs longer. */
+function describeUntil(untilMs: number, shift: ShiftConfig): string {
+  const time = formatSiteTime(untilMs, shift);
+  const today = siteDateOf(Date.now(), shift) === siteDateOf(untilMs, shift);
+
+  return today ? time : `${formatSiteWeekday(untilMs, shift)} ${time}`;
 }
 
 function Stat({label, value}: {label: string; value: number}) {
@@ -197,6 +241,9 @@ const styles = StyleSheet.create({
   syncText: {fontSize: 13, fontWeight: '600', color: '#1d1f20'},
   greeting: {fontSize: 28, fontWeight: '700', color: '#1d1f20'},
   crewLine: {fontSize: 15, color: '#5d5d60', marginTop: 4, marginBottom: 20},
+  actingBanner: {backgroundColor: '#efe9f4', borderRadius: 4, padding: 14, marginBottom: 4},
+  actingTitle: {fontSize: 14, fontWeight: '700', color: '#4a3260'},
+  actingBody: {fontSize: 14, lineHeight: 20, color: '#3a3a3d', marginTop: 2},
   sectionLabel: {
     fontSize: 12,
     letterSpacing: 1,

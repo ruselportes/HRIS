@@ -12,7 +12,7 @@ import {ActivityIndicator, StyleSheet, View} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {useAuth} from '../auth/AuthContext';
-import {isBound} from '../crypto/deviceCredentials';
+import {isBound, onBindingChange} from '../crypto/deviceCredentials';
 import {LoginScreen} from '../screens/LoginScreen';
 import {ForemanHomeScreen} from '../screens/ForemanHomeScreen';
 import {RollCallScreen} from '../screens/RollCallScreen';
@@ -48,13 +48,24 @@ function AppNavigator() {
   const {ready, user} = useAuth();
   const [bound, setBound] = useState<boolean | null>(null);
 
+  /*
+   * Bound for THIS foreman, not merely bound: the server ties a device to one
+   * employee, so a second foreman signing in (an acting foreman borrowing the
+   * phone, TC-05) must set it up for themselves before recording. Re-checked
+   * whenever the binding changes, e.g. "Set up this phone again" on Sync.
+   */
   useEffect(() => {
     if (!user) {
       setBound(null);
       return;
     }
 
-    isBound().then(setBound);
+    const check = () => {
+      isBound(user.employee_id).then(setBound);
+    };
+
+    check();
+    return onBindingChange(check);
   }, [user]);
 
   if (!ready || (user && bound === null)) {

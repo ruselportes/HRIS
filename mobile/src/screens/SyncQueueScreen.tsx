@@ -31,10 +31,17 @@ import {
   View,
 } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-import {chainEpoch, loadCredentials} from '../crypto/deviceCredentials';
+import {chainEpoch, clearCredentials, loadCredentials} from '../crypto/deviceCredentials';
 import {SyncQueueRow, SyncSummary, getSyncSummary} from '../db/attendanceRepository';
 import {SchedulerState, syncScheduler} from '../sync/syncScheduler';
 import {isReachable} from '../sync/useSyncTriggers';
+
+/**
+ * Halts only a fresh setup can fix: the server no longer accepts this phone's
+ * binding. The copy used to say "set this phone up again" with no way to do
+ * it; clearing the binding sends the foreman to setup (Phase 7).
+ */
+const NEEDS_SETUP = new Set(['device_not_bound', 'unbound', 'device_revoked']);
 
 /** Plain-language copy for every halt, in the prototype's register. */
 const HALT_COPY: Record<string, {title: string; body: string}> = {
@@ -150,6 +157,7 @@ export function SyncQueueScreen() {
             online={online}
             waiting={waiting}
             haltCopy={haltCopy}
+            onSetUpAgain={halted && NEEDS_SETUP.has(halted) ? () => clearCredentials() : null}
           />
         }
         renderItem={({item}) => <QueueRow row={item} />}
@@ -178,12 +186,14 @@ function Header({
   online,
   waiting,
   haltCopy,
+  onSetUpAgain,
 }: {
   summary: SyncSummary;
   scheduler: SchedulerState;
   online: boolean;
   waiting: number;
   haltCopy: {title: string; body: string} | null;
+  onSetUpAgain: (() => void) | null;
 }) {
   let pill: {label: string; tone: 'online' | 'offline' | 'busy'};
   if (scheduler.running) {
@@ -206,6 +216,14 @@ function Header({
         <View style={styles.haltBox}>
           <Text style={styles.haltTitle}>{haltCopy.title}</Text>
           <Text style={styles.haltBody}>{haltCopy.body}</Text>
+          {onSetUpAgain && (
+            <TouchableOpacity
+              style={styles.haltAction}
+              accessibilityRole="button"
+              onPress={onSetUpAgain}>
+              <Text style={styles.haltActionText}>Set up this phone again</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : waiting === 0 && summary.rows.length > 0 ? (
         <View style={styles.okBox}>
@@ -374,6 +392,15 @@ const styles = StyleSheet.create({
   haltBox: {marginTop: 16, padding: 14, borderRadius: 4, backgroundColor: '#f6e1de'},
   haltTitle: {fontSize: 16, fontWeight: '700', color: '#75261c'},
   haltBody: {fontSize: 14, color: '#1d1f20', marginTop: 4, lineHeight: 20},
+  haltAction: {
+    minHeight: 48,
+    marginTop: 12,
+    borderRadius: 4,
+    backgroundColor: '#1d2d3d',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  haltActionText: {color: '#f2f2f3', fontSize: 15, fontWeight: '600'},
   statsRow: {flexDirection: 'row', gap: 8, marginTop: 16},
   stat: {flex: 1, backgroundColor: '#fff', borderRadius: 4, paddingVertical: 10, alignItems: 'center'},
   statValue: {fontSize: 20, fontWeight: '700', color: '#1d1f20'},

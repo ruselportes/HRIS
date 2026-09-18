@@ -56,10 +56,13 @@ describe('bindThisDevice', () => {
       }),
     );
 
-    expect(saveSpy).toHaveBeenCalledWith({
-      deviceId: 'dev-fixed-0001',
-      hmacKeyBase64: 'c2VjcmV0LWtleS1mb3ItaG1hYy10ZXN0aW5nLW9ubHk=',
-    });
+    expect(saveSpy).toHaveBeenCalledWith(
+      {
+        deviceId: 'dev-fixed-0001',
+        hmacKeyBase64: 'c2VjcmV0LWtleS1mb3ItaG1hYy10ZXN0aW5nLW9ubHk=',
+      },
+      null,
+    );
 
     expect(result.hardwareBacked).toBe(true);
   });

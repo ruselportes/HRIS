@@ -121,3 +121,15 @@ export function formatSiteTime(epochMs: number, shift: ShiftConfig): string {
   const mm = String(site.getUTCMinutes()).padStart(2, '0');
   return `${hh}:${mm}`;
 }
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** Short weekday in site time ("Sun"), for "until Sun 23:59". */
+export function formatSiteWeekday(epochMs: number, shift: ShiftConfig): string {
+  return WEEKDAYS[new Date(epochMs + shift.utc_offset_minutes * MINUTE).getUTCDay()];
+}
+
+/** YYYY-MM-DD in site time, for "is this today on site?". */
+export function siteDateOf(epochMs: number, shift: ShiftConfig): string {
+  return new Date(epochMs + shift.utc_offset_minutes * MINUTE).toISOString().slice(0, 10);
+}

@@ -24,12 +24,15 @@ import {computeHmac, hmacKeyFromBase64} from '../../crypto/hashChain';
 import {getDatabase, resetDatabaseInstanceForTests} from '../database';
 import {
   DeviceNotBoundError,
+  clearRosterCache,
+  countPendingEvents,
   getShiftConfig,
   hasRollCallStarted,
   recordManualTime,
   recordShiftCredit,
   recordStatus,
   saveLateStartChoice,
+  saveRosterCache,
   undoAttendance,
 } from '../attendanceRepository';
 import {DEFAULT_SHIFT, shiftStartMs, siteTimeMs} from '../shiftRules';
@@ -347,5 +350,43 @@ describe('late start', () => {
       call => /INSERT INTO app_settings/.test(call.sql) && call.params[0] === 'late_start:7:2026-09-12',
     );
     expect(JSON.parse(write!.params[1]).mode).toBe('credit');
+  });
+});
+
+/* Acting foreman (Phase 7 — UC-06, TC-05). */
+describe('roster ownership', () => {
+  test('a roster handed over is forgotten, but recorded attendance is kept', async () => {
+    const db = await getDatabase();
+    const executed: string[] = [];
+    (db.transaction as jest.Mock).mockImplementationOnce(async (fn: any) => {
+      await fn({execute: jest.fn(async (sql: string) => executed.push(sql))});
+    });
+
+    await clearRosterCache();
+
+    expect(executed.some(sql => /DELETE FROM crew_roster_cache/.test(sql))).toBe(true);
+    expect(executed.some(sql => /attendance_events/.test(sql))).toBe(false);
+  });
+
+  test('an acting cover is cached with the roster', async () => {
+    const db = await getDatabase();
+    const executed: {sql: string; params: any[]}[] = [];
+    (db.transaction as jest.Mock).mockImplementationOnce(async (fn: any) => {
+      await fn({execute: jest.fn(async (sql: string, params: any[] = []) => executed.push({sql, params}))});
+    });
+
+    const cover = {until: '2026-09-12T15:59:59+00:00', regularForemanName: 'Dela Cruz, Ronel B.'};
+    await saveRosterCache(7, 'Formwork crew B', 'Site 07', [], cover);
+
+    const write = executed.find(call => /'roster_acting'/.test(call.sql));
+    expect(JSON.parse(write!.params[0])).toEqual(cover);
+  });
+
+  test('pending records are counted per binding', async () => {
+    const db = await getDatabase();
+    (db.execute as jest.Mock).mockResolvedValueOnce({rows: [{n: 3}], rowsAffected: 0});
+
+    expect(await countPendingEvents('epoch-f1')).toBe(3);
+    expect(dbCalls().at(-1)!.params).toEqual(['epoch-f1']);
   });
 });
