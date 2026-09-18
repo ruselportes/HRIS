@@ -8,10 +8,11 @@ import { Icon } from '../components/icons'
  * Overrides & Audit (docs/prototypes/HRIS Late Override Audit.dc.html) —
  * Phase 7, UC-05, STD TC-04 step 5.
  *
- * One card per override event: a foreman's late-start credit or manual times
- * for one crew on one day. Overridden records are held out of payroll until HR
- * decides. Approving pays the credited time; rejecting pays each worker from
- * their actual tap. Only HR decides — everyone else with access reads.
+ * One card per override event: a foreman's late-start credit, manual arrival
+ * times, or manual time-outs, for one crew on one day. Overridden records are
+ * held out of payroll until HR decides. Approving pays the credited time;
+ * rejecting pays each worker from their actual tap — for a time-out, to when
+ * the foreman entered it. Only HR decides — everyone else with access reads.
  *
  * Not built from the prototype, because nothing records them yet: the
  * foreman's reason, device state, gate-log corroboration, leave conflicts,
@@ -23,7 +24,10 @@ const SITE_TZ = 'Asia/Manila'
 const TYPE_LABEL = {
   FOREMAN_LATE_OVERRIDE: 'Late-start shift credit',
   MANUAL_TIME_OVERRIDE: 'Manual time in',
+  MANUAL_TIME_OUT: 'Manual time-out',
 }
+
+const TIME_OUT = 'MANUAL_TIME_OUT'
 
 const STATUS_TAG = {
   pending: { label: 'Awaiting review', ...tone.late },
@@ -119,8 +123,13 @@ function Meta({ label, value, sub }) {
 
 /** What approving or rejecting means for pay, in the event's own terms. */
 function payrollEffect(event) {
-  if (event.review_status === 'approved') return { value: 'Paid from credited time', sub: 'approved by HR' }
-  if (event.review_status === 'rejected') return { value: 'Paid from actual taps', sub: 'credited time discarded' }
+  const timeOut = event.action_type === TIME_OUT
+  if (event.review_status === 'approved')
+    return { value: timeOut ? 'Paid to the stated time-out' : 'Paid from credited time', sub: 'approved by HR' }
+  if (event.review_status === 'rejected')
+    return timeOut
+      ? { value: 'Paid to when it was entered', sub: 'stated time-out discarded' }
+      : { value: 'Paid from actual taps', sub: 'credited time discarded' }
   return { value: 'Held from payroll', sub: 'until HR decides' }
 }
 
@@ -133,12 +142,73 @@ function headline(event, records) {
     return `${count} credited ${credited} · ${where}`
   }
 
+  if (event.action_type === TIME_OUT) {
+    return `${count} with time-outs set by the foreman · ${where}`
+  }
+
   return `${count} with arrival times set by the foreman · ${where}`
+}
+
+/**
+ * A manual time-out's records: the time the foreman stated against when they
+ * entered it. Not priced — what it is worth depends on the day's hours and
+ * any overtime — so the gap is what HR weighs.
+ */
+function TimeOutRecordsTable({ event, records }) {
+  const statusTag =
+    event.review_status === 'approved'
+      ? { label: 'Approved', ...tone.present }
+      : event.review_status === 'rejected'
+        ? { label: 'Paid to entry', ...tone.absent }
+        : { label: 'Time-out flagged', ...tone.flagged }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[680px] border-collapse whitespace-nowrap text-sm tabular-nums">
+        <thead>
+          <tr className="border-b border-neutral-300 text-left text-[11px] uppercase tracking-[.08em] text-neutral-700">
+            <th className="py-2.5 pl-5 pr-4 font-normal">Employee</th>
+            <th className="w-[110px] py-2.5 pr-4 font-normal">Stated out</th>
+            <th className="w-[110px] py-2.5 pr-4 font-normal">Entered at</th>
+            <th className="w-[100px] py-2.5 pr-4 font-normal">Gap</th>
+            <th className="w-[150px] py-2.5 pr-5 font-normal">Record status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {records.map((record) => (
+            <tr key={record.attendance_id} className="border-b border-neutral-200" style={{ boxShadow: `inset 3px 0 0 ${OVERRIDE_INK}` }}>
+              <td className="py-2.5 pl-5 pr-4">
+                {record.employee.full_name}
+                <div className="text-[11px] text-neutral-700">
+                  {[record.employee.employee_code, record.employee.trade_skill].filter(Boolean).join(' · ')}
+                </div>
+              </td>
+              <td className="py-2.5 pr-4">{siteTime(record.stated_time_out)}</td>
+              <td className="py-2.5 pr-4">{siteTime(record.entered_at)}</td>
+              <td className="py-2.5 pr-4" style={record.gap_minutes > 0 ? { color: '#96420E' } : undefined}>
+                {formatGap(record.gap_minutes)}
+              </td>
+              <td className="py-2.5 pr-5">
+                <Tag bg={statusTag.bg} fg={statusTag.fg}>
+                  <Icon name="flag" size={11} />
+                  {statusTag.label}
+                </Tag>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
 }
 
 function RecordsTable({ event, records }) {
   if (!records) {
     return <p className="px-5 py-4 text-xs text-neutral-700">Loading records…</p>
+  }
+
+  if (event.action_type === TIME_OUT) {
+    return <TimeOutRecordsTable event={event} records={records} />
   }
 
   const statusTag =
@@ -196,6 +266,7 @@ function PendingEventCard({ event, records, canDecide, onDecide }) {
   const first = records?.[0]
   const gap = first ? (new Date(event.logged_at) - new Date(first.credited_time_in)) / 60000 : null
   const effect = payrollEffect(event)
+  const timeOut = event.action_type === TIME_OUT
 
   return (
     <article className="border border-neutral-300 bg-surface" style={{ boxShadow: `inset 4px 0 0 ${OVERRIDE_INK}` }}>
@@ -211,15 +282,24 @@ function PendingEventCard({ event, records, canDecide, onDecide }) {
             </div>
             <h3 className="font-heading text-2xl leading-tight">{headline(event, records)}</h3>
             <div className="mt-1 text-[13px] tabular-nums text-neutral-700">
-              {siteDay(event.date)} · first tap {siteTime(event.logged_at)}
+              {siteDay(event.date)} · {timeOut ? 'first entered' : 'first tap'} {siteTime(event.logged_at)}
               {event.action_type === 'FOREMAN_LATE_OVERRIDE' && gap !== null ? `, ${formatGap(gap)} after shift start` : ''}
             </div>
           </div>
           <div className="flex-none text-right">
-            <div className="font-heading text-3xl leading-none tabular-nums" style={{ color: '#96420E' }}>
-              {hours(event.hours_at_stake)}
-            </div>
-            <div className="text-[11px] text-neutral-700">hours at stake · {peso(event.amount_at_stake)}</div>
+            {timeOut ? (
+              <>
+                <div className="font-heading text-3xl leading-none">Not priced</div>
+                <div className="text-[11px] text-neutral-700">depends on the day&apos;s hours and overtime</div>
+              </>
+            ) : (
+              <>
+                <div className="font-heading text-3xl leading-none tabular-nums" style={{ color: '#96420E' }}>
+                  {hours(event.hours_at_stake)}
+                </div>
+                <div className="text-[11px] text-neutral-700">hours at stake · {peso(event.amount_at_stake)}</div>
+              </>
+            )}
           </div>
         </div>
 
@@ -245,7 +325,9 @@ function PendingEventCard({ event, records, canDecide, onDecide }) {
           {canDecide
             ? event.action_type === 'FOREMAN_LATE_OVERRIDE'
               ? `Approving pays these ${event.record_count} records from the credited time. Rejecting pays each worker from their actual tap.`
-              : `Approving pays the times the foreman set. Rejecting pays each worker from their actual tap.`
+              : timeOut
+                ? 'Approving pays each worker to the time-out the foreman set. Rejecting pays each worker to when it was entered.'
+                : `Approving pays the times the foreman set. Rejecting pays each worker from their actual tap.`
             : 'Only HR Personnel can approve or reject an override.'}
         </p>
         {canDecide ? (
@@ -304,6 +386,7 @@ function DecisionDialog({ event, decision, busy, error, onCancel, onSubmit }) {
   const [note, setNote] = useState('')
   const rejecting = decision === 'reject'
   const noteMissing = rejecting && !note.trim()
+  const timeOut = event.action_type === TIME_OUT
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 px-4" role="dialog" aria-modal="true" aria-label={rejecting ? 'Reject override' : 'Approve override'}>
@@ -315,13 +398,17 @@ function DecisionDialog({ event, decision, busy, error, onCancel, onSubmit }) {
           </button>
         </div>
         <p className="text-sm">
-          Event #{event.code} · {event.record_count} {event.record_count === 1 ? 'record' : 'records'} · {hours(event.hours_at_stake)} h ·{' '}
-          {peso(event.amount_at_stake)}
+          Event #{event.code} · {event.record_count} {event.record_count === 1 ? 'record' : 'records'}
+          {timeOut ? ' · manual time-out' : ` · ${hours(event.hours_at_stake)} h · ${peso(event.amount_at_stake)}`}
         </p>
         <p className="mt-2 text-xs text-neutral-700">
           {rejecting
-            ? 'Each worker is paid from their actual tap time instead. The foreman and workers will see your reason.'
-            : 'The credited times are released to payroll. This is logged under your name.'}
+            ? timeOut
+              ? 'Each worker is paid to when the time-out was entered instead. The foreman and workers will see your reason.'
+              : 'Each worker is paid from their actual tap time instead. The foreman and workers will see your reason.'
+            : timeOut
+              ? 'The stated time-outs are released to payroll. This is logged under your name.'
+              : 'The credited times are released to payroll. This is logged under your name.'}
         </p>
         <div className="mt-4">
           <Field label={rejecting ? 'Reason (required)' : 'Note (optional)'}>
@@ -451,7 +538,12 @@ export function OverridesPage() {
         />
         <StatCard label="Late-start credits" value={pendingOf('FOREMAN_LATE_OVERRIDE')} note="records, awaiting review" accent="#4A3260" />
         <StatCard label="Hours at stake" value={hours(summary?.hours_at_stake)} note={`≈ ${peso(summary?.amount_at_stake)}`} accent="#96420E" />
-        <StatCard label="Manual times" value={pendingOf('MANUAL_TIME_OVERRIDE')} note="records, awaiting review" accent="#4A3260" />
+        <StatCard
+          label="Manual times"
+          value={pendingOf('MANUAL_TIME_OVERRIDE') + pendingOf(TIME_OUT)}
+          note={`${pendingOf('MANUAL_TIME_OVERRIDE')} arrivals · ${pendingOf(TIME_OUT)} time-outs, awaiting review`}
+          accent="#4A3260"
+        />
       </div>
 
       <div className="flex flex-wrap items-end gap-3 border-b border-neutral-200 px-[22px] py-3.5">
@@ -461,6 +553,7 @@ export function OverridesPage() {
               <option value="">All types</option>
               <option value="FOREMAN_LATE_OVERRIDE">FOREMAN_LATE_OVERRIDE</option>
               <option value="MANUAL_TIME_OVERRIDE">MANUAL_TIME_OVERRIDE</option>
+              <option value="MANUAL_TIME_OUT">MANUAL_TIME_OUT</option>
             </select>
           </Field>
         </div>

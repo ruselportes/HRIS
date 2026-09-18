@@ -538,7 +538,10 @@ function Payslip({ code, employee, onClose }) {
                         <td className="py-1.5 pr-3 whitespace-nowrap">{siteDay(l.date)}</td>
                         <td className="py-1.5 pr-3">
                           {LINE_KIND[l.kind] ?? l.kind}
-                          <div className="text-[11px] text-neutral-700">{DAY_TYPE[l.day_type] ?? l.day_type}</div>
+                          <div className="text-[11px] text-neutral-700">
+                            {DAY_TYPE[l.day_type] ?? l.day_type}
+                            {l.time_out ? ` · timed out ${l.time_out}` : ''}
+                          </div>
                         </td>
                         <td className="py-1.5 pr-3 text-right whitespace-nowrap">
                           {Number(l.hours).toFixed(2)} h × {Number(l.multiplier).toFixed(3).replace(/0+$/, '').replace(/\.$/, '')}
