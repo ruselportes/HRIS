@@ -37,7 +37,9 @@ class TimeWorked
 
         $minutes = ($end - $start) - $this->overlap($start, $end, $this->minutes($shift['meal_start']), $this->minutes($shift['meal_end']));
 
-        return round(max(0, $minutes) / 60, 4);
+        // Exact, not rounded: 7 h 20 m must pay 7.3333… hours, not 7.3333.
+        // Rounding happens once, on the peso amount.
+        return max(0, $minutes) / 60;
     }
 
     /**
@@ -71,8 +73,8 @@ class TimeWorked
             + $this->overlap($start, $end, $nightStart, $nightEnd + self::DAY);
 
         return [
-            'hours' => round(max(0, ($end - $start) - $inShift) / 60, 4),
-            'night_hours' => round($atNight / 60, 4),
+            'hours' => max(0, ($end - $start) - $inShift) / 60,
+            'night_hours' => $atNight / 60,
         ];
     }
 

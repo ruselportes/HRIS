@@ -16,6 +16,8 @@ class Payroll extends Model
 {
     public const DRAFT = 'draft';
 
+    public const APPROVED = 'approved';
+
     protected $primaryKey = 'payroll_id';
 
     protected $fillable = [
@@ -26,6 +28,8 @@ class Payroll extends Model
         'gross_pay',
         'net_pay',
         'status',
+        'approved_by',
+        'approved_at',
     ];
 
     protected function casts(): array
@@ -33,12 +37,18 @@ class Payroll extends Model
         return [
             'gross_pay' => 'decimal:2',
             'net_pay' => 'decimal:2',
+            'approved_at' => 'datetime',
         ];
     }
 
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'employee_id', 'employee_id');
+    }
+
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'approved_by', 'employee_id');
     }
 
     public function detail(): HasOne

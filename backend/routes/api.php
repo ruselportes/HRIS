@@ -7,7 +7,9 @@ use App\Http\Controllers\Api\CrewController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\ForemanController;
+use App\Http\Controllers\Api\HolidayController;
 use App\Http\Controllers\Api\OverrideController;
+use App\Http\Controllers\Api\PayrollController;
 use App\Http\Controllers\Api\RecoveryController;
 use App\Http\Controllers\Api\ReferenceController;
 use Illuminate\Support\Facades\Route;
@@ -104,6 +106,24 @@ Route::middleware(['auth:sanctum', 'acting.expire'])->group(function () {
         Route::post('{crew}/{date}', [RecoveryController::class, 'submit'])->where('date', '\d{4}-\d{2}-\d{2}')->middleware('role:engineer');
         Route::post('cases/{case}/sign-off', [RecoveryController::class, 'signOff'])->whereNumber('case')->middleware('role:hr');
         Route::post('cases/{case}/return', [RecoveryController::class, 'returnToEngineer'])->whereNumber('case')->middleware('role:hr');
+    });
+
+    // Payroll (Phase 8, UC-08). HR computes and approves; executives read.
+    Route::prefix('payroll/runs')->middleware('role:hr,executive')->group(function () {
+        $code = '\d{4}-\d{2}-[AB]';
+        Route::get('/', [PayrollController::class, 'index']);
+        Route::get('{code}', [PayrollController::class, 'show'])->where('code', $code);
+        Route::get('{code}/employees/{employee}', [PayrollController::class, 'payslip'])->where('code', $code);
+        Route::post('{code}/compute', [PayrollController::class, 'compute'])->where('code', $code)->middleware('role:hr');
+        Route::post('{code}/approve', [PayrollController::class, 'approve'])->where('code', $code)->middleware('role:hr');
+    });
+
+    // Holiday calendar (Phase 8). HR keeps it; others who deal with pay or
+    // attendance may read it.
+    Route::prefix('holidays')->middleware('role:hr,executive,admin,engineer')->group(function () {
+        Route::get('/', [HolidayController::class, 'index']);
+        Route::post('/', [HolidayController::class, 'store'])->middleware('role:hr');
+        Route::delete('{holiday}', [HolidayController::class, 'destroy'])->middleware('role:hr');
     });
 
     // Must precede apiResource so 'next-code' isn't captured as {employee}.

@@ -172,9 +172,9 @@ class PayrollEngine
 
                 foreach ($overtimeByDate->get($date, []) as $request) {
                     $window = $this->time->overtime($request->start_time, $request->end_time, $shift, $night);
-                    $dayHours = round($window['hours'] - $window['night_hours'], 4);
+                    $dayHours = $window['hours'] - $window['night_hours'];
 
-                    if ($dayHours > 0) {
+                    if ($dayHours > 1e-9) {
                         $lines[] = $this->line($date, 'overtime', $dayType, $dayHours, $this->calculator->multiplier($dayType, true, false, $premiums), $hourly);
                     }
 

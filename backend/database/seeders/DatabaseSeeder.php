@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             SiteSeeder::class,
             EmployeeSeeder::class,
             CrewSeeder::class,
+            HolidaySeeder::class,
         ]);
     }
 }

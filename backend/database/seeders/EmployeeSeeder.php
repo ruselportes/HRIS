@@ -160,6 +160,14 @@ class EmployeeSeeder extends Seeder
             ['ADC-0640', 'Jeffrey', 'Roska', 'Lopez', 'foreman', 'Rebar', 'Site 07 — Mandaue Viaduct', '2023-02-20', 'regular'],
         ];
 
+        // Daily rates for payroll (Phase 8), all at or above the Region VII
+        // minimum wage. Dev data, in the range the Payroll Run prototype shows.
+        $dailyRates = [
+            'ADC-0742' => 620, 'ADC-0810' => 580, 'ADC-0388' => 750, 'ADC-0921' => 600,
+            'ADC-0104' => 560, 'ADC-0905' => 560, 'ADC-0906' => 600, 'ADC-0907' => 580,
+            'ADC-0908' => 560,
+        ];
+
         foreach ($workers as [$code, $first, $last, $middle, $roleSlug, $trade, $siteName, $hired, $status]) {
             Employee::query()->updateOrCreate(
                 ['employee_code' => $code],
@@ -172,6 +180,7 @@ class EmployeeSeeder extends Seeder
                     'trade_skill' => $trade,
                     'employment_status' => $status,
                     'date_hired' => $hired,
+                    'daily_rate' => $dailyRates[$code] ?? null,
                 ]
             );
         }

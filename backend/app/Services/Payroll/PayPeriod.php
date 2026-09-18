@@ -51,6 +51,21 @@ final class PayPeriod
         return self::fromCode($day->format('Y-m').($day->day < $bStart ? '-A' : '-B'));
     }
 
+    /** The cut-off before this one. */
+    public function previous(): self
+    {
+        return self::containing(Carbon::parse($this->start)->subDay()->toDateString());
+    }
+
+    /** "21 Aug – 05 Sep 2026" */
+    public function label(): string
+    {
+        $start = Carbon::parse($this->start);
+        $end = Carbon::parse($this->end);
+
+        return $start->format($start->year === $end->year ? 'd M' : 'd M Y').' – '.$end->format('d M Y');
+    }
+
     /** @return list<string> every date in the period, Y-m-d */
     public function dates(): array
     {

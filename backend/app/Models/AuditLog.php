@@ -44,6 +44,9 @@ class AuditLog extends Model
 
     public const RECOVERY_STEPS = [self::RECOVERY_SUBMITTED, self::RECOVERY_RETURNED, self::RECOVERY_SIGNED_OFF];
 
+    /** HR approved a payroll run's ready rows (Phase 8). */
+    public const PAYROLL_APPROVED = 'PAYROLL_APPROVED';
+
     /** Action types that group override records and go through HR review. */
     public const OVERRIDE_TYPES = [self::LATE_OVERRIDE, self::MANUAL_TIME_OVERRIDE];
 

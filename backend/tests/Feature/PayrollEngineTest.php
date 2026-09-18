@@ -5,17 +5,15 @@ namespace Tests\Feature;
 use App\Models\Attendance;
 use App\Models\AuditLog;
 use App\Models\Crew;
-use App\Models\CrewAssignment;
-use App\Models\CryptoSignature;
 use App\Models\Employee;
 use App\Models\Holiday;
-use App\Models\OvertimeRequest;
 use App\Models\Payroll;
 use App\Models\PayrollDetail;
 use App\Services\Payroll\PayPeriod;
 use App\Services\Payroll\PayrollEngine;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Tests\Concerns\BuildsPayrollFixtures;
 use Tests\TestCase;
 
 /**
@@ -27,36 +25,15 @@ use Tests\TestCase;
  */
 class PayrollEngineTest extends TestCase
 {
+    use BuildsPayrollFixtures;
     use RefreshDatabase;
-
-    private Crew $crew;
-
-    /** A crew-mate on roll call (absent) every working day, so no day is a recovery gap by accident. */
-    private Employee $anchor;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->travelTo(Carbon::parse('2026-09-06 09:00', 'Asia/Manila'));
-
-        $this->crew = Crew::factory()->create([
-            'site_id' => $this->site()->site_id,
-            'foreman_id' => $this->loginUser('foreman')->employee_id,
-            'status' => 'deployed',
-            'deployed_at' => Carbon::parse('2026-08-01 06:00', 'Asia/Manila'),
-        ]);
-
-        Holiday::query()->create(['date' => '2026-08-21', 'name' => 'Ninoy Aquino Day', 'type' => Holiday::SPECIAL]);
-        Holiday::query()->create(['date' => '2026-08-31', 'name' => 'National Heroes Day', 'type' => Holiday::REGULAR]);
-
-        $this->anchor = $this->worker(600);
-        foreach (PayPeriod::fromCode('2026-09-A')->dates() as $date) {
-            $day = Carbon::parse($date);
-            if (! $day->isSunday() && ! in_array($date, ['2026-08-21', '2026-08-31'], true)) {
-                $this->absentDays($this->anchor, [$date]);
-            }
-        }
+        $this->setUpPayrollCrew();
     }
 
     /**
@@ -74,7 +51,7 @@ class PayrollEngineTest extends TestCase
      */
     public function test_tc06_every_premium_matches_the_hand_calculation(): void
     {
-        $worker = $this->worker(600);
+        $worker = $this->payrollWorker(600);
         $this->workedDays($worker, ['2026-08-21', '2026-08-24', '2026-08-25', '2026-08-26', '2026-08-30', '2026-08-31']);
         $this->overtime($worker, '2026-08-25', '16:00', '18:00');
         $this->overtime($worker, '2026-08-26', '20:00', '00:00');
@@ -107,7 +84,7 @@ class PayrollEngineTest extends TestCase
 
     public function test_every_amount_is_traceable_to_a_day(): void
     {
-        $worker = $this->worker(600);
+        $worker = $this->payrollWorker(600);
         $this->workedDays($worker, ['2026-08-26']);
         $this->overtime($worker, '2026-08-26', '20:00', '00:00');
 
@@ -121,7 +98,7 @@ class PayrollEngineTest extends TestCase
 
     public function test_a_late_worker_is_paid_from_arrival(): void
     {
-        $worker = $this->worker(600);
+        $worker = $this->payrollWorker(600);
         $this->workedDays($worker, ['2026-08-24'], 'late', '08:00');
 
         // 08:00-16:00 less the meal hour: 7 h x ₱75.
@@ -131,12 +108,12 @@ class PayrollEngineTest extends TestCase
     /** Art. 94: paid when unworked, to someone present on the working day before. */
     public function test_an_unworked_regular_holiday_is_paid_to_those_present_the_working_day_before(): void
     {
-        $entitled = $this->worker(600);
+        $entitled = $this->payrollWorker(600);
         // Sat 29 Aug worked; Sun 30 is the rest day; absent on the holiday itself.
         $this->workedDays($entitled, ['2026-08-29']);
         $this->absentDays($entitled, ['2026-08-31']);
 
-        $notEntitled = $this->worker(600);
+        $notEntitled = $this->payrollWorker(600);
         $this->absentDays($notEntitled, ['2026-08-29', '2026-08-31']);
 
         $payrolls = $this->runPayroll()->keyBy('employee_id');
@@ -149,7 +126,7 @@ class PayrollEngineTest extends TestCase
 
     public function test_an_unworked_special_day_is_unpaid(): void
     {
-        $worker = $this->worker(600);
+        $worker = $this->payrollWorker(600);
         $this->workedDays($worker, ['2026-08-20']);
         $this->absentDays($worker, ['2026-08-21']);
 
@@ -158,7 +135,7 @@ class PayrollEngineTest extends TestCase
 
     public function test_overtime_without_roll_call_is_not_paid_and_says_why(): void
     {
-        $worker = $this->worker(600);
+        $worker = $this->payrollWorker(600);
         $this->workedDays($worker, ['2026-08-24']);
         $this->overtime($worker, '2026-08-27', '16:00', '18:00');
 
@@ -170,7 +147,7 @@ class PayrollEngineTest extends TestCase
 
     public function test_attendance_hr_has_not_cleared_holds_the_row(): void
     {
-        $worker = $this->worker(600);
+        $worker = $this->payrollWorker(600);
         $this->workedDays($worker, ['2026-08-24']);
 
         $override = AuditLog::query()->create([
@@ -194,7 +171,7 @@ class PayrollEngineTest extends TestCase
 
     public function test_a_recovered_day_is_paid_and_the_row_says_so(): void
     {
-        $worker = $this->worker(600);
+        $worker = $this->payrollWorker(600);
         $case = AuditLog::query()->create([
             'actor_id' => $this->loginUser('engineer')->employee_id,
             'action_type' => AuditLog::RETROACTIVE_RECOVERY,
@@ -222,7 +199,7 @@ class PayrollEngineTest extends TestCase
 
     public function test_a_crew_day_awaiting_recovery_holds_the_row(): void
     {
-        $worker = $this->worker(600);
+        $worker = $this->payrollWorker(600);
         $this->workedDays($worker, ['2026-08-24', '2026-08-26']);
         // Nobody on the crew has roll call for Tue 25 Aug: an open recovery gap.
         $this->forget(null, '2026-08-25');
@@ -242,7 +219,7 @@ class PayrollEngineTest extends TestCase
         $raised['day']['rest_day'] = 1.50;
         config(['payroll.premiums' => [...$sets, $raised]]);
 
-        $worker = $this->worker(600);
+        $worker = $this->payrollWorker(600);
         // Sun 23 Aug under the old rate, Sun 30 Aug under the new one.
         $this->workedDays($worker, ['2026-08-23', '2026-08-30']);
 
@@ -252,7 +229,7 @@ class PayrollEngineTest extends TestCase
 
     public function test_recomputing_replaces_the_draft_but_never_an_approved_row(): void
     {
-        $worker = $this->worker(600);
+        $worker = $this->payrollWorker(600);
         $this->workedDays($worker, ['2026-08-24']);
         $this->runPayroll();
 
@@ -277,81 +254,5 @@ class PayrollEngineTest extends TestCase
     private function payrollFor(Employee $worker): Payroll
     {
         return $this->runPayroll()->firstWhere('employee_id', $worker->employee_id);
-    }
-
-    private function worker(float $dailyRate): Employee
-    {
-        $worker = Employee::factory()->create([
-            'role_id' => $this->role('worker')->role_id,
-            'site_id' => $this->site()->site_id,
-            'daily_rate' => $dailyRate,
-        ]);
-
-        CrewAssignment::factory()->create([
-            'crew_id' => $this->crew->crew_id,
-            'employee_id' => $worker->employee_id,
-            'status' => 'active',
-        ]);
-
-        return $worker;
-    }
-
-    private function workedDays(Employee $worker, array $dates, string $status = 'present', string $time = '06:55'): void
-    {
-        foreach ($dates as $date) {
-            $this->signed($worker, $date, $status, $time);
-        }
-    }
-
-    private function absentDays(Employee $worker, array $dates): void
-    {
-        foreach ($dates as $date) {
-            $this->signed($worker, $date, 'absent', null);
-        }
-    }
-
-    /** A synced, signature-verified roll call record — what payroll may use. */
-    private function signed(Employee $worker, string $date, string $status, ?string $time, array $extra = []): void
-    {
-        $attendance = Attendance::query()->create([
-            'employee_id' => $worker->employee_id,
-            'crew_id' => $this->crew->crew_id,
-            'date' => $date,
-            'status' => $status,
-            // Stored in UTC, as sync and recovery store them.
-            'time_in' => $time === null ? null : Carbon::parse("{$date} {$time}", 'Asia/Manila')->utc(),
-            'captured_at' => Carbon::parse("{$date} ".($time ?? '07:00'), 'Asia/Manila')->utc(),
-            'sync_status' => 'synced',
-        ] + $extra);
-
-        CryptoSignature::query()->create([
-            'attendance_id' => $attendance->attendance_id,
-            'hmac_hash' => hash('sha256', "{$worker->employee_id}{$date}"),
-            'ecdsa_signature' => 'test',
-            'verified' => true,
-        ]);
-    }
-
-    /** Remove roll call (and its signature) for a day — one worker's, or everyone's. */
-    private function forget(?Employee $worker, string $date): void
-    {
-        $rows = Attendance::query()
-            ->where('date', $date)
-            ->when($worker, fn ($q) => $q->where('employee_id', $worker->employee_id))
-            ->pluck('attendance_id');
-
-        CryptoSignature::query()->whereIn('attendance_id', $rows)->delete();
-        Attendance::query()->whereIn('attendance_id', $rows)->delete();
-    }
-
-    private function overtime(Employee $worker, string $date, string $start, string $end): void
-    {
-        OvertimeRequest::query()->create([
-            'employee_id' => $worker->employee_id,
-            'ot_date' => $date,
-            'start_time' => $start,
-            'end_time' => $end,
-            'status' => OvertimeRequest::APPROVED,
-        ]);
     }
 }

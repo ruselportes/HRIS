@@ -21,7 +21,7 @@ class TimeWorkedTest extends TestCase
 
     public function test_present_is_the_full_eight_hours_with_the_meal_hour_unpaid(): void
     {
-        $this->assertSame(8.0, $this->time->regularHours('present', null, self::SHIFT));
+        $this->assertEqualsWithDelta(8.0, $this->time->regularHours('present', null, self::SHIFT), 1e-9);
     }
 
     public function test_late_is_paid_from_arrival(): void
@@ -30,13 +30,24 @@ class TimeWorkedTest extends TestCase
         $this->assertEqualsWithDelta(6 + 50 / 60, $this->time->regularHours('late', 8 * 60 + 10, self::SHIFT), 1e-4);
 
         // Arriving after lunch: no meal hour to take out.
-        $this->assertSame(2.5, $this->time->regularHours('late', 13 * 60 + 30, self::SHIFT));
+        $this->assertEqualsWithDelta(2.5, $this->time->regularHours('late', 13 * 60 + 30, self::SHIFT), 1e-9);
+    }
+
+    /** Hours stay exact, so the peso amount is rounded once, not the hours first. */
+    public function test_hours_are_not_rounded_before_pay(): void
+    {
+        // 07:40 to 16:00 less the meal hour: 7 h 20 m.
+        $hours = $this->time->regularHours('late', 7 * 60 + 40, self::SHIFT);
+
+        $this->assertSame(22 / 3, $hours);
+        // ₱580/day = ₱72.50/h; 7.3333 h would give 531.66.
+        $this->assertSame(531.67, round(72.5 * $hours, 2));
     }
 
     public function test_absent_and_pending_are_not_paid(): void
     {
-        $this->assertSame(0.0, $this->time->regularHours('absent', null, self::SHIFT));
-        $this->assertSame(0.0, $this->time->regularHours('pending', null, self::SHIFT));
+        $this->assertEquals(0, $this->time->regularHours('absent', null, self::SHIFT));
+        $this->assertEquals(0, $this->time->regularHours('pending', null, self::SHIFT));
     }
 
     public static function windows(): array
@@ -53,14 +64,14 @@ class TimeWorkedTest extends TestCase
     #[DataProvider('windows')]
     public function test_overtime_windows(string $start, string $end, float $hours, float $night): void
     {
-        $this->assertSame(
-            ['hours' => $hours, 'night_hours' => $night],
-            $this->time->overtime($start, $end, self::SHIFT, self::NIGHT),
-        );
+        $window = $this->time->overtime($start, $end, self::SHIFT, self::NIGHT);
+
+        $this->assertEqualsWithDelta($hours, $window['hours'], 1e-9);
+        $this->assertEqualsWithDelta($night, $window['night_hours'], 1e-9);
     }
 
     public function test_database_times_with_seconds_are_read(): void
     {
-        $this->assertSame(2.0, $this->time->overtime('16:00:00', '18:00:00', self::SHIFT, self::NIGHT)['hours']);
+        $this->assertEqualsWithDelta(2.0, $this->time->overtime('16:00:00', '18:00:00', self::SHIFT, self::NIGHT)['hours'], 1e-9);
     }
 }
