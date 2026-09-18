@@ -43,11 +43,12 @@ with special focus on:
    - Absent foreman → 1-click crew re-assignment
    - Retroactive crew recovery sign-off workflow
 7. Philippine Labor Code Payroll Engine — OT 1.25x, Night Differential 1.10x,
-   Rest Day 1.30x, Holiday 2.0x (RA 442, Articles 83, 86, 87, 93, 94)
+   Rest Day 1.30x, Regular Holiday 2.0x, Special Day 1.30x, compounding per the
+   DOLE matrix (PD 442, Articles 83, 86, 87, 93, 94)
 8. Leave & Overtime Filing Workflow (multi-tier approval)
 9. Executive Compliance & Analytics Dashboard
 
-## 4. Database (13 ERD tables + 1 documented Phase 5 addition)
+## 4. Database (13 ERD tables + 2 documented additions: Phase 5, Phase 8)
 
 Per SDD Section 3.1 data dictionary (see `/docs/HRIS_ERD.drawio` and
 `/docs/HRIS_ERD_reference.md` for the full ERD):
@@ -79,6 +80,13 @@ not just within one), `bound_at`, `revoked_at`.
 > ⚠️ **Still owed:** this table needs adding to the SDD §3.1 data dictionary and
 > `HRIS_ERD.drawio` before submission — Efren's ownership. The table count in
 > those documents will otherwise contradict the migrations.
+
+**`holidays` — 15th table, added Phase 8** (`0006_01_01_000000_add_payroll_engine`).
+Holidays are proclaimed yearly by Executive Order and some dates move, so the
+payroll engine needs them as data: `date`, `name`, `type` (`regular` — paid
+when unworked, 200% when worked; `special` — no work, no pay, 130% when
+worked). Two regular holidays on one date make a double holiday. Same owner
+and same "still owed" as `device_keys` for the SDD and ERD.
 
 ## 5. User roles
 
@@ -207,13 +215,14 @@ Both are named per `C:\capstone\internal\Request-Letter-to-Conduct-a-Study.docx`
   2026-09-12. **Every rate carries a `[VERIFY]` flag** — the structure of the
   law is stable but rates change by agency circular, and my figures predate
   this project's timeline. Confirm against the official issuances in its §14
-  before implementing. Three findings worth acting on: (a) the Labor Code is
-  **PD 442, not RA 442** — miscited in §3 above, `config/payroll.php` and the
-  SPMP/SRS; (b) `config/payroll.php`'s single `holiday => 2.00` cannot express
-  the law, which pays **regular holidays at 200% and special non-working days
-  at 130%** — needs splitting plus a holiday calendar; (c) `payroll_details`
-  has one merged `deductions` column, but a payslip must itemise SSS,
-  PhilHealth, Pag-IBIG and tax separately (schema gap for Efren).
+  before implementing. Its three findings were acted on in Phase 8
+  (2026-09-18, decided with the team): (a) the Labor Code is **PD 442, not
+  RA 442** — fixed in code, §3 above and the README, but **still miscited in
+  the SPMP/SRS** (team to fix); (b) the single holiday rate became a holiday
+  calendar (`holidays` table) and the full DOLE compounding matrix in
+  `config/payroll.php`; (c) `payroll_details` now itemises SSS, PhilHealth,
+  Pag-IBIG and withholding tax, with effective-dated rate sets. The `[VERIFY]`
+  flags carry over into `config/payroll.php` and still need checking.
 - `/docs/HRIS_ERD.drawio` — entity-relationship diagram (editable in draw.io)
 - `/docs/HRIS_ERD_reference.md` — ERD design/formatting notes
 

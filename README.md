@@ -4,7 +4,7 @@ Capstone project for **Arcenas Development Corporation**, a construction company
 
 - Recording daily attendance for construction crews across multiple sites — **including remote sites with no internet connectivity**.
 - Preventing timestamp manipulation on field devices via cryptographic, hardware-backed signing.
-- Automating payroll computation in compliance with the **Philippine Labor Code** (RA 442).
+- Automating payroll computation in compliance with the **Philippine Labor Code** (PD 442).
 
 See [`CLAUDE.md`](CLAUDE.md) for full project context, and [`docs/TASKS.md`](docs/TASKS.md) for current progress.
 

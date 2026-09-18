@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\AuditLog;
 use App\Models\CrewAssignment;
 use App\Models\Employee;
+use App\Models\Holiday;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\Concerns\SignsAttendanceEvents;
@@ -76,6 +77,16 @@ class RecoveryTest extends TestCase
             ->assertJsonPath('data.0.hours', 24)
             ->assertJsonPath('summary.to_recover', 2)
             ->assertJsonPath('summary.hours_at_risk', 48);
+    }
+
+    /** A holiday with nobody on roll call is a day off, not a gap (Phase 8 calendar). */
+    public function test_a_holiday_with_no_roll_call_is_not_a_gap(): void
+    {
+        Holiday::query()->create(['date' => '2026-09-16', 'name' => 'Test holiday', 'type' => Holiday::SPECIAL]);
+
+        $dates = collect($this->actingAs($this->engineer, 'sanctum')->getJson('/api/recovery')->json('data'))->pluck('date');
+
+        $this->assertSame(['2026-09-15'], $dates->all());
     }
 
     public function test_the_engineer_reconstructs_the_day_as_the_first_signature(): void

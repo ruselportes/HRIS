@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\Crew;
 use App\Models\DeviceKey;
 use App\Models\Employee;
+use App\Models\Holiday;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
@@ -226,6 +227,29 @@ class RecoveryService
         ];
     }
 
+    /**
+     * Crew-days between two dates that are not yet recovered: open gaps and
+     * cases not signed off. Payroll holds the affected workers rather than
+     * paying them short for a day that may still be recovered.
+     *
+     * @return Collection<string, string> "crewId|Y-m-d" => stage
+     */
+    public function unresolvedDays(string $from, string $to): Collection
+    {
+        $to = min($to, Carbon::now($this->timezone())->subDay()->toDateString());
+
+        if ($to < $from) {
+            return collect();
+        }
+
+        $cases = $this->cases()->whereBetween('subject_date', [$from, $to])->get();
+
+        return $this->gaps($from, $to, null, $cases)
+            ->concat($cases->reject(fn (AuditLog $c) => $c->review_status === AuditLog::REVIEW_APPROVED)
+                ->map(fn (AuditLog $c) => ['crew_id' => $c->crew_id, 'date' => $c->subject_date, 'stage' => $c->review_status]))
+            ->mapWithKeys(fn ($day) => [$day['crew_id'].'|'.$day['date'] => $day['stage']]);
+    }
+
     /** @return array{0:string, 1:string} from and to, inclusive, as site dates */
     public function window(): array
     {
@@ -276,7 +300,14 @@ class RecoveryService
         $covered = $cases->mapWithKeys(fn (AuditLog $case) => [$case->crew_id.'|'.$case->subject_date => true]);
         $workDays = config('attendance.work_days', [1, 2, 3, 4, 5, 6]);
 
-        return $crews->flatMap(function (Crew $crew) use ($from, $to, $recorded, $covered, $workDays) {
+        // A holiday with nobody on roll call is a day off, not a gap (Phase 8
+        // calendar). Work on one still counts, since it is paid at a premium.
+        $holidays = Holiday::query()
+            ->whereBetween('date', [$from, $to])
+            ->pluck('date')
+            ->mapWithKeys(fn ($date) => [substr((string) $date, 0, 10) => true]);
+
+        return $crews->flatMap(function (Crew $crew) use ($from, $to, $recorded, $covered, $workDays, $holidays) {
             $deployed = $crew->deployed_at->copy()->setTimezone($this->timezone())->toDateString();
             $day = Carbon::parse(max($from, $deployed), $this->timezone());
             $last = Carbon::parse($to, $this->timezone());
@@ -285,7 +316,10 @@ class RecoveryService
             for (; $day->lte($last); $day->addDay()) {
                 $key = $crew->crew_id.'|'.$day->toDateString();
 
-                if (in_array($day->dayOfWeekIso, $workDays, true) && ! isset($recorded[$key]) && ! isset($covered[$key])) {
+                if (in_array($day->dayOfWeekIso, $workDays, true)
+                    && ! isset($holidays[$day->toDateString()])
+                    && ! isset($recorded[$key])
+                    && ! isset($covered[$key])) {
                     $gaps[] = $this->gapItem($crew, $day->toDateString());
                 }
             }
