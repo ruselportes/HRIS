@@ -3,7 +3,11 @@
 Each phase below is weighted **10%** of total project completion (10 phases = 100%).
 Check off tasks as they're completed; a phase counts as done once every task under it is checked.
 
-**Overall progress: ~80% (Phases 1–8 complete: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8, Phase 8 5/5.)** Verified by 298 backend tests (passing on both SQLite and MySQL 8.0) and 188 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works.
+**Overall progress: ~80% (Phases 1–8 complete: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8, Phase 8 5/5.)** Verified by 349 backend tests (passing on both SQLite and MySQL 8.0) and 188 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works.
+
+> **Backend test routine (run before committing backend work):**
+> 1. Day-to-day: `docker compose exec api php artisan test` (in-memory SQLite).
+> 2. Driver parity: in Docker, `docker compose exec mysql mysql -uroot -proot -e "CREATE DATABASE IF NOT EXISTS hris_testing CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON hris_testing.* TO 'hris'@'%'; FLUSH PRIVILEGES;"` (one-time per container), then `docker compose exec api vendor/bin/phpunit -c phpunit.mysql.xml`. The config in `backend/phpunit.mysql.xml` points tests at `hris_testing` only — the `TestCase` guard refuses any other non-`*_testing` target — so the dev database is never touched. SQLite alone is not enough: it silently rewrites unknown column names (e.g. `id` when the real key is `employee_id`) into string literals, which a MySQL run catches (`Unknown column` errors).
 
 ---
 
@@ -258,9 +262,9 @@ decisions made with the team:
 
 ## Phase 9 — Leave & Overtime Filing + Executive Analytics (UC-10, UC-09) (10%)
 
-- [ ] `Leave Request`, `Overtime Request` tables + multi-tier approval workflow
+- [x] `Leave Request`, `Overtime Request` tables + multi-tier approval workflow — migration 0008 (filer, reason, assigned endorser, endorse/approve/reject columns, overtime `batch_key`); two-hop file → endorse → approve, the endorser assigned at filing (crew leader via `CrewLeadership`, else the site's lowest-id engineer) and reassignable by HR; cancel by the filer while pending, reject with a note, approval final; leave/overtime conflict rules; read scope per role; batch overtime approval with per-row closed-period skips; approved SIL flagged on the payslip; a second HR login seeded (`RequestWorkflowSeeder`). Slices A1–A3.
 - [ ] Leave/Overtime filing web UI
-- [ ] Executive Compliance & Analytics Dashboard (labor cost, site punctuality, audit review)
+- [x] Executive Compliance & Analytics backend (UC-09/FR-09) — `GET /api/reports/overview` + `/api/reports/audit` (role:hr,engineer,executive): per-site scorecard (100 − 2×expired certs − overrides − 5×incidents; good ≥85/fair ≥80/watch), company headline as the headcount-weighted average, approved-only labour cost by payslip line date, attendance/leave (rest-day and holiday absences excluded), crew-attributed overrides/incidents, flagged feed, engineer clamped to their own site (refused outright without one); a site is reported only if it is a work site — a crew assigned, or field staff homed there — so office staff activity never makes Head Office a site
 - [ ] Web: Executive Dashboard screen
 
 ## Phase 10 — Integration, Testing & Capstone Defense (10%)

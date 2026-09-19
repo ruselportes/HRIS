@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\OvertimeRequestController;
 use App\Http\Controllers\Api\PayrollController;
 use App\Http\Controllers\Api\RecoveryController;
 use App\Http\Controllers\Api\ReferenceController;
+use App\Http\Controllers\Api\ReportsController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -155,6 +156,15 @@ Route::middleware(['auth:sanctum', 'acting.expire'])->group(function () {
         Route::post('{overtime}/reject', [OvertimeRequestController::class, 'reject'])->whereNumber('overtime')->middleware('role:hr');
         Route::post('{overtime}/cancel', [OvertimeRequestController::class, 'cancel'])->whereNumber('overtime')->middleware('role:hr,engineer,foreman');
         Route::post('{overtime}/reassign-endorser', [OvertimeRequestController::class, 'reassignEndorser'])->whereNumber('overtime')->middleware('role:hr');
+    });
+
+    // Reports & Analytics (Phase 9, UC-09/FR-09), matching the nav `reports`
+    // matrix: HR full, Site Engineer view, Executive full. Both endpoints are
+    // read-only. Every filter (from/to pair, site_id, per_page, page, action)
+    // is validated by ReportsQueryRequest.
+    Route::prefix('reports')->middleware('role:hr,engineer,executive')->group(function () {
+        Route::get('overview', [ReportsController::class, 'overview']);
+        Route::get('audit', [ReportsController::class, 'audit']);
     });
 
     // Must precede apiResource so 'next-code' isn't captured as {employee}.
