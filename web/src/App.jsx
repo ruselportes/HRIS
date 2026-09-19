@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { EmployeesPage } from './pages/EmployeesPage'
+import { LeavePage } from './pages/LeavePage'
 import { ManpowerPage } from './pages/ManpowerPage'
 import { OverridesPage } from './pages/OverridesPage'
 import { PayrollPage } from './pages/PayrollPage'
@@ -100,6 +101,15 @@ function RecoveryRoute() {
   return <RecoveryPage />
 }
 
+function LeaveRoute() {
+  const { user } = useAuth()
+  const access = NAV.find((n) => n.key === 'leave').access[roleKey(user?.role?.slug)]
+  if (access === 'none') {
+    return <Navigate to="/" replace />
+  }
+  return <LeavePage />
+}
+
 function OverridesRoute() {
   const { user } = useAuth()
   const access = NAV.find((n) => n.key === 'overrides').access[roleKey(user?.role?.slug)]
@@ -121,6 +131,7 @@ function App() {
               <Route index element={<DashboardPage />} />
               <Route path="employees" element={<EmployeeRoute />} />
               <Route path="manpower" element={<ManpowerRoute />} />
+              <Route path="leave" element={<LeaveRoute />} />
               <Route path="overrides" element={<OverridesRoute />} />
               <Route path="recovery" element={<RecoveryRoute />} />
               <Route path="payroll" element={<PayrollRoute />} />
