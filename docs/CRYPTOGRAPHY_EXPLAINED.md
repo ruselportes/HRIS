@@ -646,6 +646,14 @@ an authentic event that breaks them — for example, a Close-shift time-out
 tapped before 16:00, or a time-out for a worker marked Absent. A refused event
 is not saved, but the chain stays intact, so later events still sync.
 
+**Rejected events are attributed by device owner, never by payload.** A
+rejection means the event's crew and date are exactly the fields that may
+have been tampered with, so the audit entry leaves `subject_date` null and
+derives `crew_id` through `CrewLeadership` (the crew the device's foreman
+actually led at server receive time) — otherwise a forged event could charge
+another site's compliance score. Flagged and refused events, whose signatures
+verified, keep their claimed crew and date.
+
 Note also that all four verifiers operate on **plain arrays, not Eloquent
 models**, specifically so they are unit-testable with no database — which is
 what makes TC-01/02/03 runnable as fast automated tests.

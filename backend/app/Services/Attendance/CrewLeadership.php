@@ -55,6 +55,33 @@ class CrewLeadership
     }
 
     /**
+     * The single crew the employee led at the instant, or null when they led
+     * none or more than one. It reuses leads(), so the inverse cannot disagree
+     * with the forward check.
+     *
+     * An acting foreman can lead two crews at once; in that ambiguity nobody
+     * gets the attribution.
+     */
+    public function crewLedBy(int $employeeId, CarbonInterface $at): ?int
+    {
+        $candidates = Crew::query()
+            ->where('foreman_id', $employeeId)
+            ->pluck('crew_id')
+            ->concat(
+                CrewAssignment::query()
+                    ->where('employee_id', $employeeId)
+                    ->whereIn('assignment_type', CrewAssignment::LEADERSHIP_TYPES)
+                    ->distinct()
+                    ->pluck('crew_id'),
+            )
+            ->unique();
+
+        $led = $candidates->filter(fn (int $crewId) => $this->leads($employeeId, $crewId, $at));
+
+        return $led->count() === 1 ? (int) $led->first() : null;
+    }
+
+    /**
      * Who led the crew at an instant: the leadership period covering it, or the
      * current foreman for a crew whose leadership has never changed hands.
      */

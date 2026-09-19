@@ -457,12 +457,17 @@ class AttendanceSyncService
      * A flagged event is committed but not trusted, so the audit entry is what
      * routes it to HR. The drift is recorded because "the clock was off by 7s"
      * and "the clock was set back two hours" call for very different responses.
+     *
+     * The event's signature verified, so its crew and day are trustworthy and
+     * stored for grouping — a flagged event is charged to the crew it claims.
      */
     private function recordFlag(DeviceKey $deviceKey, array $event, ?string $reason, ?int $driftSeconds): void
     {
         AuditLog::create([
             'actor_id' => $deviceKey->employee_id,
-            'action_type' => 'ATTENDANCE_CLOCK_FLAGGED',
+            'action_type' => AuditLog::ATTENDANCE_CLOCK_FLAGGED,
+            'crew_id' => $event['crew_id'] ?? null,
+            'subject_date' => $event['date'] ?? null,
             'description' => sprintf(
                 'Flagged attendance for employee %s on %s from device %s for HR review: %s%s. '
                 .'Record kept, marked unverified, excluded from trusted data.',
@@ -482,12 +487,19 @@ class AttendanceSyncService
      * different: a failed verification suggests tampering, while a refusal is
      * usually a stale roster or a misapplied override that someone should talk
      * to the foreman about.
+     *
+     * The event is authentic, so its claimed crew is stored — but it is the
+     * crew the foreman CLAIMED, not necessarily the one led. With
+     * not_crew_foreman that is exactly a crew the device does not lead.
+     * Refusals are never counted as integrity failures either way.
      */
     private function recordRefusal(DeviceKey $deviceKey, array $event, ?string $reason): void
     {
         AuditLog::create([
             'actor_id' => $deviceKey->employee_id,
-            'action_type' => 'ATTENDANCE_REFUSED',
+            'action_type' => AuditLog::ATTENDANCE_REFUSED,
+            'crew_id' => $event['crew_id'] ?? null,
+            'subject_date' => $event['date'] ?? null,
             'description' => sprintf(
                 'Refused attendance for employee %s, crew %s on %s from device %s: %s. '
                 .'Authentic and chained, but not permitted; not committed.',
@@ -505,12 +517,25 @@ class AttendanceSyncService
      * A rejected event is not written to tbl_attendance — that is the point,
      * no falsified time is committed. But the attempt is recorded, so a
      * rejection is investigable rather than just an absence.
+     *
+     * The event failed its chain or signature check, so its crew and date are
+     * exactly the fields that may have been tampered with: neither is trusted
+     * onto the row. subject_date stays null, and the crew is attributed from
+     * the device OWNER — the crew they led at server receive time, via
+     * CrewLeadership — never from the payload. A forged event must not be able
+     * to charge another site's compliance score. If the owner led no crew or
+     * more than one at that instant, crew_id stays null too: the incident
+     * still counts, it is just not charged to any site.
      */
     private function recordRejection(DeviceKey $deviceKey, array $event, ?string $reason): void
     {
+        $receivedAt = now();
+
         AuditLog::create([
             'actor_id' => $deviceKey->employee_id,
-            'action_type' => 'ATTENDANCE_VERIFICATION_FAILED',
+            'action_type' => AuditLog::ATTENDANCE_VERIFICATION_FAILED,
+            'crew_id' => $this->crewLeadership->crewLedBy((int) $deviceKey->employee_id, $receivedAt),
+            'subject_date' => null,
             'description' => sprintf(
                 'Rejected attendance for employee %s on %s from device %s: %s.',
                 $event['employee_id'] ?? 'unknown',
@@ -518,7 +543,7 @@ class AttendanceSyncService
                 $deviceKey->device_id,
                 $reason ?? 'unspecified',
             ),
-            'timestamp' => now(),
+            'timestamp' => $receivedAt,
         ]);
     }
 }

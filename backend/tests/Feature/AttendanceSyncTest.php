@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Attendance;
+use App\Models\AuditLog;
 use App\Models\Crew;
 use App\Models\CryptoSignature;
 use App\Models\DeviceKey;
@@ -86,9 +87,66 @@ class AttendanceSyncTest extends TestCase
 
         $this->sync($events)->assertStatus(207);
 
+        // The claimed payload date is untrusted, so subject_date stays null;
+        // the crew is attributed from the device owner, not the payload.
         $this->assertDatabaseHas('audit_logs', [
             'actor_id' => $this->foreman->employee_id,
             'action_type' => 'ATTENDANCE_VERIFICATION_FAILED',
+            'crew_id' => $this->crewId,
+            'subject_date' => null,
+        ]);
+    }
+
+    public function test_rejected_crew_comes_from_the_device_owner_not_the_payload(): void
+    {
+        $otherCrew = Crew::factory()->create(['site_id' => $this->site()->site_id, 'foreman_id' => null, 'status' => 'deployed']);
+
+        $events = $this->buildBatch([$this->worker()->employee_id], null, [
+            0 => ['crew_id' => $otherCrew->crew_id],
+        ]);
+        // Break the chain so the event is rejected, not refused — a rejected
+        // payload's crew_id is exactly the field that may have been forged.
+        $events[0]['time_in'] -= 60_000;
+
+        $this->sync($events)->assertStatus(207);
+
+        // The forged crew must NOT be charged: attribution flows from the
+        // device owner's real crew (crewId), never from the payload.
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_id' => $this->foreman->employee_id,
+            'action_type' => 'ATTENDANCE_VERIFICATION_FAILED',
+            'crew_id' => $this->crewId,
+            'subject_date' => null,
+        ]);
+        $this->assertDatabaseMissing('audit_logs', [
+            'action_type' => 'ATTENDANCE_VERIFICATION_FAILED',
+            'crew_id' => $otherCrew->crew_id,
+        ]);
+    }
+
+    /**
+     * An acting foreman can lead two crews at once. With no single crew, the
+     * incident is unattributed: it still counts in the total, but no site is
+     * charged with it.
+     */
+    public function test_rejection_with_an_ambiguous_owner_crew_is_unattributed(): void
+    {
+        Crew::factory()->create([
+            'site_id' => $this->site()->site_id,
+            'foreman_id' => $this->foreman->employee_id,
+            'status' => 'deployed',
+        ]);
+
+        $events = $this->buildBatch([$this->worker()->employee_id]);
+        $events[0]['time_in'] -= 60_000;
+
+        $this->sync($events)->assertStatus(207);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_id' => $this->foreman->employee_id,
+            'action_type' => 'ATTENDANCE_VERIFICATION_FAILED',
+            'crew_id' => null,
+            'subject_date' => null,
         ]);
     }
 
@@ -175,7 +233,13 @@ class AttendanceSyncTest extends TestCase
         $this->assertNotNull($flagged, 'A flagged record is kept for HR review, not discarded.');
         $this->assertFalse($flagged->cryptoSignature->verified);
 
-        $this->assertDatabaseHas('audit_logs', ['action_type' => 'ATTENDANCE_CLOCK_FLAGGED']);
+        // A flagged event's signature verified, so its claimed crew and day
+        // ARE trusted and stored for grouping.
+        $this->assertDatabaseHas('audit_logs', [
+            'action_type' => 'ATTENDANCE_CLOCK_FLAGGED',
+            'crew_id' => $this->crewId,
+            'subject_date' => '2026-09-12',
+        ]);
     }
 
     /** The substance of TC-01's "the hash chain remains continuous". */
@@ -555,7 +619,11 @@ class AttendanceSyncTest extends TestCase
 
         $this->assertNull(Attendance::where('employee_id', $workers[0]->employee_id)->first());
         $this->assertSame(end($events)['hmac_hash'], $this->device->fresh()->last_chain_hash);
-        $this->assertDatabaseHas('audit_logs', ['action_type' => 'ATTENDANCE_REFUSED']);
+        $this->assertDatabaseHas('audit_logs', [
+            'action_type' => 'ATTENDANCE_REFUSED',
+            'crew_id' => $this->crewId,
+            'subject_date' => '2026-09-12',
+        ]);
     }
 
     /**
@@ -605,6 +673,25 @@ class AttendanceSyncTest extends TestCase
         unset($events[0]['captured_at']);
 
         $this->sync($events)->assertStatus(422)->assertJsonValidationErrors('events.0.captured_at');
+    }
+
+    /**
+     * The compliance score counts incidents (distinct device-days), not rows:
+     * one tamper orphans every later event in the batch, so a row count would
+     * charge a single attack many times over.
+     */
+    public function test_integrity_incidents_are_distinct_device_days(): void
+    {
+        $otherWorker = $this->worker();
+
+        AuditLog::create(['actor_id' => $this->foreman->employee_id, 'action_type' => 'ATTENDANCE_CLOCK_FLAGGED', 'crew_id' => $this->crewId, 'subject_date' => '2026-09-12', 'timestamp' => now()->subDays(1), 'description' => 'flag 1']);
+        AuditLog::create(['actor_id' => $this->foreman->employee_id, 'action_type' => 'ATTENDANCE_CLOCK_FLAGGED', 'crew_id' => $this->crewId, 'subject_date' => '2026-09-12', 'timestamp' => now()->subDays(1), 'description' => 'flag 2']);
+        AuditLog::create(['actor_id' => $this->foreman->employee_id, 'action_type' => 'ATTENDANCE_VERIFICATION_FAILED', 'crew_id' => null, 'subject_date' => null, 'timestamp' => now()->subDays(1), 'description' => 'rejected 1']);
+        AuditLog::create(['actor_id' => $otherWorker->employee_id, 'action_type' => 'ATTENDANCE_VERIFICATION_FAILED', 'crew_id' => null, 'subject_date' => null, 'timestamp' => now()->subDays(1), 'description' => 'worker rejected']);
+
+        // Three rows but two device-days: the foreman's flagged+rejected pair
+        // is one incident, and the worker's rejection is another.
+        $this->assertCount(2, AuditLog::integrityIncidents(now()->subWeek(), now()));
     }
 
     /* ---------------------------------------------------------------------

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -49,6 +50,21 @@ class AuditLog extends Model
 
     /** HR approved a payroll run's ready rows (Phase 8). */
     public const PAYROLL_APPROVED = 'PAYROLL_APPROVED';
+
+    /**
+     * Integrity failure entries (layers 1–3 of the integrity engine). A flagged
+     * event passed signature and chain but failed the monotonic-clock check;
+     * a verification failure failed the chain or the signature wholesale.
+     */
+    public const ATTENDANCE_CLOCK_FLAGGED = 'ATTENDANCE_CLOCK_FLAGGED';
+
+    public const ATTENDANCE_VERIFICATION_FAILED = 'ATTENDANCE_VERIFICATION_FAILED';
+
+    /** Authentic but not permitted — a stale roster, not an integrity failure. */
+    public const ATTENDANCE_REFUSED = 'ATTENDANCE_REFUSED';
+
+    /** What counts as an integrity failure for the compliance score. */
+    public const INTEGRITY_TYPES = [self::ATTENDANCE_CLOCK_FLAGGED, self::ATTENDANCE_VERIFICATION_FAILED];
 
     /** Action types that group override records and go through HR review. */
     public const OVERRIDE_TYPES = [self::LATE_OVERRIDE, self::MANUAL_TIME_OVERRIDE, self::MANUAL_TIME_OUT];
@@ -125,6 +141,43 @@ class AuditLog extends Model
     public function scopeOverrideEvents(Builder $query): Builder
     {
         return $query->whereIn('action_type', self::OVERRIDE_TYPES);
+    }
+
+    /**
+     * Integrity incidents — one row per distinct device-day, not per audit
+     * row. A single tamper orphans every later event in the batch
+     * (chain_broken_upstream), so a plain count would charge one attack
+     * twenty times over, and a clock rollback flags a whole batch the same
+     * way. The compliance score must count the attack, not its fallout.
+     *
+     * The "day" is the server's receive day (timestamp), not any claimed
+     * date: a rejected event's date is untrusted, so it cannot set the day,
+     * and the receive day keeps every type scored on the same clock.
+     *
+     * @return array<int, array{device_day: string, crew_id: int|null}>
+     */
+    public static function integrityIncidents(
+        CarbonInterface $from,
+        CarbonInterface $to,
+        ?int $siteId = null,
+    ): array {
+        $rows = AuditLog::query()
+            ->select('actor_id')
+            ->selectRaw('date(timestamp) AS device_day')
+            ->selectRaw('crew_id')
+            ->whereIn('action_type', self::INTEGRITY_TYPES)
+            ->where('timestamp', '>=', $from->copy()->startOfDay())
+            ->where('timestamp', '<', $to->copy()->addDay()->startOfDay())
+            ->when($siteId, fn (Builder $q, int $id) => $q->whereHas('crew', fn (Builder $c) => $c->where('site_id', $id)))
+            ->get()
+            // A device that flags or fails on one day is one incident, even
+            // if a whole batch of rows arrived together.
+            ->unique(fn (AuditLog $row) => $row->actor_id.'|'.$row->device_day);
+
+        return $rows
+            ->map(fn (AuditLog $row) => ['device_day' => $row->device_day, 'crew_id' => $row->crew_id])
+            ->values()
+            ->all();
     }
 
     public function isOverrideEvent(): bool
