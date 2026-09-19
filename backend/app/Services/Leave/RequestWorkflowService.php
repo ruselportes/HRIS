@@ -11,6 +11,7 @@ use App\Models\LeaveRequest;
 use App\Models\OvertimeRequest;
 use App\Models\Payroll;
 use App\Services\Attendance\CrewLeadership;
+use App\Services\Payroll\TimeWorked;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -33,7 +34,10 @@ use Illuminate\Support\Facades\DB;
  */
 class RequestWorkflowService
 {
-    public function __construct(private readonly CrewLeadership $leadership) {}
+    public function __construct(
+        private readonly CrewLeadership $leadership,
+        private readonly TimeWorked $time,
+    ) {}
 
     /**
      * File a leave request. The subject and actor may differ — a foreman files
@@ -140,16 +144,18 @@ class RequestWorkflowService
             throw $this->unprocessable("{$day} is covered by an approved leave; overtime cannot be filed on it.");
         }
 
-        return DB::transaction(function () use ($actor, $subject, $data, $day) {
+        $hours = $this->overtimeHours((string) $data['start_time'], (string) $data['end_time']);
+
+        return DB::transaction(function () use ($actor, $subject, $data, $day, $hours) {
             $endorserId = $this->resolveEndorser($subject);
 
             $request = OvertimeRequest::query()->create([
                 'employee_id' => $subject->employee_id,
                 'filed_by' => $actor->employee_id,
                 'ot_date' => $day,
-                'start_time' => $data['start_time'] ?? null,
-                'end_time' => $data['end_time'] ?? null,
-                'hours_requested' => $data['hours_requested'] ?? null,
+                'start_time' => $data['start_time'],
+                'end_time' => $data['end_time'],
+                'hours_requested' => $hours,
                 'reason' => $data['reason'] ?? null,
                 'status' => OvertimeRequest::PENDING,
                 'batch_key' => $data['batch_key'] ?? null,
@@ -163,6 +169,34 @@ class RequestWorkflowService
 
             return $request;
         });
+    }
+
+    /**
+     * The paid hours of an overtime window, computed exactly as payroll will
+     * pay them (TimeWorked::overtime, against the configured shift): the part
+     * of the window outside the regular shift, an end at or before the start
+     * running past midnight. A window with nothing outside the shift is not
+     * overtime and is refused here rather than approved for zero pay.
+     */
+    private function overtimeHours(string $start, string $end): float
+    {
+        $window = $this->time->overtime(
+            $start,
+            $end,
+            [
+                'start' => config('attendance.shift_start', '07:00'),
+                'end' => config('attendance.shift_end', '16:00'),
+            ],
+            config('payroll.night'),
+        );
+
+        if ($window['hours'] <= 1e-9) {
+            throw $this->unprocessable(
+                "The window {$start}–{$end} lies inside the regular shift; overtime is only the time outside it."
+            );
+        }
+
+        return round($window['hours'], 2);
     }
 
     /** The assigned endorser endorses a pending request — no one else may. */

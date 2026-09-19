@@ -8,6 +8,7 @@ use App\Models\Crew;
 use App\Models\Employee;
 use App\Models\Holiday;
 use App\Models\LeaveRequest;
+use App\Models\OvertimeRequest;
 use App\Models\Payroll;
 use App\Models\PayrollDetail;
 use App\Services\Payroll\PayPeriod;
@@ -144,6 +145,28 @@ class PayrollEngineTest extends TestCase
 
         $this->assertSame('600.00', $detail->payroll->gross_pay);
         $this->assertStringContainsString('2026-08-27', $detail->breakdown['warnings'][0]);
+    }
+
+    /**
+     * Filing now requires a window, but a row approved before that rule has
+     * none. It used to throw a TypeError and fail the whole run; now it is
+     * reported and left unpaid.
+     */
+    public function test_approved_overtime_with_no_window_is_reported_not_fatal(): void
+    {
+        $worker = $this->payrollWorker(600);
+        $this->workedDays($worker, ['2026-08-24']);
+        OvertimeRequest::query()->create([
+            'employee_id' => $worker->employee_id,
+            'ot_date' => '2026-08-24',
+            'hours_requested' => 2,
+            'status' => OvertimeRequest::APPROVED,
+        ]);
+
+        $detail = $this->payrollFor($worker)->detail;
+
+        $this->assertSame('600.00', $detail->payroll->gross_pay);
+        $this->assertContains('Approved overtime on 2026-08-24 has no time window; not paid.', $detail->breakdown['warnings']);
     }
 
     public function test_attendance_hr_has_not_cleared_holds_the_row(): void

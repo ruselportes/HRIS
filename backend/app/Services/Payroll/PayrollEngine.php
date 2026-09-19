@@ -193,6 +193,15 @@ class PayrollEngine
                 $overtimeCap = $record->time_out_type === Attendance::TIME_OUT_SHIFT_END ? null : $leftAt;
 
                 foreach ($overtimeByDate->get($date, []) as $request) {
+                    // Overtime is paid from its window. Filing now requires
+                    // one; a row approved before that rule has nothing to pay
+                    // from, so it is reported rather than failing the run.
+                    if ($request->start_time === null || $request->end_time === null) {
+                        $warnings[] = "Approved overtime on {$date} has no time window; not paid.";
+
+                        continue;
+                    }
+
                     $window = $this->time->overtime($request->start_time, $request->end_time, $shift, $night, $overtimeCap);
 
                     if ($overtimeCap !== null) {

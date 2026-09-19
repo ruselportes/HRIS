@@ -260,6 +260,36 @@ class OvertimeWorkflowTest extends TestCase
         $this->assertSame(OvertimeRequest::CANCELLED, OvertimeRequest::find($cancelled)->status);
     }
 
+    /** Payroll pays the window, so the hours shown are the window's, whatever the client sends. */
+    public function test_hours_come_from_the_window_not_the_client(): void
+    {
+        $this->fileFor($this->crewMember(), '2026-09-22', ['hours_requested' => 9])
+            ->assertCreated()
+            ->assertJsonPath('data.hours_requested', 3.5);
+
+        // An end before the start runs past midnight.
+        $this->fileFor($this->crewMember(), '2026-09-23', ['start_time' => '22:00', 'end_time' => '02:00'])
+            ->assertCreated()
+            ->assertJsonPath('data.hours_requested', 4);
+    }
+
+    /** Without a window there is nothing payroll could pay from. */
+    public function test_a_window_is_required(): void
+    {
+        $this->actingAs($this->foreman, 'sanctum')->postJson('/api/overtimes', [
+            'employee_id' => $this->crewMember()->employee_id,
+            'ot_date' => '2026-09-22',
+            'hours_requested' => 3,
+        ])->assertUnprocessable()->assertJsonValidationErrors(['start_time', 'end_time']);
+    }
+
+    public function test_a_window_inside_the_regular_shift_is_not_overtime(): void
+    {
+        $this->fileFor($this->crewMember(), '2026-09-22', ['start_time' => '09:00', 'end_time' => '12:00'])
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'The window 09:00–12:00 lies inside the regular shift; overtime is only the time outside it.');
+    }
+
     private function fileFor(Employee $worker, string $date, array $overrides = []): TestResponse
     {
         return $this->actingAs($this->foreman, 'sanctum')->postJson('/api/overtimes', array_merge([
