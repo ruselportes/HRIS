@@ -59,22 +59,28 @@ class CrewLeadership
      * none or more than one. It reuses leads(), so the inverse cannot disagree
      * with the forward check.
      *
+     * Only deployed crews are candidates: a foreman sitting on a Crew Builder
+     * draft crew is setup, not leadership, so it must not make an ambiguous
+     * attribution out of the crew they actually command — otherwise every
+     * rejection from a deployed foreman's device would go unattributed.
+     *
      * An acting foreman can lead two crews at once; in that ambiguity nobody
      * gets the attribution.
      */
     public function crewLedBy(int $employeeId, CarbonInterface $at): ?int
     {
         $candidates = Crew::query()
-            ->where('foreman_id', $employeeId)
-            ->pluck('crew_id')
-            ->concat(
-                CrewAssignment::query()
-                    ->where('employee_id', $employeeId)
-                    ->whereIn('assignment_type', CrewAssignment::LEADERSHIP_TYPES)
-                    ->distinct()
-                    ->pluck('crew_id'),
-            )
-            ->unique();
+            ->where('status', 'deployed')
+            ->where(function (Builder $q) use ($employeeId) {
+                $q->where('foreman_id', $employeeId)->orWhereIn(
+                    'crew_id',
+                    CrewAssignment::query()
+                        ->select('crew_id')
+                        ->where('employee_id', $employeeId)
+                        ->whereIn('assignment_type', CrewAssignment::LEADERSHIP_TYPES),
+                );
+            })
+            ->pluck('crew_id');
 
         $led = $candidates->filter(fn (int $crewId) => $this->leads($employeeId, $crewId, $at));
 

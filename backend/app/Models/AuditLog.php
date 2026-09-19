@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -144,40 +145,78 @@ class AuditLog extends Model
     }
 
     /**
-     * Integrity incidents — one row per distinct device-day, not per audit
-     * row. A single tamper orphans every later event in the batch
+     * Integrity incidents — one per distinct foreman-day, not per audit row.
+     * A single tamper orphans every later event in the batch
      * (chain_broken_upstream), so a plain count would charge one attack
      * twenty times over, and a clock rollback flags a whole batch the same
      * way. The compliance score must count the attack, not its fallout.
      *
-     * The "day" is the server's receive day (timestamp), not any claimed
-     * date: a rejected event's date is untrusted, so it cannot set the day,
-     * and the receive day keeps every type scored on the same clock.
+     * The "day" is the foreman's day in attendance.timezone (the app runs in
+     * UTC, so the two disagree by up to eight hours): each row's day is worked
+     * out in PHP, not date(timestamp) in SQL, and the period bounds are
+     * converted to UTC. A rejected event's claimed date is untrusted, so its
+     * day comes from the server's receive time — the audit timestamp — which
+     * is also the day the incident becomes known to HR.
      *
-     * @return array<int, array{device_day: string, crew_id: int|null}>
+     * When several rows of one foreman-day name different crews, the earliest
+     * row (lowest audit_id) decides which crew is charged, keeping the
+     * attribution deterministic. That decision happens before any site filter,
+     * so a foreman-day is charged to exactly one site and the per-site figures
+     * sum to the global total.
+     *
+     * @return array<int, array{day: ?string, crew_id: int|null}>
      */
     public static function integrityIncidents(
         CarbonInterface $from,
         CarbonInterface $to,
         ?int $siteId = null,
     ): array {
-        $rows = AuditLog::query()
-            ->select('actor_id')
-            ->selectRaw('date(timestamp) AS device_day')
-            ->selectRaw('crew_id')
-            ->whereIn('action_type', self::INTEGRITY_TYPES)
-            ->where('timestamp', '>=', $from->copy()->startOfDay())
-            ->where('timestamp', '<', $to->copy()->addDay()->startOfDay())
-            ->when($siteId, fn (Builder $q, int $id) => $q->whereHas('crew', fn (Builder $c) => $c->where('site_id', $id)))
-            ->get()
-            // A device that flags or fails on one day is one incident, even
-            // if a whole batch of rows arrived together.
-            ->unique(fn (AuditLog $row) => $row->actor_id.'|'.$row->device_day);
+        $timezone = config('attendance.timezone', 'Asia/Manila');
 
-        return $rows
-            ->map(fn (AuditLog $row) => ['device_day' => $row->device_day, 'crew_id' => $row->crew_id])
-            ->values()
-            ->all();
+        // The site day runs Manila 00:00→24:00, i.e. UTC 16:00→16:00, so the
+        // bounds are shifted to UTC before they ever meet the column — and the
+        // per-row day is computed in Manila after the rows are read.
+        $fromUtc = Carbon::instance($from)->setTimezone($timezone)->startOfDay()->setTimezone('UTC');
+        $toExclusiveUtc = Carbon::instance($to)->setTimezone($timezone)->copy()->addDay()->startOfDay()->setTimezone('UTC');
+
+        $rows = self::query()
+            ->select(['audit_id', 'actor_id', 'crew_id', 'timestamp'])
+            ->whereIn('action_type', self::INTEGRITY_TYPES)
+            ->where('timestamp', '>=', $fromUtc)
+            ->where('timestamp', '<', $toExclusiveUtc)
+            ->orderBy('audit_id')
+            ->get();
+
+        // A foreman (the actor_id is the device owner) who flags or fails on
+        // one day is one incident, even if a whole batch of rows arrived
+        // together. The lowest audit_id row is kept, so the crew attribution
+        // above is stable.
+        $rows = $rows->unique(fn (AuditLog $row): string => (string) $row->actor_id.'|'.$row->dayIn($timezone));
+
+        $incidents = $rows->map(
+            fn (AuditLog $row): array => ['day' => $row->dayIn($timezone), 'crew_id' => $row->crew_id],
+        )->values()->all();
+
+        if ($siteId === null) {
+            return $incidents;
+        }
+
+        $siteByCrew = Crew::query()
+            ->whereIn('crew_id', collect($incidents)->pluck('crew_id')->filter()->all())
+            ->pluck('site_id', 'crew_id');
+
+        // Dedupe happened above, so this filter can only drop, never double
+        // count: each foreman-day is charged to exactly one site.
+        return collect($incidents)->filter(
+            fn (array $row): bool => $row['crew_id'] !== null
+                && (int) ($siteByCrew[$row['crew_id']] ?? 0) === $siteId,
+        )->values()->all();
+    }
+
+    /** The Manila day this row was received on, per attendance.timezone. */
+    private function dayIn(string $timezone): ?string
+    {
+        return $this->timestamp?->copy()->setTimezone($timezone)->toDateString();
     }
 
     public function isOverrideEvent(): bool

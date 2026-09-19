@@ -654,6 +654,13 @@ actually led at server receive time) — otherwise a forged event could charge
 another site's compliance score. Flagged and refused events, whose signatures
 verified, keep their claimed crew and date.
 
+One consequence worth spelling out: attribution happens at **receive time,
+not tap time**. An event tapped before a foreman is re-assigned but synced
+after is charged to the crew being led when the sync lands. That is a
+deliberate trade-off — the payload's own timestamp is exactly what a
+rejection means may be a lie, so the server has no trustworthy way to place
+the event earlier.
+
 Note also that all four verifiers operate on **plain arrays, not Eloquent
 models**, specifically so they are unit-testable with no database — which is
 what makes TC-01/02/03 runnable as fast automated tests.

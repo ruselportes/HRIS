@@ -4,6 +4,7 @@ namespace App\Services\Crypto;
 
 use App\Models\Attendance;
 use App\Models\AuditLog;
+use App\Models\Crew;
 use App\Models\CryptoSignature;
 use App\Models\DeviceKey;
 use App\Services\Attendance\CrewLeadership;
@@ -57,6 +58,15 @@ class AttendanceSyncService
     public const STATUS_REFUSED = 'refused';
 
     public const STATUS_REJECTED = 'rejected';
+
+    /**
+     * crewLedBy(), resolved once per device per sync. A tampered batch orphans
+     * every later event, so the same owner's crew is looked up once for the
+     * whole batch rather than once per rejected row.
+     *
+     * @var array<int, int|null>
+     */
+    private array $attributedCrewByOwner = [];
 
     /**
      * Four outcomes — and the difference between them is the substance of this
@@ -490,21 +500,26 @@ class AttendanceSyncService
      *
      * The event is authentic, so its claimed crew is stored — but it is the
      * crew the foreman CLAIMED, not necessarily the one led. With
-     * not_crew_foreman that is exactly a crew the device does not lead.
-     * Refusals are never counted as integrity failures either way.
+     * not_crew_foreman that is exactly a crew the device does not lead, and a
+     * crafted event can even name a crew that no longer exists. crew_id is a
+     * foreign key, so a missing crew must not sink the whole sync: it is
+     * stored only when the crew exists, and the claimed id always stays in the
+     * description. Refusals are never counted as integrity failures.
      */
     private function recordRefusal(DeviceKey $deviceKey, array $event, ?string $reason): void
     {
+        $claimedCrewId = (int) ($event['crew_id'] ?? 0);
+
         AuditLog::create([
             'actor_id' => $deviceKey->employee_id,
             'action_type' => AuditLog::ATTENDANCE_REFUSED,
-            'crew_id' => $event['crew_id'] ?? null,
+            'crew_id' => Crew::query()->whereKey($claimedCrewId)->exists() ? $claimedCrewId : null,
             'subject_date' => $event['date'] ?? null,
             'description' => sprintf(
                 'Refused attendance for employee %s, crew %s on %s from device %s: %s. '
                 .'Authentic and chained, but not permitted; not committed.',
                 $event['employee_id'] ?? 'unknown',
-                $event['crew_id'] ?? 'unknown',
+                $claimedCrewId,
                 $event['date'] ?? 'unknown date',
                 $deviceKey->device_id,
                 $reason ?? 'unspecified',
@@ -534,7 +549,7 @@ class AttendanceSyncService
         AuditLog::create([
             'actor_id' => $deviceKey->employee_id,
             'action_type' => AuditLog::ATTENDANCE_VERIFICATION_FAILED,
-            'crew_id' => $this->crewLeadership->crewLedBy((int) $deviceKey->employee_id, $receivedAt),
+            'crew_id' => $this->attributedCrew($deviceKey, $receivedAt),
             'subject_date' => null,
             'description' => sprintf(
                 'Rejected attendance for employee %s on %s from device %s: %s.',
@@ -545,5 +560,20 @@ class AttendanceSyncService
             ),
             'timestamp' => $receivedAt,
         ]);
+    }
+
+    /**
+     * The crew the device owner led at receive time — resolved once per sync
+     * and reused for every rejected row of the batch.
+     */
+    private function attributedCrew(DeviceKey $deviceKey, Carbon $receivedAt): ?int
+    {
+        $ownerId = (int) $deviceKey->employee_id;
+
+        if (! array_key_exists($ownerId, $this->attributedCrewByOwner)) {
+            $this->attributedCrewByOwner[$ownerId] = $this->crewLeadership->crewLedBy($ownerId, $receivedAt);
+        }
+
+        return $this->attributedCrewByOwner[$ownerId];
     }
 }

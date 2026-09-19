@@ -8,8 +8,10 @@ use App\Models\Crew;
 use App\Models\CryptoSignature;
 use App\Models\DeviceKey;
 use App\Models\Employee;
+use App\Models\Site;
 use App\Services\Attendance\TimeInPolicy;
 use App\Services\Crypto\AttendancePayload;
+use Carbon\Carbon;
 use Database\Factories\DeviceKeyFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\SignsAttendanceEvents;
@@ -676,22 +678,131 @@ class AttendanceSyncTest extends TestCase
     }
 
     /**
-     * The compliance score counts incidents (distinct device-days), not rows:
+     * The compliance score counts incidents (distinct foreman-days), not rows:
      * one tamper orphans every later event in the batch, so a row count would
      * charge a single attack many times over.
      */
-    public function test_integrity_incidents_are_distinct_device_days(): void
+    public function test_integrity_incidents_are_distinct_foreman_days(): void
     {
         $otherWorker = $this->worker();
 
         AuditLog::create(['actor_id' => $this->foreman->employee_id, 'action_type' => 'ATTENDANCE_CLOCK_FLAGGED', 'crew_id' => $this->crewId, 'subject_date' => '2026-09-12', 'timestamp' => now()->subDays(1), 'description' => 'flag 1']);
-        AuditLog::create(['actor_id' => $this->foreman->employee_id, 'action_type' => 'ATTENDANCE_CLOCK_FLAGGED', 'crew_id' => $this->crewId, 'subject_date' => '2026-09-12', 'timestamp' => now()->subDays(1), 'description' => 'flag 2']);
         AuditLog::create(['actor_id' => $this->foreman->employee_id, 'action_type' => 'ATTENDANCE_VERIFICATION_FAILED', 'crew_id' => null, 'subject_date' => null, 'timestamp' => now()->subDays(1), 'description' => 'rejected 1']);
         AuditLog::create(['actor_id' => $otherWorker->employee_id, 'action_type' => 'ATTENDANCE_VERIFICATION_FAILED', 'crew_id' => null, 'subject_date' => null, 'timestamp' => now()->subDays(1), 'description' => 'worker rejected']);
 
-        // Three rows but two device-days: the foreman's flagged+rejected pair
-        // is one incident, and the worker's rejection is another.
-        $this->assertCount(2, AuditLog::integrityIncidents(now()->subWeek(), now()));
+        $incidents = AuditLog::integrityIncidents(now()->subWeek(), now());
+
+        // Three rows but two foreman-days: the foreman's flagged+rejected
+        // pair is one incident, and the worker's rejection is another.
+        $this->assertCount(2, $incidents);
+    }
+
+    /**
+     * The site day runs Manila 00:00→24:00, which is UTC 16:00→16:00. The
+     * receive day must be worked out in attendance.timezone, not in UTC —
+     * otherwise the 07:30 row falls on the UTC day before and drops out.
+     */
+    public function test_integrity_incidents_are_grouped_by_manila_day(): void
+    {
+        AuditLog::create([
+            'actor_id' => $this->foreman->employee_id,
+            'action_type' => 'ATTENDANCE_CLOCK_FLAGGED',
+            'crew_id' => $this->crewId,
+            'subject_date' => '2026-09-12',
+            'timestamp' => Carbon::parse('2026-09-12 07:30', 'Asia/Manila'),
+            'description' => 'morning flag',
+        ]);
+        AuditLog::create([
+            'actor_id' => $this->foreman->employee_id,
+            'action_type' => 'ATTENDANCE_CLOCK_FLAGGED',
+            'crew_id' => $this->crewId,
+            'subject_date' => '2026-09-12',
+            'timestamp' => Carbon::parse('2026-09-12 09:00', 'Asia/Manila'),
+            'description' => 'morning flag 2',
+        ]);
+        // Same UTC day as the 09:00 row above, but a different Manila day.
+        AuditLog::create([
+            'actor_id' => $this->foreman->employee_id,
+            'action_type' => 'ATTENDANCE_CLOCK_FLAGGED',
+            'crew_id' => $this->crewId,
+            'subject_date' => '2026-09-13',
+            'timestamp' => Carbon::parse('2026-09-13 00:30', 'Asia/Manila'),
+            'description' => 'next Manila day',
+        ]);
+
+        $incidents = AuditLog::integrityIncidents(
+            Carbon::parse('2026-09-12', 'Asia/Manila'),
+            Carbon::parse('2026-09-12', 'Asia/Manila'),
+        );
+
+        // The 07:30 and 09:00 flags are the same foreman-day and collapse to
+        // one incident on 12 Sep; the 13 Sep row stays out even though its
+        // UTC stamp is the same date as 09:00.
+        $this->assertCount(1, $incidents);
+        $this->assertSame('2026-09-12', $incidents[0]['day']);
+        $this->assertSame($this->crewId, $incidents[0]['crew_id']);
+    }
+
+    /**
+     * A foreman-day whose rows name different crews is charged to the crew of
+     * the earliest row, and that decision happens before the site filter, so
+     * the per-site figures sum to the global total rather than double-counting
+     * one foreman across two sites.
+     */
+    public function test_integrity_incident_is_charged_to_the_earliest_crew_and_one_site(): void
+    {
+        $otherSite = Site::factory()->create(['site_name' => 'Site 99 — Test', 'location' => 'Cebu']);
+        $otherCrew = Crew::factory()->create(['site_id' => $otherSite->site_id, 'foreman_id' => null, 'status' => 'deployed']);
+
+        AuditLog::create([
+            'actor_id' => $this->foreman->employee_id,
+            'action_type' => 'ATTENDANCE_CLOCK_FLAGGED',
+            'crew_id' => $this->crewId,
+            'subject_date' => '2026-09-12',
+            'timestamp' => Carbon::parse('2026-09-12 07:30', 'Asia/Manila'),
+            'description' => 'own crew',
+        ]);
+        AuditLog::create([
+            'actor_id' => $this->foreman->employee_id,
+            'action_type' => 'ATTENDANCE_CLOCK_FLAGGED',
+            'crew_id' => $otherCrew->crew_id,
+            'subject_date' => '2026-09-12',
+            'timestamp' => Carbon::parse('2026-09-12 09:00', 'Asia/Manila'),
+            'description' => 'other crew',
+        ]);
+
+        $from = Carbon::parse('2026-09-12', 'Asia/Manila');
+        $all = AuditLog::integrityIncidents($from, $from);
+        $ownSite = AuditLog::integrityIncidents($from, $from, $this->site()->site_id);
+        $otherSiteIncidents = AuditLog::integrityIncidents($from, $from, $otherSite->site_id);
+
+        // One foreman-day, charged to the crew of the earlier row only.
+        $this->assertCount(1, $all);
+        $this->assertSame($this->crewId, $all[0]['crew_id']);
+        $this->assertCount(1, $ownSite);
+        $this->assertCount(0, $otherSiteIncidents);
+    }
+
+    /** A crafted event naming a crew that doesn't exist is still refused cleanly. */
+    public function test_a_refused_event_naming_a_missing_crew_is_still_audited(): void
+    {
+        $events = $this->buildBatch([$this->worker()->employee_id], null, [
+            0 => ['crew_id' => 999999],
+        ]);
+
+        $this->sync($events)
+            ->assertStatus(207)
+            ->assertJsonPath('results.0.status', 'refused')
+            ->assertJsonPath('results.0.reason', 'not_crew_foreman');
+
+        // The crew_id column is a foreign key and the crew does not exist, so
+        // the row keeps crew_id null and names the claimed id in the text —
+        // the refusal is still audited, never a 500 that swallows the trace.
+        $this->assertDatabaseHas('audit_logs', [
+            'action_type' => 'ATTENDANCE_REFUSED',
+            'crew_id' => null,
+            'subject_date' => '2026-09-12',
+        ]);
     }
 
     /* ---------------------------------------------------------------------
