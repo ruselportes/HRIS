@@ -11,6 +11,7 @@ import { ManpowerPage } from './pages/ManpowerPage'
 import { OverridesPage } from './pages/OverridesPage'
 import { PayrollPage } from './pages/PayrollPage'
 import { RecoveryPage } from './pages/RecoveryPage'
+import { ReportsPage } from './pages/ReportsPage'
 import { ComingSoonPage } from './pages/ComingSoonPage'
 import { NAV, ROLES } from './config/nav'
 
@@ -110,6 +111,15 @@ function LeaveRoute() {
   return <LeavePage />
 }
 
+function ReportsRoute() {
+  const { user } = useAuth()
+  const access = NAV.find((n) => n.key === 'reports').access[roleKey(user?.role?.slug)]
+  if (access === 'none') {
+    return <Navigate to="/" replace />
+  }
+  return <ReportsPage />
+}
+
 function OverridesRoute() {
   const { user } = useAuth()
   const access = NAV.find((n) => n.key === 'overrides').access[roleKey(user?.role?.slug)]
@@ -135,6 +145,7 @@ function App() {
               <Route path="overrides" element={<OverridesRoute />} />
               <Route path="recovery" element={<RecoveryRoute />} />
               <Route path="payroll" element={<PayrollRoute />} />
+              <Route path="reports" element={<ReportsRoute />} />
               <Route path=":page" element={<ComingSoonPageShell />} />
             </Route>
           </Route>
