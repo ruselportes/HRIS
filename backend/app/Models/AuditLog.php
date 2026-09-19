@@ -53,6 +53,25 @@ class AuditLog extends Model
     public const PAYROLL_APPROVED = 'PAYROLL_APPROVED';
 
     /**
+     * Leave & Overtime workflow steps (Phase 9, UC-10). One family for both
+     * request kinds: the description carries the type and id, so the list is
+     * uniform and the intent (endorse/approve/reject/cancel/reassign) is
+     * searchable. These entries never carry crew_id or subject_date, so they
+     * stay out of the override and integrity feeds without any extra filter.
+     */
+    public const REQUEST_SUBMITTED = 'REQUEST_SUBMITTED';
+
+    public const REQUEST_ENDORSED = 'REQUEST_ENDORSED';
+
+    public const REQUEST_APPROVED = 'REQUEST_APPROVED';
+
+    public const REQUEST_REJECTED = 'REQUEST_REJECTED';
+
+    public const REQUEST_CANCELLED = 'REQUEST_CANCELLED';
+
+    public const REQUEST_ENDORSER_REASSIGNED = 'REQUEST_ENDORSER_REASSIGNED';
+
+    /**
      * Integrity failure entries (layers 1–3 of the integrity engine). A flagged
      * event passed signature and chain but failed the monotonic-clock check;
      * a verification failure failed the chain or the signature wholesale.

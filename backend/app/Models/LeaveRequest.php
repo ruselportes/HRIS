@@ -6,17 +6,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * ERD: tbl_overtime_request (ot_id, employee_id, approved_by, ot_date,
- * hours_requested, status) + Phase 8 start_time/end_time — the window
- * overtime and night differential are paid from — + Phase 9 workflow (UC-10):
- * filed_by, reason, assigned_endorser_id, endorsed_by/endorsed_at,
- * approved_at, rejected_by/rejected_at/rejection_note, and batch_key for a
- * multi-night filing approved as one unit.
+ * ERD: tbl_leave_request (leave_id, employee_id → employee, approved_by
+ * → employee, leave_type, date_from, date_to, status) + Phase 9 workflow
+ * (UC-10): filed_by, reason, assigned_endorser_id, endorsed_by/endorsed_at,
+ * approved_at, rejected_by/rejected_at/rejection_note.
  *
- * Statuses mirror LeaveRequest: pending → (endorsed) → approved, with
- * rejected and cancelled as terminals.
+ * Statuses move pending → (endorsed) → approved, with rejected and cancelled
+ * as terminals. Endorsement is a worker→foreman→HR hop: the assigned endorser
+ * is decided at filing and can be re-assigned by HR, never by the requester.
  */
-class OvertimeRequest extends Model
+class LeaveRequest extends Model
 {
     public const PENDING = 'pending';
 
@@ -28,18 +27,19 @@ class OvertimeRequest extends Model
 
     public const CANCELLED = 'cancelled';
 
-    protected $primaryKey = 'ot_id';
+    /** Leave types the filing form offers. 'sick' is the one retro leave may use. */
+    public const TYPES = ['sick', 'vacation', 'personal', 'bereavement', 'leave_without_pay'];
+
+    protected $primaryKey = 'leave_id';
 
     protected $fillable = [
         'employee_id',
         'filed_by',
-        'ot_date',
-        'start_time',
-        'end_time',
-        'hours_requested',
+        'leave_type',
         'reason',
+        'date_from',
+        'date_to',
         'status',
-        'batch_key',
         'assigned_endorser_id',
         'endorsed_by',
         'endorsed_at',
@@ -53,23 +53,27 @@ class OvertimeRequest extends Model
     protected function casts(): array
     {
         return [
-            'ot_date' => 'date',
+            'date_from' => 'date',
+            'date_to' => 'date',
             'endorsed_at' => 'datetime',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
         ];
     }
 
+    /** The employee the leave is for. */
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'employee_id', 'employee_id');
     }
 
+    /** Who submitted it — usually the subject, but a foreman files for a worker. */
     public function filer(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'filed_by', 'employee_id');
     }
 
+    /** The endorser chosen at filing (or re-assigned by HR). */
     public function assignedEndorser(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'assigned_endorser_id', 'employee_id');

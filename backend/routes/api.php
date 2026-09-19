@@ -8,7 +8,9 @@ use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\ForemanController;
 use App\Http\Controllers\Api\HolidayController;
+use App\Http\Controllers\Api\LeaveRequestController;
 use App\Http\Controllers\Api\OverrideController;
+use App\Http\Controllers\Api\OvertimeRequestController;
 use App\Http\Controllers\Api\PayrollController;
 use App\Http\Controllers\Api\RecoveryController;
 use App\Http\Controllers\Api\ReferenceController;
@@ -124,6 +126,34 @@ Route::middleware(['auth:sanctum', 'acting.expire'])->group(function () {
         Route::get('/', [HolidayController::class, 'index']);
         Route::post('/', [HolidayController::class, 'store'])->middleware('role:hr');
         Route::delete('{holiday}', [HolidayController::class, 'destroy'])->middleware('role:hr');
+    });
+
+    // Leave & Overtime Filing and Approval (Phase 9, UC-10). Executive is
+    // read-only; Admin has no row in the navigation matrix for leave at all,
+    // so it is excluded here. Visibility inside the lists is decided by
+    // RequestReadScope. Endorse is the assigned endorser's step (any login
+    // role could be assigned), approve/reject/reassign are HR's, cancel is
+    // the filer's.
+    Route::prefix('leaves')->middleware('role:hr,engineer,foreman,executive')->group(function () {
+        Route::get('/', [LeaveRequestController::class, 'index']);
+        Route::post('/', [LeaveRequestController::class, 'store'])->middleware('role:hr,engineer,foreman');
+        Route::get('{leave}', [LeaveRequestController::class, 'show'])->whereNumber('leave');
+        Route::post('{leave}/endorse', [LeaveRequestController::class, 'endorse'])->whereNumber('leave')->middleware('role:hr,engineer,foreman');
+        Route::post('{leave}/approve', [LeaveRequestController::class, 'approve'])->whereNumber('leave')->middleware('role:hr');
+        Route::post('{leave}/reject', [LeaveRequestController::class, 'reject'])->whereNumber('leave')->middleware('role:hr');
+        Route::post('{leave}/cancel', [LeaveRequestController::class, 'cancel'])->whereNumber('leave')->middleware('role:hr,engineer,foreman');
+        Route::post('{leave}/reassign-endorser', [LeaveRequestController::class, 'reassignEndorser'])->whereNumber('leave')->middleware('role:hr');
+    });
+
+    Route::prefix('overtimes')->middleware('role:hr,engineer,foreman,executive')->group(function () {
+        Route::get('/', [OvertimeRequestController::class, 'index']);
+        Route::post('/', [OvertimeRequestController::class, 'store'])->middleware('role:hr,engineer,foreman');
+        Route::get('{overtime}', [OvertimeRequestController::class, 'show'])->whereNumber('overtime');
+        Route::post('{overtime}/endorse', [OvertimeRequestController::class, 'endorse'])->whereNumber('overtime')->middleware('role:hr,engineer,foreman');
+        Route::post('{overtime}/approve', [OvertimeRequestController::class, 'approve'])->whereNumber('overtime')->middleware('role:hr');
+        Route::post('{overtime}/reject', [OvertimeRequestController::class, 'reject'])->whereNumber('overtime')->middleware('role:hr');
+        Route::post('{overtime}/cancel', [OvertimeRequestController::class, 'cancel'])->whereNumber('overtime')->middleware('role:hr,engineer,foreman');
+        Route::post('{overtime}/reassign-endorser', [OvertimeRequestController::class, 'reassignEndorser'])->whereNumber('overtime')->middleware('role:hr');
     });
 
     // Must precede apiResource so 'next-code' isn't captured as {employee}.

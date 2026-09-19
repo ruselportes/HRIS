@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             EmployeeSeeder::class,
             CrewSeeder::class,
             HolidaySeeder::class,
+            RequestWorkflowSeeder::class,
         ]);
     }
 }
