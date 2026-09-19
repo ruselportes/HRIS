@@ -1,9 +1,11 @@
 /**
  * Foreman Home (docs/prototypes/HRIS Foreman Home.dc.html) — roll-call stat
- * summary + entry point to the checklist. "File Overtime Request" (Phase 9)
- * is shown per the prototype but disabled. "Report Absent Foreman" stays
- * disabled too: in Phase 7 an absent foreman is covered by the Site Engineer
- * assigning an acting foreman on the web (UC-06), not from this phone.
+ * summary + entry point to the checklist, and to filing overtime or leave
+ * (Phase 9, UC-10), which opens the request form in place of this screen and
+ * returns here. A request saved but not sent is shown until it is sent.
+ * "Report Absent Foreman" stays disabled: in Phase 7 an absent foreman is
+ * covered by the Site Engineer assigning an acting foreman on the web
+ * (UC-06), not from this phone.
  *
  * An acting foreman sees whose crew they are covering and until when; a
  * foreman whose crew was handed over has the roster removed (TC-05).
@@ -42,6 +44,8 @@ import {
   formatSiteWeekday,
   siteDateOf,
 } from '../db/shiftRules';
+import {loadDraft} from '../db/requestDrafts';
+import {RequestFormScreen} from './RequestFormScreen';
 
 export function ForemanHomeScreen() {
   const {user, signOut} = useAuth();
@@ -52,6 +56,9 @@ export function ForemanHomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [shift, setShift] = useState<ShiftConfig>(DEFAULT_SHIFT);
+  const [filing, setFiling] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
+  const [requestNotice, setRequestNotice] = useState<string | null>(null);
 
   const refreshCounts = useCallback(async (rosterSize: number) => {
     const attendance = await listTodayAttendance();
@@ -119,7 +126,8 @@ export function ForemanHomeScreen() {
     setCrew(cached);
     setShift(await getShiftConfig());
     await refreshCounts(cached?.members.length ?? 0);
-  }, [refreshCounts]);
+    setHasDraft(user ? (await loadDraft(user.employee_id)) !== null : false);
+  }, [refreshCounts, user]);
 
   useEffect(() => {
     (async () => {
@@ -143,6 +151,22 @@ export function ForemanHomeScreen() {
       <View style={styles.centered}>
         <ActivityIndicator size="large" />
       </View>
+    );
+  }
+
+  if (filing) {
+    return (
+      <RequestFormScreen
+        crew={crew}
+        shift={shift}
+        onClose={notice => {
+          setFiling(false);
+          setRequestNotice(notice);
+          if (user) {
+            loadDraft(user.employee_id).then(saved => setHasDraft(saved !== null));
+          }
+        }}
+      />
     );
   }
 
@@ -188,10 +212,29 @@ export function ForemanHomeScreen() {
       </TouchableOpacity>
 
       <Text style={styles.sectionLabel}>Quick actions</Text>
-      <DisabledAction
-        label="File Overtime Request"
-        note="Phase 9 — Leave & Overtime Filing"
-      />
+      {requestNotice ? <Text style={styles.requestNotice}>{requestNotice}</Text> : null}
+      {hasDraft ? (
+        <TouchableOpacity
+          style={styles.draftBanner}
+          accessibilityRole="button"
+          onPress={() => {
+            setRequestNotice(null);
+            setFiling(true);
+          }}>
+          <Text style={styles.draftTitle}>Saved request — not sent</Text>
+          <Text style={styles.draftBody}>Nobody can see it until you send it. Tap to open.</Text>
+        </TouchableOpacity>
+      ) : null}
+      <TouchableOpacity
+        style={styles.action}
+        accessibilityRole="button"
+        onPress={() => {
+          setRequestNotice(null);
+          setFiling(true);
+        }}>
+        <Text style={styles.actionText}>File a request</Text>
+        <Text style={styles.actionNote}>Overtime for your crew, or leave</Text>
+      </TouchableOpacity>
       <DisabledAction
         label="Report Absent Foreman"
         note="Your Site Engineer assigns an acting foreman from the web portal"
@@ -271,6 +314,30 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   primaryActionText: {color: '#f2f2f3', fontSize: 17, fontWeight: '600'},
+  action: {
+    minHeight: 60,
+    borderWidth: 1.5,
+    borderColor: '#1d2d3d',
+    borderRadius: 4,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 10,
+    backgroundColor: '#fff',
+  },
+  actionText: {fontSize: 16, fontWeight: '600', color: '#1d2d3d'},
+  actionNote: {fontSize: 12, color: '#5d5d60', marginTop: 2},
+  requestNotice: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#1f5334',
+    backgroundColor: '#e6f1ea',
+    padding: 12,
+    borderRadius: 4,
+    marginBottom: 10,
+  },
+  draftBanner: {backgroundColor: '#fcece0', borderRadius: 4, padding: 14, marginBottom: 10},
+  draftTitle: {fontSize: 15, fontWeight: '700', color: '#96420e'},
+  draftBody: {fontSize: 13, color: '#3a3a3d', marginTop: 2},
   disabledAction: {
     minHeight: 60,
     borderWidth: 1,
