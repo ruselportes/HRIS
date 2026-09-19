@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 610 140" role="img" aria-label="Arcenas Properties — Designing Life's Luxury">
+  <title>Arcenas Properties — Designing Life's Luxury</title>
+  <g fill="#7A8A9A">
+    <path d="M0 64H22V76H12V140H0Z"/>
+    <path d="M30 20H52V32H42V140H30Z"/>
+    <path d="M61 0H73V140H61Z"/>
+    <path d="M82 20H104V140H92V32H82Z"/>
+    <path d="M112 64H134V140H122V76H112Z"/>
+  </g>
+  <text x="380" y="94" text-anchor="middle" textLength="428" lengthAdjust="spacing"
+        font-family="Barlow, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="40" font-weight="400"
+        fill="#393D42">ARCENAS PROPERTIES</text>
+  <rect x="268" y="100" width="226" height="3" fill="#6D6F6E"/>
+  <text x="380" y="124" text-anchor="middle" textLength="222" lengthAdjust="spacing"
+        font-family="Barlow, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="600"
+        fill="#525557">Designing Life’s Luxury</text>
+</svg>

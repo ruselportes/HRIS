@@ -16,8 +16,10 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  View,
 } from 'react-native';
 import {useAuth} from '../auth/AuthContext';
+import {ArcenasLogo} from '../components/ArcenasLogo';
 import {apiClient} from '../api/client';
 
 export function LoginScreen() {
@@ -53,6 +55,9 @@ export function LoginScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={styles.logo}>
+        <ArcenasLogo height={64} />
+      </View>
       <Text style={styles.title}>HRIS</Text>
       <Text style={styles.subtitle}>Site Foreman sign in</Text>
 
@@ -95,6 +100,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     backgroundColor: '#f2f2f3',
   },
+  logo: {alignItems: 'center', marginBottom: 28},
   title: {fontSize: 40, fontWeight: '700', color: '#1d1f20', textAlign: 'center'},
   subtitle: {fontSize: 15, color: '#5d5d60', textAlign: 'center', marginBottom: 32},
   input: {

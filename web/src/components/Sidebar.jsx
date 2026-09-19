@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { GROUP_ORDER, NAV, ROLES } from '../config/nav'
 import { useAuth } from '../auth/AuthContext'
 import { Icon } from './icons'
+import { ArcenasMark } from './ArcenasMark'
 
 function roleKey(slug) {
   return slug === 'executive' ? 'exec' : slug
@@ -21,9 +22,7 @@ export function Sidebar() {
   return (
     <aside className="flex h-full w-[252px] flex-none flex-col bg-primary-900 text-canvas">
       <div className="flex items-center gap-2.5 border-b border-canvas/14 px-[18px] py-[18px]">
-        <span className="grid h-7 w-7 place-items-center border border-canvas/50 font-heading text-sm">
-          A
-        </span>
+        <ArcenasMark className="h-7 w-auto flex-none" />
         <div className="font-heading text-[17px]">
           ADC <span className="opacity-55">HRIS</span>
         </div>

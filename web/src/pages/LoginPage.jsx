@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { errorMessage } from '../api/client'
 import { Icon } from '../components/icons'
+import { ArcenasMark } from '../components/ArcenasMark'
 
 export function LoginPage() {
   const { signIn } = useAuth()
@@ -35,9 +36,7 @@ export function LoginPage() {
     <main className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
       <div className="flex flex-col justify-between bg-primary-900 p-12 text-canvas">
         <div className="flex items-center gap-3.5">
-          <span className="grid h-10 w-10 place-items-center border border-canvas/50 font-heading text-lg">
-            A
-          </span>
+          <ArcenasMark className="h-10 w-auto flex-none" />
           <div>
             <div className="font-heading text-[19px] tracking-[.04em]">ARCENAS</div>
             <div className="text-[11px] uppercase tracking-[.16em] opacity-60">Development Corporation</div>
