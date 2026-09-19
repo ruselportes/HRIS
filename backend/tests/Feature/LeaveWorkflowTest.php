@@ -7,7 +7,9 @@ use App\Models\AuditLog;
 use App\Models\Crew;
 use App\Models\CrewAssignment;
 use App\Models\Employee;
+use App\Models\LeaveRequest;
 use App\Models\OvertimeRequest;
+use App\Models\Payroll;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\Concerns\SignsAttendanceEvents;
@@ -493,6 +495,39 @@ class LeaveWorkflowTest extends TestCase
         $this->actingAs($this->loginUser('admin'), 'sanctum')
             ->getJson('/api/leaves')
             ->assertForbidden();
+    }
+
+    public function test_approving_a_leave_crossing_an_approved_payroll_period_is_refused(): void
+    {
+        $this->travelTo($this->manila('2026-08-21', '10:00'));
+
+        $worker = $this->crewMember();
+        $leaveId = $this->actingAs($this->foreman, 'sanctum')->postJson('/api/leaves', [
+            'employee_id' => $worker->employee_id,
+            'leave_type' => 'vacation',
+            'reason' => 'Family.',
+            'date_from' => '2026-08-25',
+            'date_to' => '2026-08-26',
+        ])->json('data.leave_id');
+
+        $this->actingAs($this->foreman, 'sanctum')->postJson("/api/leaves/{$leaveId}/endorse")->assertOk();
+
+        Payroll::query()->create([
+            'employee_id' => $worker->employee_id,
+            'run_code' => '2026-09-A',
+            'pay_period_start' => '2026-08-21',
+            'pay_period_end' => '2026-09-05',
+            'gross_pay' => '5000.00',
+            'net_pay' => '4500.00',
+            'status' => Payroll::APPROVED,
+        ]);
+
+        $this->actingAs($this->hr, 'sanctum')
+            ->postJson("/api/leaves/{$leaveId}/approve")
+            ->assertUnprocessable()
+            ->assertJsonPath('message', "Leave request #{$leaveId} lies inside approved payroll 2026-09-A; a closed period is re-opened in payroll, not by approval.");
+
+        $this->assertSame('endorsed', LeaveRequest::find($leaveId)->status);
     }
 
     private function crewMember(string $label = 'crew'): Employee

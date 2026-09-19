@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\Crew;
 use App\Models\Employee;
 use App\Models\Holiday;
+use App\Models\LeaveRequest;
 use App\Models\Payroll;
 use App\Models\PayrollDetail;
 use App\Services\Payroll\PayPeriod;
@@ -244,6 +245,53 @@ class PayrollEngineTest extends TestCase
         $this->runPayroll();
 
         $this->assertSame('1200.00', Payroll::query()->where('employee_id', $worker->employee_id)->sole()->gross_pay);
+    }
+
+    /** An approved leave's unworked days show on the payslip as a SIL warning. */
+    public function test_an_approved_leave_appears_on_the_payslip_as_a_sil_warning(): void
+    {
+        $worker = $this->payrollWorker(600);
+        $this->workedDays($worker, ['2026-08-24']);
+        $this->absentDays($worker, ['2026-08-26', '2026-08-27']);
+
+        LeaveRequest::query()->create([
+            'employee_id' => $worker->employee_id,
+            'filed_by' => $this->loginUser('foreman')->employee_id,
+            'leave_type' => 'vacation',
+            'reason' => 'Family.',
+            'date_from' => '2026-08-26',
+            'date_to' => '2026-08-27',
+            'status' => LeaveRequest::APPROVED,
+        ]);
+
+        // A leave that falls on a worked day is not flagged, and one outside
+        // the period is not flagged either.
+        LeaveRequest::query()->create([
+            'employee_id' => $worker->employee_id,
+            'filed_by' => $this->loginUser('foreman')->employee_id,
+            'leave_type' => 'sick',
+            'reason' => 'Doctor.',
+            'date_from' => '2026-08-24',
+            'date_to' => '2026-08-24',
+            'status' => LeaveRequest::APPROVED,
+        ]);
+        LeaveRequest::query()->create([
+            'employee_id' => $worker->employee_id,
+            'filed_by' => $this->loginUser('foreman')->employee_id,
+            'leave_type' => 'vacation',
+            'reason' => 'Later.',
+            'date_from' => '2026-09-06',
+            'date_to' => '2026-09-07',
+            'status' => LeaveRequest::APPROVED,
+        ]);
+
+        $warnings = $this->payrollFor($worker)->detail->breakdown['warnings'];
+
+        $this->assertContains(
+            "Approved vacation leave on 2026-08-26, 2026-08-27: SIL credit only if within the worker's annual allowance — verify before paying.",
+            $warnings,
+        );
+        $this->assertCount(1, array_filter($warnings, fn ($w) => str_contains($w, 'SIL credit')));
     }
 
     private function runPayroll()

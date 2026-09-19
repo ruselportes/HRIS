@@ -148,6 +148,7 @@ Route::middleware(['auth:sanctum', 'acting.expire'])->group(function () {
     Route::prefix('overtimes')->middleware('role:hr,engineer,foreman,executive')->group(function () {
         Route::get('/', [OvertimeRequestController::class, 'index']);
         Route::post('/', [OvertimeRequestController::class, 'store'])->middleware('role:hr,engineer,foreman');
+        Route::post('batch-approve', [OvertimeRequestController::class, 'batchApprove'])->middleware('role:hr');
         Route::get('{overtime}', [OvertimeRequestController::class, 'show'])->whereNumber('overtime');
         Route::post('{overtime}/endorse', [OvertimeRequestController::class, 'endorse'])->whereNumber('overtime')->middleware('role:hr,engineer,foreman');
         Route::post('{overtime}/approve', [OvertimeRequestController::class, 'approve'])->whereNumber('overtime')->middleware('role:hr');

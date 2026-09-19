@@ -9,6 +9,7 @@ use App\Models\CrewAssignment;
 use App\Models\Employee;
 use App\Models\LeaveRequest;
 use App\Models\OvertimeRequest;
+use App\Models\Payroll;
 use App\Services\Attendance\CrewLeadership;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -186,47 +187,211 @@ class RequestWorkflowService
 
             $this->audit($actor, AuditLog::REQUEST_ENDORSED,
                 "{$this->label($request)} endorsed by {$actor->full_name}.");
+
+            $this->cascadeEndorse($request, $actor);
         });
+    }
+
+    /** Endorsing one bulk overtime carries its pending siblings the endorser is assigned to. */
+    private function cascadeEndorse(LeaveRequest|OvertimeRequest $request, Employee $actor): void
+    {
+        if ($request instanceof LeaveRequest || $request->batch_key === null) {
+            return;
+        }
+
+        foreach (OvertimeRequest::query()
+            ->where('batch_key', $request->batch_key)
+            ->whereKeyNot($request->ot_id)
+            ->get() as $sibling) {
+            if ($sibling->status !== OvertimeRequest::PENDING
+                || (int) $sibling->assigned_endorser_id !== (int) $actor->employee_id) {
+                continue;
+            }
+
+            $sibling->update([
+                'status' => OvertimeRequest::ENDORSED,
+                'endorsed_by' => $actor->employee_id,
+                'endorsed_at' => Carbon::now(),
+            ]);
+
+            $this->audit($actor, AuditLog::REQUEST_ENDORSED,
+                "Overtime request #{$sibling->ot_id} endorsed as part of batch {$request->batch_key} by {$actor->full_name}.");
+        }
     }
 
     /**
      * HR approves the request. A request with an assigned endorser must be
      * endorsed first; one filed with nobody to endorse is approved directly
      * from pending. The approver cannot be the subject, filer, or endorser —
-     * a fresh pair of eyes each time.
+     * a fresh pair of eyes each time. Overtime approvals also refuse a date
+     * inside an already-approved payroll period, and cascade to unchanged
+     * siblings of the same batch_key.
      *
      * Approved is final: reopening a past pay period happens in payroll, not
      * by un-approving a request.
      */
     public function approve(LeaveRequest|OvertimeRequest $request, Employee $actor): void
     {
-        $pending = $request instanceof LeaveRequest ? LeaveRequest::PENDING : OvertimeRequest::PENDING;
-        $endorsed = $request instanceof LeaveRequest ? LeaveRequest::ENDORSED : OvertimeRequest::ENDORSED;
+        $reason = $this->refuseReason($request, $actor);
 
-        if ($request->status === $endorsed) {
-            // Normal path: the assigned endorser has seen it.
-        } elseif ($request->status === $pending && $request->assigned_endorser_id === null) {
-            // HR-direct: nobody on site was eligible, so HR reviews from the start.
-        } elseif ($request->status === $pending) {
-            throw $this->unprocessable(
-                $this->label($request).' is still with its endorser; it must be endorsed first.'
-            );
-        } else {
-            throw $this->unprocessable($this->label($request).' is already decided; nothing left to approve.');
+        if ($reason !== null) {
+            throw $this->unprocessable($reason);
         }
 
-        $this->assertNotParty($request, $actor, 'approve');
-
         DB::transaction(function () use ($request, $actor) {
-            $request->update([
-                'status' => $request instanceof LeaveRequest ? LeaveRequest::APPROVED : OvertimeRequest::APPROVED,
-                'approved_by' => $actor->employee_id,
-                'approved_at' => Carbon::now(),
-            ]);
-
-            $this->audit($actor, AuditLog::REQUEST_APPROVED,
-                "{$this->label($request)} approved by {$actor->full_name}.");
+            $this->applyApproval($request, $actor);
+            $this->cascadeApprove($request, $actor);
         });
+    }
+
+    /**
+     * Approve several overtime requests from a bulk filing, approving the ones
+     * that can be and leaving the others pending. 200 with
+     * {approved, skipped:[{id, reason}]} when at least one went through, 422
+     * with the same shape when none could — a partial outcome must never read
+     * the same as an unchanged one.
+     *
+     * @param  array<int>  $otIds
+     * @return array{approved: array<int>, skipped: array<int, array{id:int, reason:string}>}
+     */
+    public function approveBatch(array $otIds, Employee $actor): array
+    {
+        $rows = OvertimeRequest::query()->whereIn('ot_id', $otIds)->get();
+
+        if ($rows->count() !== count($otIds)) {
+            $missing = array_values(array_diff($otIds, $rows->pluck('ot_id')->all()));
+            throw $this->unprocessable('Unknown overtime request: #'.implode(', #', $missing).'.');
+        }
+
+        $approved = [];
+        $skipped = [];
+
+        DB::transaction(function () use ($rows, $actor, &$approved, &$skipped) {
+            foreach ($rows as $ot) {
+                // A cascade may have approved this one already.
+                $ot->refresh();
+
+                if ($ot->status === ($ot instanceof LeaveRequest ? LeaveRequest::APPROVED : OvertimeRequest::APPROVED)) {
+                    $approved[] = (int) $ot->ot_id;
+
+                    continue;
+                }
+
+                $reason = $this->refuseReason($ot, $actor);
+
+                if ($reason !== null) {
+                    $skipped[] = ['id' => (int) $ot->ot_id, 'reason' => $reason];
+
+                    continue;
+                }
+
+                $this->applyApproval($ot, $actor);
+                $this->cascadeApprove($ot, $actor);
+                $approved[] = (int) $ot->ot_id;
+            }
+        });
+
+        if ($approved === []) {
+            throw new HttpResponseException(new JsonResponse([
+                'message' => 'None of the '.count($rows).' overtime requests could be approved.',
+                'data' => ['approved' => [], 'skipped' => $skipped],
+            ], 422));
+        }
+
+        return ['approved' => $approved, 'skipped' => $skipped];
+    }
+
+    /**
+     * Why a request cannot be approved right now, or null if it can. Both the
+     * single approve and the bulk approve decide on the same check, so no
+     * route grows a friendlier rule than the other.
+     */
+    private function refuseReason(LeaveRequest|OvertimeRequest $request, Employee $actor): ?string
+    {
+        $pending = $request instanceof LeaveRequest ? LeaveRequest::PENDING : OvertimeRequest::PENDING;
+        $approved = $request instanceof LeaveRequest ? LeaveRequest::APPROVED : OvertimeRequest::APPROVED;
+        $endorsed = $request instanceof LeaveRequest ? LeaveRequest::ENDORSED : OvertimeRequest::ENDORSED;
+        $decided = $this->label($request).' is already decided; nothing left to approve.';
+
+        if ($request->status === $approved || ! in_array($request->status, [$pending, $endorsed], true)) {
+            return $decided;
+        }
+
+        if ($request->status === $pending && $request->assigned_endorser_id !== null) {
+            return $this->label($request).' is still with its endorser; it must be endorsed first.';
+        }
+
+        if ($this->isParty($request, $actor)) {
+            return 'The approver of a request cannot be its subject, filer, or endorser.';
+        }
+
+        return $this->closedPeriodReason($request);
+    }
+
+    /** Persist one approval and its audit row. */
+    private function applyApproval(LeaveRequest|OvertimeRequest $request, Employee $actor): void
+    {
+        $request->update([
+            'status' => $request instanceof LeaveRequest ? LeaveRequest::APPROVED : OvertimeRequest::APPROVED,
+            'approved_by' => $actor->employee_id,
+            'approved_at' => Carbon::now(),
+        ]);
+
+        $this->audit($actor, AuditLog::REQUEST_APPROVED,
+            "{$this->label($request)} approved by {$actor->full_name}.");
+    }
+
+    /** Approving one approved-overtime carries its unchanged batch siblings with it. */
+    private function cascadeApprove(LeaveRequest|OvertimeRequest $request, Employee $actor): void
+    {
+        if ($request instanceof LeaveRequest || $request->batch_key === null) {
+            return;
+        }
+
+        foreach (OvertimeRequest::query()->where('batch_key', $request->batch_key)->whereKeyNot($request->ot_id)->get() as $sibling) {
+            if (! in_array($sibling->status, [OvertimeRequest::PENDING, OvertimeRequest::ENDORSED], true)) {
+                continue;
+            }
+
+            if ($this->refuseReason($sibling, $actor) !== null) {
+                continue;
+            }
+
+            $this->applyApproval($sibling, $actor);
+        }
+    }
+
+    /** A request cannot cross an approved payroll period; the period is closed. */
+    private function closedPeriodReason(LeaveRequest|OvertimeRequest $request): ?string
+    {
+        $start = $request instanceof LeaveRequest ? $request->date_from : $request->ot_date;
+        $end = $request instanceof LeaveRequest ? $request->date_to : $request->ot_date;
+
+        $covering = Payroll::query()
+            ->where('employee_id', $request->employee_id)
+            ->where('status', Payroll::APPROVED)
+            ->where('pay_period_end', '>=', $start)
+            ->where('pay_period_start', '<=', $end)
+            ->orderByDesc('pay_period_end')
+            ->first();
+
+        if ($covering === null) {
+            return null;
+        }
+
+        return $this->label($request)
+            ." lies inside approved payroll {$covering->run_code}; a closed period is re-opened in payroll, not by approval.";
+    }
+
+    private function isParty(LeaveRequest|OvertimeRequest $request, Employee $actor): bool
+    {
+        $parties = [(int) $request->employee_id, (int) $request->filed_by];
+
+        if ($request->endorsed_by !== null) {
+            $parties[] = (int) $request->endorsed_by;
+        }
+
+        return in_array((int) $actor->employee_id, $parties, true);
     }
 
     /** HR rejects a pending or endorsed request, with a note. */

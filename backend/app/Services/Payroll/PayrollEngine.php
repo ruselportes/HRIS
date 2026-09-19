@@ -7,10 +7,12 @@ use App\Models\AuditLog;
 use App\Models\CrewAssignment;
 use App\Models\Employee;
 use App\Models\Holiday;
+use App\Models\LeaveRequest;
 use App\Models\OvertimeRequest;
 use App\Models\Payroll;
 use App\Models\PayrollDetail;
 use App\Services\Attendance\RecoveryService;
+use Carbon\CarbonPeriod;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -238,6 +240,10 @@ class PayrollEngine
 
         $gross = round(array_sum(array_column($lines, 'amount')), 2);
         $basic = round($basic, 2);
+
+        foreach ($this->approvedLeaves($period, $employee) as $leave) {
+            $warnings[] = $this->silWarning($leave, $period, $byDate);
+        }
         $statutory = $this->statutory->compute($gross, $basic, (float) $employee->daily_rate, $period->end);
 
         $deductions = round(
@@ -282,6 +288,52 @@ class PayrollEngine
             ->all());
 
         return $payroll->load('detail', 'employee');
+    }
+
+    /**
+     * The worker's approved leaves that cross this cut-off, as SIL material.
+     * An absent day covered by approved leave may be a paid Service Incentive
+     * Leave day (Art. 95, PD 442) — the payslip flags it so nobody pays it
+     * twice or forgets it entirely. This warns only; entitlement depends on
+     * the worker's remaining allowance.
+     */
+    private function approvedLeaves(PayPeriod $period, Employee $employee): Collection
+    {
+        return LeaveRequest::query()
+            ->where('employee_id', $employee->employee_id)
+            ->where('status', LeaveRequest::APPROVED)
+            ->where('date_from', '<=', $period->end)
+            ->where('date_to', '>=', $period->start)
+            ->get();
+    }
+
+    /** @param  Collection<string, Attendance>  $byDate */
+    private function silWarning(LeaveRequest $leave, PayPeriod $period, Collection $byDate): ?string
+    {
+        $covered = collect();
+
+        foreach (CarbonPeriod::create($leave->date_from, $leave->date_to) as $day) {
+            $date = $day->toDateString();
+
+            if ($date < $period->start || $date > $period->end) {
+                continue;
+            }
+
+            $record = $byDate->get($date);
+
+            if ($record !== null && in_array($record->status, ['present', 'late'], true)) {
+                continue;
+            }
+
+            $covered->push($date);
+        }
+
+        if ($covered->isEmpty()) {
+            return null;
+        }
+
+        return "Approved {$leave->leave_type} leave on {$covered->implode(', ')}: "
+            .'SIL credit only if within the worker\'s annual allowance — verify before paying.';
     }
 
     /** @return array{0:string, 1:int} day type and how many regular holidays fall on it */

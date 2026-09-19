@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\BatchApproveOvertimeRequest;
 use App\Http\Requests\ReassignEndorserRequest;
 use App\Http\Requests\RejectRequest;
 use App\Http\Requests\StoreOvertimeRequest;
@@ -62,6 +63,18 @@ class OvertimeRequestController extends Controller
         $this->workflow->endorse($overtime, $request->user());
 
         return response()->json(['data' => $this->row($overtime->fresh()->load(['employee.role', 'employee.site', 'filer', 'assignedEndorser', 'endorser', 'approver', 'rejecter']))]);
+    }
+
+    public function batchApprove(BatchApproveOvertimeRequest $request): JsonResponse
+    {
+        $result = $this->workflow->approveBatch($request->validated('ot_ids'), $request->user());
+
+        return response()->json([
+            'data' => [
+                'approved' => $result['approved'],
+                'skipped' => $result['skipped'],
+            ],
+        ]);
     }
 
     public function approve(Request $request, OvertimeRequest $overtime): JsonResponse
