@@ -281,36 +281,69 @@ and [`backend/app/Services/Crypto/AttendancePayload.php`](../backend/app/Service
 — deliberate mirrors of each other, pinned by a shared test vector on both
 sides.
 
-A canonical payload looks like this (format **v2**, since Phase 7):
+A canonical payload looks like this (format **v3**, since time-out capture;
+this one is a Close-shift time-out, from the shared test vector):
 
 ```
-version=v2
+version=v3
 employee_id=42
-crew_id=1
+crew_id=7
 date=2026-09-12
+event_type=time_out
 status=present
-time_in=1757649600000
-captured_at=1757649600000
+time_in=
+time_out=1789200000000
+captured_at=1789200300000
 override_type=
-monotonic_timestamp=845123
-boot_id=b3f1c2d4e5
-device_id=dev-mg8x2k-a91f
-prev_hash=9f86d081884c7d65...
+time_out_type=shift_end
+monotonic_timestamp=86700000
+boot_id=b7f3c1a2
+device_id=dev-mgk3f1-a83bd0e1
+prev_hash=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 ```
 
-Two different times appear here, and the difference matters:
+An event is one of two kinds, named by the signed `event_type`:
+
+- **`roll_call`** — the foreman marks a worker Present, Late or Absent (or
+  Undoes it). It carries the arrival and says nothing about leaving.
+- **`time_out`** — the worker's day ends: tapped **Out** as they leave, a
+  time the foreman **states** because nobody tapped them out, or **Close
+  shift**, which times out everyone still on site at exactly shift end. A
+  time-out with no time reopens the day (Undo). It restates the worker's
+  status and nothing about arrival.
+
+Several different times can appear, and the difference matters:
 
 - `time_in` — the arrival the worker is **credited** with.
+- `time_out` — when the worker is **credited** with leaving.
 - `captured_at` — when the tap **actually happened**.
 
-For an ordinary tap they are the same value. They differ only when
-`override_type` says why: `shift_credit` (a late foreman crediting the 07:00
-shift start) or `manual_time` (the foreman stating an arrival time).
+For an ordinary tap the credited time and `captured_at` are the same value.
+They differ only when the event says why: `override_type` for an arrival —
+`shift_credit` (a late foreman crediting the 07:00 shift start) or
+`manual_time` (the foreman stating an arrival time) — and `time_out_type` for
+a departure — `shift_end` (Close shift, exactly 16:00) or `manual_time` (a
+stated time-out, reviewed by HR).
 
 **Why v2 exists.** In v1, `captured_at` and the override flag sat *outside* the
 signature. An override changes what a worker is paid, so an unsigned override
 could be switched on in the phone's database, or added in transit, without
 breaking anything. v2 puts both inside the signed payload.
+
+**Why v3 exists.** A time-out changes pay too — a worker who left at 14:00 is
+not paid to 16:00 — so it has to be signed like everything else. v3 adds
+`event_type`, `time_out` and `time_out_type` to the payload. A time-out is its
+own event rather than a roll call restating the arrival, because the server
+insists an ordinary arrival is the tap itself: a roll call re-sent at 16:00
+would look like a worker arriving at 16:00.
+
+**v2 and v3 are both accepted.** Each event says which version it was signed
+under (`payload_version`; none means v2), and the server verifies it as that
+version. A phone updated mid-week still has v2 events waiting to sync, signed
+before the update; they are sent, and verified, as v2. The version is the
+first signed line, so relabelling an event as another version breaks its HMAC
+and its signature. A v2 event can only ever be a roll call — `event_type` is
+not part of what it signed, so the server ignores one if sent.
 
 Three defensive details worth understanding:
 
@@ -319,8 +352,10 @@ Three defensive details worth understanding:
 2. **Line breaks are rejected.** A newline inside a field value could forge a
    fake field boundary — e.g. a name of `"Smith\nstatus=present"` would inject
    a second `status` line. Rejecting them closes that injection.
-3. **Versioned.** The format can only change by bumping `PAYLOAD_VERSION` and
-   updating both sides and both test vectors together.
+3. **Versioned.** The format can only change by adding a new version, updating
+   both sides and both test vectors together, and listing it in
+   `crypto.accepted_payload_versions` — older versions stay verifiable for as
+   long as they are listed.
 
 ---
 
@@ -596,6 +631,20 @@ counts**:
 The `crypto_signatures` table mirrors the ERD's `tbl_crypto_signature`, with
 a `unique` constraint on `attendance_id` enforcing the 1:1 relationship
 (one attendance record, exactly one signature).
+
+**A time-out never touches that signature row.** The row vouches for the roll
+call — the status and the arrival. If a later, verified time-out rewrote it,
+a worker whose arrival was flagged by the clock check could have it "cleaned"
+simply by being tapped Out on a trustworthy clock. So a time-out only sets the
+record's `time_out` fields, and a time-out whose own clock is flagged is logged
+for HR but **not applied at all** — payroll then sees a day with no time-out
+rather than one ended on an untrusted clock.
+
+Authentic is not the same as allowed. Beyond the cryptography, the server
+applies the attendance rules (`TimeInPolicy`, `TimeOutPolicy`) and **refuses**
+an authentic event that breaks them — for example, a Close-shift time-out
+tapped before 16:00, or a time-out for a worker marked Absent. A refused event
+is not saved, but the chain stays intact, so later events still sync.
 
 Note also that all four verifiers operate on **plain arrays, not Eloquent
 models**, specifically so they are unit-testable with no database — which is

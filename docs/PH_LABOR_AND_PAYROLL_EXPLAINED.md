@@ -98,6 +98,7 @@ new numbers.
 |---|---|---|
 | Normal working day | Art. 83 | **8 hours.** Beyond that is overtime. |
 | Meal period | Art. 85 | At least **60 minutes** for a regular meal — **unpaid and not counted as hours worked**. |
+| Undertime | Art. 88 | Undertime on any day is **not offset by overtime** on any other day. |
 | Weekly rest day | Art. 91 | At least **24 consecutive hours** of rest after every 6 consecutive working days. |
 | Coverage exclusions | Art. 82 | Managerial employees, **field personnel**, and others are excluded from the hours/premium-pay rules. |
 
@@ -106,10 +107,32 @@ Two of these matter more than they look for a construction HRIS:
 **The unpaid meal break.** If the app records a 7:00 AM time-in and a 5:00 PM
 time-out, that is 10 clock hours but **9 payable hours** (8 regular + 1
 overtime) once the 1-hour meal break is excluded. A payroll engine that pays 10
-hours overpays every worker every day. **The current Phase 4 attendance capture
-records `time_in` and `time_out` only — there is no break tracking, so Phase 8
-must decide and document how the meal period is deducted** (typically a fixed
-1-hour deduction for shifts over 6 hours, or an explicit company policy).
+hours overpays every worker every day. Attendance capture has no break
+tracking, so the meal hour is a fixed company rule rather than a measurement.
+
+**How the system decided it (Phase 8, time-out capture).** The paid day is a
+shift frame, 07:00-16:00 with 12:00-13:00 as the unpaid meal hour
+(`attendance.shift_start`, `attendance.shift_end`, `payroll.shift.meal_*`):
+
+- **Start:** shift start for a worker marked Present; their arrival for one
+  marked Late ("no work, no pay").
+- **End:** when the worker was timed out, or shift end, whichever is first.
+  A worker who leaves at 14:00 is paid 07:00-14:00 less the meal hour — 6
+  hours. That shortfall is **undertime**, and per Art. 88 nothing makes it up:
+  overtime is priced on its own, on its own day.
+- **No time-out recorded:** paid to shift end, with a warning on the payslip
+  for HR — a warning, not a block, since before phones captured time-outs no
+  day had one (`attendance.time_out_tracked_from`). A day rebuilt through
+  attendance recovery records arrival only and is not warned about.
+- **Overtime** is paid only from an **approved** overtime request's window
+  (Art. 87), and only until the worker was actually timed out — approval says
+  the work may be done, not that it was. Close shift, which times everyone
+  still on site out at exactly 16:00, says nobody left *early*; it says nothing
+  about when anyone left *after*, so it never cuts approved overtime.
+
+**`[VERIFY]` with the client:** the 12:00-13:00 meal hour and treating a
+stated time-out as reviewable (like a stated arrival) are company policy
+choices, not law.
 
 **"Field personnel" exclusion.** Art. 82 excludes workers "whose actual hours
 of work in the field cannot be determined with reasonable certainty." A

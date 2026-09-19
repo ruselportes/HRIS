@@ -3,7 +3,7 @@
 Each phase below is weighted **10%** of total project completion (10 phases = 100%).
 Check off tasks as they're completed; a phase counts as done once every task under it is checked.
 
-**Overall progress: ~80% (Phases 1–8 complete: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8, Phase 8 5/5.)** Verified by 242 backend tests (passing on both SQLite and MySQL 8.0) and 164 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works.
+**Overall progress: ~80% (Phases 1–8 complete: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8, Phase 8 5/5.)** Verified by 298 backend tests (passing on both SQLite and MySQL 8.0) and 188 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works.
 
 ---
 
@@ -212,7 +212,8 @@ Check off tasks as they're completed; a phase counts as done once every task und
 
 > **Decided with the team (2026-09-18):** overtime and night differential are
 > paid only from approved overtime requests with a start and end time (roll
-> call records arrival only); a holiday calendar plus the full DOLE matrix;
+> call recorded arrival only; see the time-out addendum below for how
+> departures now bound the day); a holiday calendar plus the full DOLE matrix;
 > itemised, effective-dated statutory deductions; TC-06 revised onto days the
 > system can actually produce. Defaults taken, each a config value: cut-offs
 > 21st-5th and 6th-20th (per the prototype), shift 07:00-16:00 with an unpaid
@@ -235,6 +236,25 @@ Check off tasks as they're completed; a phase counts as done once every task und
 > Not in Phase 8: 13th month pay (needs a year of basic pay; the `basic_pay`
 > column is there for it), SIL conversion, and paid leave counting toward
 > holiday eligibility — both wait for Phase 9's leave records.
+
+### Addendum — time-out capture (2026-09-18)
+
+Roll call recorded arrival only, so payroll paid every Present worker to
+16:00 whether or not they stayed. Added after Phase 8, in six slices, with
+decisions made with the team:
+
+- [x] Signed payload **v3** (`event_type`, `time_out`, `time_out_type`); every event carries the version it was signed under, and v2 and v3 are both verified, so events queued before an update still sync
+- [x] Backend: `TimeOutPolicy`; migration `0007_01_01_000000_add_time_out_tracking` (`attendances.time_out_type`, `time_out_captured_at`, `time_out_audit_id`); a stated time-out goes to HR as `MANUAL_TIME_OUT` through its own review link; a flagged time-out is logged but not applied and never touches the signature ledger
+- [x] Mobile: **Out** as a worker leaves, **Set out time** (HR-reviewed), **Close shift** from 16:00 (everyone still on site, exactly 16:00, not reviewed), Undo takes back the time-out first; the Sync Queue shows each record's roll call and time-out together
+- [x] Payroll: regular hours end at the time-out (undertime, not offset by overtime — Art. 88); approved overtime is paid only until a tapped or stated time-out, never cut by Close shift; a worked day with no time-out is paid to 16:00 with a payslip warning, from `attendance.time_out_tracked_from`
+- [x] Web: Overrides & Audit reviews `MANUAL_TIME_OUT` (stated time against when it was entered); the payslip says where a time-out cut a day short
+- [x] Docs: `CRYPTOGRAPHY_EXPLAINED.md` (v3), `PH_LABOR_AND_PAYROLL_EXPLAINED.md` §3, QA prep (UI/UX Q2)
+
+> **Still owed:** set `HRIS_TIME_OUT_TRACKED_FROM` to the day the update
+> reaches the foremen's phones (default 2026-09-21); an on-device run of Out,
+> Close shift and a stated time-out through to sync; and the three new
+> `attendances` columns in the SDD §3.1 data dictionary and the ERD (Efren,
+> with the Phase 5 and 8 additions).
 
 ## Phase 9 — Leave & Overtime Filing + Executive Analytics (UC-10, UC-09) (10%)
 

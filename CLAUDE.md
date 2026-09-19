@@ -88,6 +88,14 @@ when unworked, 200% when worked; `special` — no work, no pay, 130% when
 worked). Two regular holidays on one date make a double holiday. Same owner
 and same "still owed" as `device_keys` for the SDD and ERD.
 
+**Time-out columns on `Attendance`, added 2026-09-18**
+(`0007_01_01_000000_add_time_out_tracking`): `time_out_type` (null for a
+tapped Out, `shift_end` for Close shift, `manual_time` for a stated
+time-out), `time_out_captured_at` (when it was tapped), and
+`time_out_audit_id` (a stated time-out's `MANUAL_TIME_OUT` review, separate
+from `override_audit_id` so one record can be under both reviews). No new
+table. Same "still owed" for the SDD data dictionary and ERD.
+
 ## 5. User roles
 
 As finalized in Phase 2 (`backend/database/seeders/RoleSeeder.php`), `Role` has
@@ -209,7 +217,8 @@ Both are named per `C:\capstone\internal\Request-Letter-to-Conduct-a-Study.docx`
   tamper-proof** (it cannot stop a foreman lying at tap time, only detect
   later edits), and `HRIS_REQUIRE_HARDWARE_KEYS` defaults to **false**, so the
   hardware-backing guarantee is documented but not enforced until production.
-  Update it alongside any crypto-engine change.
+  Update it alongside any crypto-engine change. Updated 2026-09-18 for signed
+  payload **v3** (time-out events); the server verifies v2 and v3 both.
 - `/docs/PH_LABOR_AND_PAYROLL_EXPLAINED.md` — plain-English guide to the legal
   rules the Phase 8 payroll engine must obey: PD 442 premium pay (with the full
   compounding matrix), minimum wage, 13th month pay, SIL, the three statutory

@@ -256,6 +256,13 @@ Because the foreman is recording *other people*, not clocking himself. Present, 
 is the complete decision he actually makes during a roll call, it needs one tap per worker rather
 than two events per worker, and it produces no free-text or time entry to get wrong.
 
+The end of the day is recorded too, but without doubling the taps. At 16:00 one **Close shift**
+tap times out everyone still on site at exactly the shift end. The foreman taps **Out** on a
+single worker only when that worker leaves at a different time — early, or after overtime. If he
+forgot to tap someone out, he can **set** the time-out, and that stated time goes to HR for
+review, exactly like a stated arrival time. Payroll then pays each worker to when they actually
+left, so a worker who went home at 14:00 is not paid to 16:00.
+
 **Q3. How does this work in direct sunlight, or with gloves on?**
 Large touch targets, high-contrast text on solid fills rather than thin type on photos, and no
 small controls in the primary flow. The status bar states connection and pending count in words,
