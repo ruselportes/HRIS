@@ -6,8 +6,12 @@ FROM php:8.4-cli-bookworm
 # pdo_mysql for MySQL; pdo_sqlite ships with the base image and backs the test
 # suite (in-memory). openssl, used by the crypto verifiers, is built in too.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git unzip libzip-dev libicu-dev \
+    && apt-get install -y --no-install-recommends git unzip libzip-dev libicu-dev $PHPIZE_DEPS \
     && docker-php-ext-install pdo_mysql bcmath intl zip pcntl \
+    # phpredis: the client Laravel's Redis Cluster support is written against,
+    # and the one that follows MOVED redirects between cluster nodes.
+    && pecl install redis \
+    && docker-php-ext-enable redis \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

@@ -13,6 +13,15 @@
 #   3307  MySQL 8.0      — for a desktop client; 3307 so it never clashes with a
 #                          leftover XAMPP MySQL on 3306
 #
+# Redis Cluster (cache): six nodes, three primaries with a replica each, on the
+# compose network only — no host ports, because cluster clients are redirected
+# to node addresses that only resolve inside it. Reach it with
+#   docker compose exec redis-1 redis-cli cluster info
+#   docker compose exec redis-1 redis-cli --cluster check redis-1:6379
+# Killing a primary (docker compose stop redis-1) promotes its replica; killing
+# the whole cluster only makes the API slower, never wrong — every cached read
+# falls back to MySQL.
+#
 # The React Native app is NOT containerised: Metro and the Android emulator run
 # on the host as before, and reach the API through the published 8090.
 #
@@ -39,6 +48,38 @@ x-api: &api
     DB_USERNAME: hris
     DB_PASSWORD: secret
     APP_URL: http://localhost:8090
+    # Cache on the Redis cluster. The seed list is only a starting point:
+    # phpredis learns the topology from whichever node answers first, so the
+    # API follows a failover without being restarted. If every node is down,
+    # cached reads fall back to MySQL (App\Support\ResilientCache).
+    CACHE_STORE: redis
+    REDIS_CLIENT: phpredis
+    REDIS_CACHE_CONNECTION: cluster
+    REDIS_CLUSTER_NODES: "redis-1:6379,redis-2:6379,redis-3:6379,redis-4:6379,redis-5:6379,redis-6:6379"
+
+x-redis: &redis
+  image: redis:7-alpine
+  # Cache only: no appendonly, no RDB snapshots. Losing a node loses cached
+  # copies, never data — MySQL holds everything that matters.
+  command:
+    - redis-server
+    - --cluster-enabled
+    - "yes"
+    - --cluster-config-file
+    - nodes.conf
+    - --cluster-node-timeout
+    - "5000"
+    - --appendonly
+    - "no"
+    - --save
+    - ""
+    - --protected-mode
+    - "no"
+  healthcheck:
+    test: ["CMD", "redis-cli", "ping"]
+    interval: 5s
+    timeout: 3s
+    retries: 20
 
 services:
   mysql:
@@ -117,6 +158,45 @@ services:
       # installing packages, and the proxy would answer 502 until it is up.
       api:
         condition: service_healthy
+
+  redis-1:
+    <<: *redis
+  redis-2:
+    <<: *redis
+  redis-3:
+    <<: *redis
+  redis-4:
+    <<: *redis
+  redis-5:
+    <<: *redis
+  redis-6:
+    <<: *redis
+
+  redis-cluster-init:
+    # Runs once per `up`, then exits: it forms the cluster (three primaries,
+    # one replica each) if it is not formed already, so restarting the stack
+    # does not tear a working cluster down.
+    image: redis:7-alpine
+    restart: "no"
+    depends_on:
+      redis-1: {condition: service_healthy}
+      redis-2: {condition: service_healthy}
+      redis-3: {condition: service_healthy}
+      redis-4: {condition: service_healthy}
+      redis-5: {condition: service_healthy}
+      redis-6: {condition: service_healthy}
+    entrypoint: ["sh", "-c"]
+    # One folded line: every line here is indented the same, so YAML joins them
+    # with spaces. Indenting any of them further would keep the newline and
+    # split the command into pieces.
+    command:
+      - >
+        if redis-cli -h redis-1 cluster info 2>/dev/null | grep -q 'cluster_state:ok';
+        then echo 'Redis cluster already formed.';
+        else redis-cli --cluster create
+        redis-1:6379 redis-2:6379 redis-3:6379 redis-4:6379 redis-5:6379 redis-6:6379
+        --cluster-replicas 1 --cluster-yes;
+        fi
 
   phpmyadmin:
     image: phpmyadmin:5

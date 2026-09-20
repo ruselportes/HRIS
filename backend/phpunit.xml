@@ -22,7 +22,11 @@
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
-        <env name="CACHE_STORE" value="array"/>
+        <!-- Forced like the DB settings below: the containers set
+             CACHE_STORE=redis for the cluster, and a test run must never
+             depend on Redis being up, nor leave entries behind in it. -->
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <server name="CACHE_STORE" value="array" force="true"/>
         <!-- Forced, and set as <server> as well as <env>: the Docker containers
              set DB_CONNECTION=mysql as a real environment variable, which lands
              in $_SERVER, and Laravel reads $_SERVER before $_ENV. Without both,

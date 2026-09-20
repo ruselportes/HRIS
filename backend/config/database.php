@@ -179,6 +179,37 @@ return [
             'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
         ],
 
+        /*
+         | Redis Cluster (add-on). REDIS_CLUSTER_NODES is a comma-separated
+         | seed list, "host:port,host:port,..."; phpredis learns the rest of
+         | the topology from any node that answers, and follows MOVED
+         | redirects, so a failed-over replica is picked up without a restart.
+         |
+         | Named `cluster` rather than replacing `default`: a plain
+         | single-node Redis (or none at all) stays usable, and only the
+         | connections pointed here — REDIS_CACHE_CONNECTION=cluster — use it.
+         */
+        'clusters' => [
+
+            'cluster' => collect(explode(',', (string) env('REDIS_CLUSTER_NODES', '')))
+                ->map(fn (string $node) => trim($node))
+                ->filter()
+                ->map(function (string $node) {
+                    [$host, $port] = array_pad(explode(':', $node), 2, '6379');
+
+                    return [
+                        'host' => $host,
+                        'port' => (int) $port,
+                        'username' => env('REDIS_USERNAME'),
+                        'password' => env('REDIS_PASSWORD'),
+                        'database' => 0,
+                    ];
+                })
+                ->values()
+                ->all(),
+
+        ],
+
     ],
 
 ];
