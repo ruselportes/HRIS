@@ -3,7 +3,7 @@
 Each phase below is weighted **10%** of total project completion (10 phases = 100%).
 Check off tasks as they're completed; a phase counts as done once every task under it is checked.
 
-**Overall progress: ~80% (Phases 1–8 complete: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8, Phase 8 5/5.)** Verified by 349 backend tests (passing on both SQLite and MySQL 8.0) and 188 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works.
+**Overall progress: ~90% (Phases 1–9 built: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8, Phase 8 5/5, Phase 9 5/5 — Phase 9's documents are still owed, see its slice E below.)** Two add-ons and the production deployment sit outside this count and have their own section after Phase 10. Verified by 363 backend tests (passing on both SQLite and MySQL 8.0) and 219 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works.
 
 > **Backend test routine (run before committing backend work):**
 > 1. Day-to-day: `docker compose exec api php artisan test` (in-memory SQLite).
@@ -271,7 +271,173 @@ decisions made with the team:
 ## Phase 10 — Integration, Testing & Capstone Defense (10%)
 
 - [ ] Full end-to-end integration testing (web + mobile + API)
-- [ ] All STD test cases TC-01–TC-06 passing
+- [ ] All STD test cases TC-01–TC-06 passing — every case has automated tests; the manual device runs (TC-01–05) and the payroll walkthrough (TC-06) are still owed, on a physical handset and a release APK
 - [ ] UAT sign-off from Arcenas Development Corporation stakeholder
 - [ ] SPMP / SRS / SDD / STD finalized and packaged
 - [ ] Defense presentation and live demo prepared
+
+---
+
+# Add-ons and operations
+
+Work agreed after the ten phases were planned. It is **not** part of the 10 ×
+10% weighting above: the phases can be complete while these are in progress,
+and a panel question about scope should get that answer plainly.
+
+## Add-on A — Redis cache with clustering
+
+**Asked for:** caching, and clustering so that one Redis node going down does
+not push traffic onto MySQL. **Flagged before starting, still owed:** Redis is
+outside the SPMP's fixed stack (CLAUDE.md §2), so the SPMP, SRS §2 and the SDD
+have to record it and the team has to sign it off.
+
+**One correction worth carrying into the defense.** Falling back to MySQL when
+the cache cannot answer is the *safe* behaviour, not the failure — it costs
+speed, never correctness. Two separate properties were built:
+
+1. **Surviving one node:** a replica is promoted, and the cache keeps working.
+2. **Surviving the whole cache:** every cached read falls back to MySQL instead
+   of erroring, which Laravel does **not** do on its own — a Redis exception is
+   a 500 unless something catches it.
+
+- [x] **R1 — the cluster** (`97d6ede`): six nodes in `compose.yaml` (three
+      primaries, one replica each), formed by a `redis-cluster-init` one-shot
+      that re-runs harmlessly. Cache only — no appendonly, no snapshots — so a
+      lost node loses cached copies and nothing else. No host ports: a cluster
+      client is redirected to addresses that resolve only inside the compose
+      network. phpredis added to `backend/Dockerfile`; a named `cluster`
+      connection in `config/database.php` built from `REDIS_CLUSTER_NODES`, so
+      a plain single node (or none) still works; `phpunit.xml` and
+      `phpunit.mysql.xml` force `CACHE_STORE=array` as both `<env>` and
+      `<server>`, so no test run depends on Redis or leaves keys in it.
+- [x] **R2 — cached reads that fall back** (`afc0f89`): `App\Support\ResilientCache`
+      wraps every cached read. Cached: the reports dashboard (2 min), reference
+      lists — roles, sites, a year's holidays (10 min), the employee registry
+      per filter set (1 min), and the recovery queue's crew-day scan (1 min,
+      with its stage/cause filters left live). Invalidation is by version
+      counter, bumped on write (`AppServiceProvider::INVALIDATES`), because tag
+      flushes and pattern deletes need multi-key operations a cluster spreads
+      across slots; each entry's ttl bounds what a missed bump could serve.
+- [ ] **R3 — documents and runbook:** the stack change in CLAUDE.md §2, the
+      SPMP, SRS §2 and SDD; a failover runbook (kill a primary, watch the
+      replica take over, kill the cluster, watch the fallback); and the
+      defense wording for what this does and does not prove.
+- [ ] **Production parity:** `compose.prod.yaml` has **no Redis**. Production
+      therefore uses the database cache (Laravel's default) and none of this
+      add-on runs there. Decide: add the cluster to production, run a single
+      node there, or state plainly that clustering is demonstrated in
+      development only.
+
+> **Measured on the running stack, worth quoting rather than claiming:**
+> dashboard 1.56 s cold and 0.37 s cached; stopping a primary promoted its
+> replica in about 3 s with the cached value intact and the API reading and
+> writing throughout, no restart; the stopped node rejoined as a replica.
+>
+> **The failure mode that actually bit, and the fix.** With all six nodes
+> stopped the first request took **49 seconds** — far worse for a user than an
+> error. The cause was not Redis: Docker's DNS takes about 4 s to fail for a
+> stopped container's name, and the client tries every seed. Now the seed list
+> is three nodes, the cluster connection has a 0.5 s timeout, and a failure
+> puts the cache out of use for a growing cooldown (10 s, 30 s, 1 m, 2 m, 5 m)
+> shared between requests through a marker file, since each request is its own
+> PHP process. One request per cooldown pays the discovery; the rest answer in
+> about 0.2 s from MySQL, logged once per cooldown. The first success clears
+> it. On a real server DNS for a dead host fails faster, so this is mostly a
+> containers-on-one-laptop effect — say so rather than presenting the cluster
+> as production-grade high availability: every node is on one machine, and one
+> dead machine is still a dead cache.
+
+## Add-on B — Worker self-service portal (view-only)
+
+**Asked for:** let workers into the portal to view their own attendance and
+payslip, nothing else. **Decisions taken with the team:** self-activation with
+employee code + date of birth, then the worker sets a password; web only (no
+app install for workers); view-only.
+
+**This contradicts a decided position and the documents must change with it:**
+Worker and Operator are "record-only, no HRIS login" in CLAUDE.md §5, enforced
+by `Role::LOGIN_SLUGS`, and the QA prep has a rehearsed answer to "why can't a
+worker see their own attendance?" (§2, Q3). Payslips carry SSS, PhilHealth,
+Pag-IBIG, tax and net pay, so the scoping must be exact and tested.
+
+- [ ] **W1 — activation and login:** open `worker`/`operator` to sign-in;
+      `POST /auth/activate` (employee code + date of birth → set password),
+      rate-limited and locked like login, refused once a password exists, and
+      written to the audit log. **Blocker found in the data:** no worker in the
+      dev database has a `date_of_birth` (only one foreman does), so activation
+      would refuse everyone — HR fills it on the existing employee form, and
+      the demo workers get seeded dates.
+- [ ] **W2 — their own data only:** `GET /me/attendance` (their roll call, with
+      time-out and any review state in plain words) and `GET /me/payslips` +
+      `/me/payslips/{run}` (approved payroll runs only). Scoped to the signed-in
+      employee, with tests that another worker's records cannot be reached by
+      guessing an id.
+- [ ] **W3 — the portal itself:** a view-only area in the web app (usable in a
+      phone browser), no admin navigation, and a guard that a worker cannot
+      reach any other route.
+- [ ] **W4 — documents:** SRS §2.3 roles and a new UC-11/FR-11, the QA prep
+      answer rewritten, CLAUDE.md §5, and a note on how credentials are issued
+      in practice.
+
+## Operations — production deployment (the old-PC Ubuntu server)
+
+Built alongside the phases; the files are in the repo root and `deploy/`.
+`compose.yaml` stays the development stack and is not used on the server.
+
+**What exists**
+
+- [x] `compose.prod.yaml` — MySQL 8.0 (tuned for ~7 GB RAM on a spinning disk:
+      1 GB buffer pool, 60 connections, utf8mb4), the API as php-fpm, the
+      scheduler (ends expired acting-foreman covers), and nginx. Only nginx
+      publishes a port (80); MySQL and php-fpm publish none. Logs are capped
+      (10 MB × 3 per service). Data lives in the `mysql-data` and `api-storage`
+      volumes.
+- [x] `backend/Dockerfile.prod` — multi-stage: Composer install with
+      `--no-dev`, an optimised autoloader, and the source baked in (not
+      bind-mounted as in development). Production php.ini plus
+      `docker/php-prod.ini`: opcache on with `validate_timestamps=0`, since the
+      image never changes under a running container.
+- [x] `backend/docker/entrypoint.prod.sh` — caches config and views at start,
+      not at build, because the values come from the environment; runs
+      migrations when `HRIS_MIGRATE_ON_START=true`; and runs artisan as
+      `www-data`, so php-fpm's workers can write what it creates. No
+      `route:cache`: a closure route in `routes/web.php` cannot be serialised.
+- [x] `web/Dockerfile.prod` + `web/docker/nginx.conf` — builds the React portal
+      and serves it from nginx, which also forwards `/api` and `/up` to php-fpm
+      by FastCGI (nginx needs no copy of the backend), sets
+      `X-Content-Type-Options`, `X-Frame-Options` and `Referrer-Policy`,
+      caches fingerprinted `/assets` for a year, and falls back to `index.html`
+      for BrowserRouter paths.
+- [x] `.env.prod.example` — every secret the stack refuses to start without
+      (`DB_PASSWORD`, `DB_ROOT_PASSWORD`, `APP_KEY`, `APP_URL`), with the
+      warning that `device_keys.hmac_key` is encrypted with `APP_KEY`, so
+      changing it orphans every bound device. `.env.prod` and `backups/` are
+      gitignored.
+- [x] `deploy/backup.sh` — nightly `mysqldump` (single transaction, routines)
+      gzipped into `backups/`, keeping 14 days, with a cron line in its header
+      and a reminder to copy them off the machine.
+- [x] Optional `tunnel` profile — a Cloudflare quick tunnel, so the portal is
+      reachable outside the LAN with no domain, account or router change.
+- [x] First-run note in the compose header: seed **only** `RoleSeeder` and
+      `HolidaySeeder`. A bare `db:seed` creates the sample accounts, including
+      an admin whose password is literally `password`.
+
+**Owed before anyone outside the team uses it**
+
+- [ ] **HTTPS.** The portal is plain HTTP on port 80. Passwords, payslips and
+      Sanctum tokens cross the network in the clear on the LAN. A quick tunnel
+      gives HTTPS only for the tunnelled hostname.
+- [ ] **A stable address for the mobile app.** A quick tunnel gets a new random
+      URL each restart, and the app's base URL is a dev default
+      (`10.0.2.2:8090`, overridable through `setApiBaseUrl`). Decide: a named
+      tunnel with a domain, a Tailscale address, or a LAN IP, and wire it into
+      the release build.
+- [ ] **Restore drill.** Backups are written but never yet restored. Restore
+      into a scratch database and confirm the payroll figures and the crypto
+      ledger survive it.
+- [ ] **Cache parity** with Add-on A (see above).
+- [ ] **A queue worker, if anything starts queueing.** `QUEUE_CONNECTION`
+      defaults to `database` and no worker container runs, so a queued job
+      would sit unprocessed. Nothing queues today.
+- [ ] **Deployment checklist for the defense:** the exact commands, who runs
+      them, and what "healthy" looks like (`hris ps`, `/up`, a sign-in).
