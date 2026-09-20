@@ -254,7 +254,11 @@ Each test case traces back to the functional requirements and use cases it verif
 | TC-04 Late Foreman Override | FR-03 Attendance Management, FR-04 Mobile Attendance Recording | UC-05 | §3.1.6, §3.1.13 |
 | TC-05 Absent Foreman Re-assignment | FR-02 Employee Information Management, FR-03 Attendance Management | UC-06 | §2.1.2, §3.1.5, §3.1.13 |
 | TC-06 Holiday Payroll Computation | FR-08 Payroll Management | UC-08 | §2.1.6, §3.1.9, §3.1.10, §4.5 |
+| Automated: LeaveWorkflowTest, OvertimeWorkflowTest | FR-07 Leave Management | UC-10 | §2.1.7, §3.1.11, §3.1.12, §4.6 |
+| Automated: ReportsAnalyticsTest | FR-09 Reports and Monitoring | UC-09 | §2.1.8, §3.1.13 |
 
 *Table 9.0 Requirements Traceability Matrix*
 
 > **Note:** TC-01, TC-02, and TC-03 exercise the Cryptographic Attendance Integrity Engine (Phase 5), TC-04 and TC-05 the Foreman Edge Case Handling module (Phase 7), and TC-06 the Payroll Engine (Phase 8). All six modules are now implemented and each case is covered by automated tests (see `docs/TASKS.md`); the manual executions recorded in Actual Result and Pass/Fail are still to be carried out.
+>
+> **Note:** UC-09 and UC-10 are covered by automated tests rather than by numbered acceptance test cases: both are read-and-approve workflows with no device, clock or signature to attack, so there is nothing for a manual attack scenario to add. The acceptance gate stays TC-01 to TC-06 (SPMP §4.4). The figures the UC-09 tests assert are defined in SRS §3.2.3, and the workflow rules the UC-10 tests assert in SRS §3.2.4.

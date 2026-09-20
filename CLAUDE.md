@@ -88,6 +88,16 @@ when unworked, 200% when worked; `special` — no work, no pay, 130% when
 worked). Two regular holidays on one date make a double holiday. Same owner
 and same "still owed" as `device_keys` for the SDD and ERD.
 
+**Approval-workflow columns on `Leave Request` and `Overtime Request`,
+added 2026-09-19** (`0008_01_01_000000_add_leave_and_overtime_workflow`): both
+tables gain `filed_by` (the filer is not always the subject), `reason`,
+`assigned_endorser_id` (resolved when the request is filed, so a later change
+of cover cannot move a request in flight), `endorsed_by`/`endorsed_at`,
+`approved_at`, `rejected_by`/`rejected_at`/`rejection_note`;
+`overtime_requests` also gains `batch_key`, which groups overtime filed for
+several workers or several nights so they are endorsed and approved as one.
+No new table. Same "still owed" for the SDD data dictionary and the ERD.
+
 **Time-out columns on `Attendance`, added 2026-09-18**
 (`0007_01_01_000000_add_time_out_tracking`): `time_out_type` (null for a
 tapped Out, `shift_end` for Close shift, `manual_time` for a stated
@@ -151,6 +161,17 @@ Both are named per `C:\capstone\internal\Request-Letter-to-Conduct-a-Study.docx`
   4.6) but had no SRS use case of its own until then. §2.3 lists all 7
   roles per `RoleSeeder.php` (Executive/Worker/Operator were missing until
   reconciled against CLAUDE.md's §5 role list).
+  **2026-09-20 (Phase 9):** §2.2's FR-09 line now names the compliance
+  scorecard, and two new subsections record the decisions behind Phase 9 so
+  the screens and the documents cannot drift apart: **§3.2.3 Reports and
+  Analytics Definitions** (window, the per-site score formula and its bands,
+  the headcount-weighted company score, what an integrity incident is, which
+  site each figure is charged to, what counts as a work site, the attendance
+  rate's exclusions, and the engineer's own-site restriction) and **§3.2.4
+  Leave and Overtime Workflow Rules** (two hops, endorser resolved at filing,
+  nobody decides their own request, overtime's required window and
+  server-derived hours, conflicts, batches, closed periods). These are company
+  metrics and company policy, not DOLE rules — §3.2.3 says so in those words.
 - `/docs/SRS.docx` — the Word SRS, for submission (source copy lives in the
   user's Downloads). **It holds the only copies of the 18 use-case and
   prototype images** — `SRS.md` has never had them, so for figures the docx
@@ -201,7 +222,12 @@ Both are named per `C:\capstone\internal\Request-Letter-to-Conduct-a-Study.docx`
   signature forgery, TC-04 late foreman override, TC-05 absent foreman
   re-assignment, TC-06 holiday payroll — each traced to an FR/UC in Table 9.0.
   **Actual Result / Pass/Fail / Comments are intentionally blank**: it is a
-  test *plan*, to be filled in at execution. All six cases now have the
+  test *plan*, to be filled in at execution. **2026-09-20:** Table 9.0 gained
+  two rows tracing UC-10 and UC-09 to their automated suites
+  (`LeaveWorkflowTest`/`OvertimeWorkflowTest`, `ReportsAnalyticsTest`) with a
+  note saying why they get no numbered TC — both are read-and-approve
+  workflows with no device, clock or signature to attack — and that the
+  acceptance gate stays TC-01–TC-06. Written into `STD.md` and `STD.docx`. All six cases now have the
   modules they need and automated tests behind them; the manual runs are
   still owed. **TC-06 was revised on 2026-09-18 with the team** — its original
   setup (₱2,932.50) could not arise from this system's data — to real days

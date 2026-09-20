@@ -114,7 +114,7 @@ This subsection provides a summary of the major functions that the HRIS for Arce
 - **FR-06 Automatic Data Synchronization** – Synchronizes locally stored attendance records with the central system once an internet connection becomes available.
 - **FR-07 Leave Management** – Allows employees or authorized personnel to submit, review, approve, and monitor leave requests and leave records.
 - **FR-08 Payroll Management** – Allows authorized personnel to manage payroll-related information and use attendance and employee records as supporting data for payroll processing.
-- **FR-09 Reports and Monitoring** – Allows authorized users to generate and view reports related to employee information, attendance, leave, and payroll.
+- **FR-09 Reports and Monitoring** – Allows authorized users to generate and view reports related to employee information, attendance, leave, and payroll, including a per-site compliance scorecard, labor cost split between regular and overtime pay, and a read-only audit trail. The figures behind these reports are defined in §3.2.3.
 - **FR-10 Cryptographic Validation** – Validates attendance records to help maintain data integrity and prevent unauthorized modification or manipulation of attendance information.
 
 > Note: FR-01 to FR-10 are the formal functional requirement IDs referenced from the SPMP work breakdown structure (§3.2.1).
@@ -257,6 +257,95 @@ The HRIS relies on web development technologies, mobile development frameworks, 
 | PR-10 | Fig. 20.0 | Leave & Overtime Filing and Approval |
 
 > Note: PR-01 to PR-10 map 1:1 to UC-01 to UC-10 above (§3.2.1) and are the IDs referenced from the SPMP work breakdown structure.
+
+#### 3.2.3. Reports and Analytics Definitions (FR-09, UC-09)
+
+The Executive Dashboard reports figures that the system itself defines. They
+are **company metrics, not legal or DOLE standards**, and they are written down
+here so that the screen, this document, and the defense all mean the same thing
+by them.
+
+**Reporting window.** Inclusive site days (Asia/Manila), defaulting to the last
+30. A custom window supplies both dates together, in order, at most 366 days
+apart. Audit timestamps are stored in UTC, so an event at exactly 00:00 of the
+day after the last day of the window falls outside it.
+
+**Compliance score, per site.** Starting at 100:
+
+> score = 100 − (2 × expired certifications) − (1 × override event raised) − (5 × integrity incident)
+
+clamped to 0–100, and banded as **Good ≥ 85**, **Fair 80–84**, **Watch below
+80**, matching the tags in the Executive Dashboard prototype.
+
+**Company score.** The headcount-weighted average of the site scores — not the
+formula applied to company-wide totals, which any real headcount would drive to
+zero. Sites with no workers cannot weight the average. A window with no work
+sites reports 100 with the stated basis "no work sites in window".
+
+**Integrity incidents.** Distinct foreman-days among the entries
+`ATTENDANCE_CLOCK_FLAGGED` and `ATTENDANCE_VERIFICATION_FAILED`, so that one
+tampering attempt that orphans a whole batch of records counts once rather than
+twenty times. `ATTENDANCE_REFUSED` is *not* an integrity failure: it marks an
+authentic record that was not permitted, most often a stale roster.
+
+**Attribution.** Headcount, certifications, attendance, leave and labor cost
+are charged to the employee's home site. Overrides and integrity incidents are
+charged to the crew's site, because that is where the work happened. A rejected
+attendance event is attributed through the device's owner, never through its
+payload, since a failed signature is exactly the case where the payload cannot
+be trusted.
+
+**Work site.** A site is reported when a crew is assigned to it, or field staff
+(Worker, Operator or Site Foreman) are homed there, and some dataset mentions it
+within the window. An office-only site such as Head Office is never a work site,
+not even when its staff take leave.
+
+**Attendance rate.** (present + late) ÷ (present + late + absent), with absence
+and late rates taken from the same counts. Absences recorded on the configured
+weekly rest day and on proclaimed holidays are excluded, because crews do work
+those days and an absence there is not an absence from scheduled work.
+
+**Leave, overtime and labor cost.** Leave counts approved requests only, as
+days overlapping the window. Overtime counts approved requests only, by work
+date. Labor cost counts approved payroll rows only, split into regular and
+overtime by payslip line and counted on each line's own date, so a window may
+slice a cut-off in half; draft payroll never counts.
+
+**Certification expiry** is judged as of the window's last day, so re-running a
+past window reports what it reported then rather than drifting as days pass.
+
+**Audit access.** The flagged feed shows override, integrity and recovery
+entries within the window; the full audit log is read-only, paged, and
+filterable by action. HR Personnel and the Executive see the company; a Site
+Engineer is restricted to their own home site (any site parameter they supply
+is overridden), and is refused outright when no home site is recorded for them.
+
+#### 3.2.4. Leave and Overtime Workflow Rules (FR-07, UC-10)
+
+- **Two hops.** A request is filed, endorsed, then approved by HR. The endorser
+  is resolved *when the request is filed* — the subject's deployed crew leader,
+  otherwise a Site Engineer assigned to their site, choosing the lowest employee
+  id so the choice is stable and reproducible — and stored on the request, so a
+  later change of cover cannot move a request that is already in flight. A
+  request filed where nobody can endorse it goes straight to HR.
+- **Nobody decides on their own request.** The endorser is never the subject;
+  the approver is never the subject, the filer, or the endorser. HR may reassign
+  a pending request's endorser, and that reassignment is audited.
+- **Decisions.** A rejection requires a note. Cancelling is the filer's, and
+  only while the request is pending. Approval is final: a closed pay period is
+  reopened in payroll, never by un-approving a request.
+- **Overtime carries a window.** The paid hours are derived from that window by
+  the server, using the same computation payroll pays by, so the hours a request
+  shows are the hours it will pay. A window lying entirely inside the regular
+  shift is refused, since none of it is overtime.
+- **Conflicts.** Overtime cannot be filed for a day already past, nor for a day
+  covered by an approved leave. Leave covering a day already past may only be
+  sick leave, and never a day the worker was recorded Present or Late.
+- **Batches.** Overtime filed for several workers, or several nights, at once
+  shares a batch key; endorsing or approving one row carries its siblings, and a
+  batch approval reports which rows it skipped and why.
+- **Closed periods.** Approving a request whose dates fall inside an
+  already-approved payroll period is refused.
 
 ### 3.3. Performance Requirements
 
