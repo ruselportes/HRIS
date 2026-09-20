@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Holiday;
+use App\Support\ResilientCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -19,9 +20,11 @@ class HolidayController extends Controller
     {
         $year = (int) ($request->validate(['year' => ['nullable', 'integer', 'min:2000', 'max:2100']])['year'] ?? now()->year);
 
+        // A year's calendar is proclaimed once and read by every payroll
+        // screen; HR editing it bumps the namespace, so an edit shows at once.
         return response()->json([
             'year' => $year,
-            'data' => Holiday::query()
+            'data' => app(ResilientCache::class)->remember('reference', "holidays:{$year}", 600, fn () => Holiday::query()
                 ->whereBetween('date', ["{$year}-01-01", "{$year}-12-31"])
                 ->orderBy('date')
                 ->get(['holiday_id', 'date', 'name', 'type'])
@@ -30,7 +33,7 @@ class HolidayController extends Controller
                     'date' => substr((string) $h->date, 0, 10),
                     'name' => $h->name,
                     'type' => $h->type,
-                ]),
+                ])),
         ]);
     }
 

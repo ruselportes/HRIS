@@ -191,6 +191,18 @@ return [
          */
         'clusters' => [
 
+            /*
+             | Short timeouts, deliberately. A cache that cannot answer must
+             | cost a moment and then be skipped (App\Support\ResilientCache);
+             | with the default of no timeout, a request would wait on every
+             | dead seed node in turn — measured at 49 seconds with the whole
+             | cluster stopped, which is worse for a user than an error.
+             */
+            'options' => [
+                'timeout' => (float) env('REDIS_CLUSTER_TIMEOUT', 0.5),
+                'read_timeout' => (float) env('REDIS_CLUSTER_READ_TIMEOUT', 0.5),
+            ],
+
             'cluster' => collect(explode(',', (string) env('REDIS_CLUSTER_NODES', '')))
                 ->map(fn (string $node) => trim($node))
                 ->filter()

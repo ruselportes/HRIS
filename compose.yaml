@@ -55,7 +55,10 @@ x-api: &api
     CACHE_STORE: redis
     REDIS_CLIENT: phpredis
     REDIS_CACHE_CONNECTION: cluster
-    REDIS_CLUSTER_NODES: "redis-1:6379,redis-2:6379,redis-3:6379,redis-4:6379,redis-5:6379,redis-6:6379"
+    # Three seeds, not six: one reachable node is enough to learn the whole
+    # topology, and every seed that is down costs a DNS timeout before the
+    # client gives up (about 4s each for a stopped container).
+    REDIS_CLUSTER_NODES: "redis-1:6379,redis-2:6379,redis-3:6379"
 
 x-redis: &redis
   image: redis:7-alpine

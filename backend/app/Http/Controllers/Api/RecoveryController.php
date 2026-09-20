@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\SubmitRecoveryRequest;
 use App\Models\Crew;
 use App\Services\Attendance\RecoveryService;
+use App\Support\ResilientCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -20,7 +21,13 @@ use Illuminate\Validation\Rule;
  */
 class RecoveryController extends Controller
 {
-    public function __construct(private readonly RecoveryService $recovery) {}
+    /** One minute: the queue is worked through by hand, and writes bump it anyway. */
+    private const TTL = 60;
+
+    public function __construct(
+        private readonly RecoveryService $recovery,
+        private readonly ResilientCache $cache,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -35,7 +42,15 @@ class RecoveryController extends Controller
             'cause' => ['nullable', Rule::in(RecoveryService::CAUSES)],
         ]);
 
-        $all = $this->recovery->queue($filters['site_id'] ?? null);
+        // Only the scan is cached; the stage and cause filters below stay
+        // live, so a queue being worked through still reads correctly.
+        $siteId = $filters['site_id'] ?? null;
+        $all = collect($this->cache->remember(
+            'attendance',
+            'recovery:queue:'.($siteId ?? 'all'),
+            self::TTL,
+            fn () => $this->recovery->queue($siteId)->all(),
+        ));
 
         $items = $all
             ->when($filters['stage'] ?? null, fn ($c, $stage) => $c->where('stage', $stage))

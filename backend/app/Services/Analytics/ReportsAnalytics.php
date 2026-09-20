@@ -12,6 +12,7 @@ use App\Models\OvertimeRequest;
 use App\Models\Payroll;
 use App\Models\Site;
 use App\Support\CertificationStatus;
+use App\Support\ResilientCache;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -64,6 +65,18 @@ use Illuminate\Support\Collection;
  */
 class ReportsAnalytics
 {
+    /**
+     * Two minutes. The dashboard reads attendance, payroll and the audit log
+     * for a whole window on every load, so it is cached; a write to any of
+     * those bumps the `reports` namespace (AppServiceProvider::INVALIDATES),
+     * and this ttl is the ceiling if a bump is ever missed. `generated_at` in
+     * the payload is the moment the figures were computed, so the screen shows
+     * when what it displays was true.
+     */
+    private const TTL = 120;
+
+    public function __construct(private readonly ResilientCache $cache) {}
+
     /** Bands per the prototype's tags: 95/92/88 → good, 81 → fair, 67 → watch. */
     public const BAND_GOOD = 'good';
 
@@ -84,6 +97,17 @@ class ReportsAnalytics
     ];
 
     public function overview(?string $from = null, ?string $to = null, ?int $siteId = null): array
+    {
+        return $this->cache->remember(
+            'reports',
+            'overview:'.($from ?? 'default').':'.($to ?? 'default').':'.($siteId ?? 'all'),
+            self::TTL,
+            fn (): array => $this->computeOverview($from, $to, $siteId),
+        );
+    }
+
+    /** @return array<string, mixed> */
+    private function computeOverview(?string $from, ?string $to, ?int $siteId): array
     {
         $timezone = config('attendance.timezone', 'Asia/Manila');
         $from = $from ?? Carbon::now($timezone)->subDays(29)->toDateString();

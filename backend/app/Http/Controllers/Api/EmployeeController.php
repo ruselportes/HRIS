@@ -8,47 +8,73 @@ use App\Http\Requests\UpdateEmployeeRequest;
 use App\Http\Resources\EmployeeResource;
 use App\Models\Employee;
 use App\Services\EmployeeService;
+use App\Support\ResilientCache;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class EmployeeController extends Controller
 {
-    public function __construct(private readonly EmployeeService $employees) {}
+    /** One minute: short, because HR edits a record and expects to see it. */
+    private const LIST_TTL = 60;
+
+    public function __construct(
+        private readonly EmployeeService $employees,
+        private readonly ResilientCache $cache,
+    ) {}
 
     /**
      * GET /api/employees — filtered, paginated registry.
+     *
+     * Cached per filter set: the registry is read on every HR screen and
+     * written a few times a day. Saving an employee bumps the namespace
+     * (AppServiceProvider::INVALIDATES), so an edit shows at once; the ttl
+     * only bounds what a missed bump could serve.
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Employee::class);
 
-        $query = Employee::query()->with('role', 'site');
+        $filters = [
+            'search' => trim((string) $request->string('search')),
+            'role' => (string) $request->string('role'),
+            'site_id' => (string) $request->string('site_id'),
+            'employment_status' => (string) $request->string('employment_status'),
+            'per_page' => min((int) $request->input('per_page', 24), 100),
+            'page' => max(1, (int) $request->input('page', 1)),
+        ];
 
-        if ($search = trim((string) $request->string('search'))) {
-            $query->where(function ($q) use ($search) {
-                $q->where('employee_code', 'like', "%{$search}%")
-                    ->orWhere('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('middle_name', 'like', "%{$search}%");
-            });
-        }
+        return response()->json($this->cache->remember(
+            'employees',
+            'index:'.sha1((string) json_encode($filters)),
+            self::LIST_TTL,
+            fn () => EmployeeResource::collection($this->listQuery($filters)
+                ->paginate($filters['per_page'], page: $filters['page']))
+                ->response()
+                ->getData(true),
+        ));
+    }
 
-        if ($request->filled('role')) {
-            $query->whereHas('role', fn ($q) => $q->where('slug', $request->string('role')));
-        }
-
-        if ($request->filled('site_id')) {
-            $query->where('site_id', $request->integer('site_id'));
-        }
-
-        if ($request->filled('employment_status')) {
-            $query->where('employment_status', $request->string('employment_status'));
-        }
-
-        $perPage = min((int) $request->input('per_page', 24), 100);
-
-        return EmployeeResource::collection($query->paginate($perPage));
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return Builder<Employee>
+     */
+    private function listQuery(array $filters)
+    {
+        return Employee::query()
+            ->with('role', 'site')
+            ->when($filters['search'] !== '', function ($query) use ($filters) {
+                $search = $filters['search'];
+                $query->where(function ($q) use ($search) {
+                    $q->where('employee_code', 'like', "%{$search}%")
+                        ->orWhere('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('middle_name', 'like', "%{$search}%");
+                });
+            })
+            ->when($filters['role'] !== '', fn ($query) => $query->whereHas('role', fn ($q) => $q->where('slug', $filters['role'])))
+            ->when($filters['site_id'] !== '', fn ($query) => $query->where('site_id', (int) $filters['site_id']))
+            ->when($filters['employment_status'] !== '', fn ($query) => $query->where('employment_status', $filters['employment_status']));
     }
 
     /**
