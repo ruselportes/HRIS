@@ -1,75 +1,93 @@
 import { useEffect, useState } from 'react'
 import { http, errorMessage } from '../../api/client'
 
-const inputCls = 'h-[38px] border border-neutral-400 bg-canvas px-2.5 text-[13px] text-ink'
-
-function isoDaysAgo(days) {
-  const d = new Date()
-  d.setDate(d.getDate() - days)
-  return d.toISOString().slice(0, 10)
+// Worker-facing copy lives here, in one object, so a Bisaya version can be
+// added later without hunting through markup.
+const STRINGS = {
+  title: 'My attendance',
+  subtitle: 'Your daily time records for the pay period',
+  empty: 'No attendance recorded for this period.',
+  loadError: 'Unable to load your attendance.',
+  previous: '‹ Previous',
+  next: 'Next ›',
 }
 
-function todayIso() {
-  return new Date().toISOString().slice(0, 10)
+const REVIEW_PILL = {
+  'Counted for pay': 'bg-[#E6F1EA] text-[#1F5334]',
+  'Under HR review': 'bg-[#F7EFDC] text-[#7A5B16]',
+  'On hold — ask HR': 'bg-[#F7E8E5] text-[#75261C]',
+}
+
+function reviewClass(review) {
+  if (review?.startsWith('Not accepted')) return 'bg-[#F7E8E5] text-[#75261C]'
+  return REVIEW_PILL[review] ?? 'bg-neutral-200 text-neutral-700'
 }
 
 export function PortalAttendancePage() {
-  const [from, setFrom] = useState(() => isoDaysAgo(30))
-  const [to, setTo] = useState(() => todayIso())
+  // win is null for the default read: the server answers with the current
+  // pay period and the response's period block drives the steppers, so no
+  // cutoff rule ever lives in this file.
+  const [win, setWin] = useState(null)
+  const [period, setPeriod] = useState(null)
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // The fetch lives in the effect with an active flag (no setState call in
-  // the effect body itself); the inputs set loading alongside the dates.
   useEffect(() => {
-    let active = true
+    let cancelled = false
+    const params = win ? { from: win.start, to: win.end } : {}
     http
-      .get('/me/attendance', { params: { from, to } })
+      .get('/me/attendance', { params })
       .then(({ data }) => {
-        if (!active) return
+        if (cancelled) return
+        setPeriod(data.period ?? null)
         setRows(data.data ?? [])
         setError(null)
       })
       .catch((err) => {
-        if (!active) return
-        setError(errorMessage(err, 'Unable to load your attendance.'))
+        if (cancelled) return
+        setError(errorMessage(err, STRINGS.loadError))
       })
       .finally(() => {
-        if (active) setLoading(false)
+        if (!cancelled) setLoading(false)
       })
     return () => {
-      active = false
+      cancelled = true
     }
-  }, [from, to])
+  }, [win])
 
-  const changeFrom = (value) => {
-    setFrom(value)
-    setLoading(true)
-  }
-
-  const changeTo = (value) => {
-    setTo(value)
+  const step = (next) => {
+    setWin(next)
     setLoading(true)
   }
 
   return (
     <div className="flex min-h-full flex-col">
       <div className="border-b border-neutral-300 px-[22px] py-3.5">
-        <div className="font-heading text-[22px] leading-tight">My attendance</div>
-        <div className="truncate text-[11px] text-neutral-700">Your daily time records, credited times included</div>
+        <div className="font-heading text-[22px] leading-tight">{STRINGS.title}</div>
+        <div className="truncate text-[11px] text-neutral-700">{STRINGS.subtitle}</div>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3 border-b border-neutral-300 px-[22px] py-3.5">
-        <div>
-          <label className="mb-1 block text-[11px] uppercase tracking-[.08em] text-neutral-700">From</label>
-          <input type="date" className={inputCls} value={from} onChange={(e) => changeFrom(e.target.value)} />
+      <div className="flex flex-wrap items-center gap-3 border-b border-neutral-300 px-[22px] py-3.5">
+        <button
+          type="button"
+          onClick={() => period && step(period.previous)}
+          disabled={loading || !period}
+          className="border border-neutral-400 px-3 py-2 text-[13px] disabled:opacity-40"
+        >
+          {STRINGS.previous}
+        </button>
+        <div className="text-sm font-semibold tabular-nums">
+          {period ? `${period.label} · ${period.code}` : '…'}
         </div>
-        <div>
-          <label className="mb-1 block text-[11px] uppercase tracking-[.08em] text-neutral-700">To</label>
-          <input type="date" className={inputCls} value={to} onChange={(e) => changeTo(e.target.value)} />
-        </div>
-        <span className="pb-2 text-xs text-neutral-700">At most 62 days at a time.</span>
+        <button
+          type="button"
+          onClick={() => period?.next && step(period.next)}
+          disabled={loading || !period?.next}
+          className="border border-neutral-400 px-3 py-2 text-[13px] disabled:opacity-40"
+        >
+          {STRINGS.next}
+        </button>
       </div>
 
       <div className="flex-1 px-[22px]">
@@ -96,13 +114,17 @@ export function PortalAttendancePage() {
                   <td className="py-2.5 pr-4">{row.time_in ?? '—'}</td>
                   <td className="py-2.5 pr-4">{row.time_out ?? '—'}</td>
                   <td className="py-2.5 pr-4">{row.time_out_source}</td>
-                  <td className="py-2.5">{row.review}</td>
+                  <td className="py-2.5">
+                    <span className={`inline-block whitespace-nowrap px-2 py-0.5 text-[11px] ${reviewClass(row.review)}`}>
+                      {row.review}
+                    </span>
+                  </td>
                 </tr>
               ))}
               {!rows.length ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-sm text-neutral-700">
-                    No records in this window.
+                    {STRINGS.empty}
                   </td>
                 </tr>
               ) : null}

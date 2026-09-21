@@ -18,7 +18,7 @@ export function PortalLayout() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden lg:flex-row">
-      <header className="flex-none bg-primary-900 px-[18px] pb-3 pt-3.5 text-canvas lg:hidden">
+      <header className="flex-none bg-primary-900 px-[18px] pb-3 pt-3.5 text-canvas lg:hidden print:hidden">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold">{user?.full_name}</div>
@@ -51,7 +51,7 @@ export function PortalLayout() {
         </nav>
       </header>
 
-      <aside className="hidden h-full w-[252px] flex-none flex-col bg-primary-900 text-canvas lg:flex">
+      <aside className="hidden h-full w-[252px] flex-none flex-col bg-primary-900 text-canvas lg:flex print:hidden">
         <div className="flex items-center gap-2.5 border-b border-canvas/14 px-[18px] py-[18px]">
           <ArcenasMark className="h-7 w-auto flex-none" />
           <div className="font-heading text-[17px]">

@@ -20,6 +20,7 @@ import { ComingSoonPage } from './pages/ComingSoonPage'
 import { PortalLayout } from './pages/portal/PortalLayout'
 import { PortalAttendancePage } from './pages/portal/PortalAttendancePage'
 import { PortalPayslipsPage } from './pages/portal/PortalPayslipsPage'
+import { PortalPayslipDetailPage } from './pages/portal/PortalPayslipDetailPage'
 import { PortalAccountPage } from './pages/portal/PortalAccountPage'
 import { NAV, ROLES, isPortalSlug } from './config/nav'
 
@@ -185,6 +186,7 @@ function App() {
               <Route path="portal" element={<PortalLayout />}>
                 <Route index element={<PortalAttendancePage />} />
                 <Route path="payslips" element={<PortalPayslipsPage />} />
+                <Route path="payslips/:run" element={<PortalPayslipDetailPage />} />
                 <Route path="account" element={<PortalAccountPage />} />
               </Route>
             </Route>
