@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AdminDeviceController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AttendanceSyncController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ComplianceController;
 use App\Http\Controllers\Api\CrewController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\EmployeeController;
@@ -228,6 +229,14 @@ Route::middleware(['auth:sanctum', 'portal.scope', 'acting.expire'])->group(func
         Route::get('overview', [ReportsController::class, 'overview']);
         Route::get('audit', [ReportsController::class, 'audit']);
     });
+
+    // Compliance & Docs → Certifications (C1, UC-02/UC-09). Read-only, same
+    // four roles as the reports matrix plus the foreman, whose scope is the
+    // deployed crews they lead. Filters ride the query string, so the worker
+    // lockout sweep needs no new sample value for this path.
+    Route::get('compliance/certifications', [ComplianceController::class, 'certifications'])
+        ->middleware('role:hr,engineer,foreman,executive')
+        ->name('compliance.certifications');
 
     // Must precede apiResource so 'next-code' isn't captured as {employee}.
     Route::middleware('role:hr,admin')->get('employees/next-code', [EmployeeController::class, 'nextCode']);
