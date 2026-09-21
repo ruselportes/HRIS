@@ -107,6 +107,38 @@ class ResilientCacheTest extends TestCase
         $this->assertNotSame($before, $this->cache->key('employees', 'index'));
     }
 
+    /**
+     * Caching an object is a mistake that hides: the store keeps it, and the
+     * request that reads it back gets an incomplete class. It must be caught
+     * where it is written, not in a browser two requests later.
+     */
+    public function test_caching_an_object_is_refused_rather_than_stored(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('reference:sites');
+
+        $this->cache->remember('reference', 'sites', 60, fn () => collect([['site_id' => 1]]));
+    }
+
+    public function test_an_object_nested_in_a_cached_array_is_refused_too(): void
+    {
+        $this->expectException(\LogicException::class);
+
+        $this->cache->remember('reports', 'overview', 60, fn () => ['rows' => [(object) ['a' => 1]]]);
+    }
+
+    /** A database failure is the database's: it may not retire the cache. */
+    public function test_a_failing_computation_does_not_take_the_cache_out_of_use(): void
+    {
+        try {
+            $this->cache->remember('reports', 'k', 60, fn () => throw new RuntimeException('SQLSTATE[HY000]'));
+        } catch (RuntimeException) {
+            // Expected: the caller sees the database's error.
+        }
+
+        $this->assertFalse($this->cache->isDegraded());
+    }
+
     public function test_a_bumped_namespace_recomputes_instead_of_serving_the_old_entry(): void
     {
         $this->cache->remember('employees', 'index', 60, fn () => 'before');

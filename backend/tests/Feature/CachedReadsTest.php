@@ -95,6 +95,33 @@ class CachedReadsTest extends TestCase
             ->assertJsonFragment(['site_name' => 'Site 99 — Added']);
     }
 
+    /**
+     * A reference list has to read back as a list on the second request too.
+     *
+     * This is run against the database store on purpose. The array store this
+     * file otherwise uses keeps values as they are, so an Eloquent collection
+     * survives it untouched — which is why caching one passed every test here
+     * and still broke the site filter in the browser: every store that
+     * actually serialises refuses to rebuild objects
+     * (config/cache.php serializable_classes), and returns an incomplete
+     * class, which encodes as {} rather than [].
+     */
+    public function test_cached_reference_lists_survive_a_store_that_serialises(): void
+    {
+        config(['cache.default' => 'database']);
+
+        $hr = $this->loginUser('hr');
+        $this->site();
+
+        foreach (['/api/sites' => 'sites', '/api/roles' => 'roles', '/api/holidays' => 'data'] as $url => $key) {
+            $fresh = $this->actingAs($hr, 'sanctum')->getJson($url)->assertOk()->json($key);
+            $cached = $this->actingAs($hr, 'sanctum')->getJson($url)->assertOk()->json($key);
+
+            $this->assertIsList($fresh, "{$url} did not answer with a list.");
+            $this->assertSame($fresh, $cached, "{$url} came back different once cached.");
+        }
+    }
+
     /** With Redis unreachable the endpoint still answers, from the database. */
     public function test_the_dashboard_still_answers_when_the_cache_is_down(): void
     {

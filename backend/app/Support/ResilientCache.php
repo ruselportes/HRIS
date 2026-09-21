@@ -62,16 +62,43 @@ class ResilientCache
             return $compute();
         }
 
-        try {
-            $value = Cache::remember($this->key($namespace, $key), $ttl, $compute);
-            $this->recovered();
+        $versioned = $this->key($namespace, $key);
 
-            return $value;
+        // Reading the version is itself a cache read, and it may have been the
+        // one that found the cache down. Paying that discovery twice in one
+        // call is what the cooldown exists to prevent.
+        if ($this->isDegraded()) {
+            return $compute();
+        }
+
+        try {
+            $cached = Cache::get($versioned);
+            $this->recovered();
         } catch (\Throwable $e) {
             $this->degrade($e);
 
             return $compute();
         }
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        // Deliberately outside the try: a failure in here is the database's,
+        // and blaming the cache for it would take the cache out of use.
+        $value = $compute();
+
+        if (! $this->isStorable($value, $namespace, $key)) {
+            return $value;
+        }
+
+        try {
+            Cache::put($versioned, $value, $ttl);
+        } catch (\Throwable $e) {
+            $this->degrade($e);
+        }
+
+        return $value;
     }
 
     /** Invalidate a namespace: later reads build keys the old entries cannot match. */
@@ -147,6 +174,55 @@ class ResilientCache
         self::$loggedThisCooldown = false;
 
         @unlink((new self)->markerPath());
+    }
+
+    /**
+     * Whether a value can be cached without coming back different.
+     *
+     * The cache refuses to build objects out of what it stored
+     * (config/cache.php serializable_classes is false, so a leaked APP_KEY
+     * cannot be turned into a gadget chain), and hands back an incomplete
+     * class instead. That is silent: the value looks stored, the page that
+     * reads it back gets {} where a list should be, and only the second
+     * request — the cached one — is wrong. So cache plain data only, and say
+     * so loudly rather than caching something that will return corrupted.
+     */
+    private function isStorable(mixed $value, string $namespace, string $key): bool
+    {
+        if (! $this->holdsAnObject($value)) {
+            return true;
+        }
+
+        $message = "Refusing to cache {$namespace}:{$key}: it holds an object, "
+            .'and the cache only returns plain data. Convert it first (->toArray(), ->all()).';
+
+        // A programming error, not a runtime condition: fail the suite that
+        // introduces it. Serving the page uncached is the right answer
+        // anywhere else.
+        if (app()->runningUnitTests()) {
+            throw new \LogicException($message);
+        }
+
+        Log::warning($message);
+
+        return false;
+    }
+
+    private function holdsAnObject(mixed $value): bool
+    {
+        if (is_object($value)) {
+            return true;
+        }
+
+        if (is_array($value)) {
+            foreach ($value as $item) {
+                if ($this->holdsAnObject($item)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private function degrade(\Throwable $e): void

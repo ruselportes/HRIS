@@ -33,7 +33,10 @@ class HolidayController extends Controller
                     'date' => substr((string) $h->date, 0, 10),
                     'name' => $h->name,
                     'type' => $h->type,
-                ])),
+                ])
+                // Plain data, not a collection: the cache does not give
+                // objects back (App\Support\ResilientCache).
+                ->all()),
         ]);
     }
 

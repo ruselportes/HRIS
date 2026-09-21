@@ -14,6 +14,11 @@ use Illuminate\Http\JsonResponse;
  * Role retires the entry (AppServiceProvider::INVALIDATES), and the ttl bounds
  * anything that slips past that. A cache that cannot answer costs a query,
  * not an error (App\Support\ResilientCache).
+ *
+ * Note the ->toArray(): what goes into the cache has to be plain data. The
+ * cache never unserialises objects back (config/cache.php
+ * serializable_classes), so a cached Eloquent collection would return as an
+ * incomplete class and reach the browser as {} instead of a list.
  */
 class ReferenceController extends Controller
 {
@@ -32,7 +37,7 @@ class ReferenceController extends Controller
                 'reference',
                 'roles',
                 self::TTL,
-                fn () => Role::orderBy('role_id')->get(['role_id', 'role_name', 'slug']),
+                fn () => Role::orderBy('role_id')->get(['role_id', 'role_name', 'slug'])->toArray(),
             ),
         ]);
     }
@@ -47,7 +52,7 @@ class ReferenceController extends Controller
                 'reference',
                 'sites',
                 self::TTL,
-                fn () => Site::orderBy('site_id')->get(['site_id', 'site_name', 'location', 'status']),
+                fn () => Site::orderBy('site_id')->get(['site_id', 'site_name', 'location', 'status'])->toArray(),
             ),
         ]);
     }
