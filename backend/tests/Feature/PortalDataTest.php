@@ -126,14 +126,36 @@ class PortalDataTest extends TestCase
             ->assertJsonPath('data.0.review', 'Not accepted — paid from your actual tap time');
     }
 
-    public function test_rejected_manual_time_out_pays_from_when_it_was_entered(): void
+    public function test_a_row_with_no_time_out_yet_names_no_source(): void
+    {
+        $worker = $this->loginUser('worker');
+        $crew = $this->crew($worker);
+
+        // Today's open row: no time-out tap exists, so the source must be
+        // null — not "Tapped on the device" for a tap that never happened.
+        $row = $this->attendance($worker->employee_id, $crew->crew_id, '2026-09-10', 'present', [
+            'time_out' => null,
+        ]);
+        $this->verifiedSignature($row->attendance_id);
+
+        $response = $this->actingAs($worker, 'sanctum')
+            ->getJson('/api/me/attendance?from=2026-09-01&to=2026-09-30')
+            ->assertOk();
+
+        $shown = $response->json('data.0');
+        $this->assertNull($shown['time_out']);
+        $this->assertArrayHasKey('time_out_source', $shown);
+        $this->assertNull($shown['time_out_source']);
+    }
+
+    public function test_rejected_manual_time_out_pays_until_it_was_entered(): void
     {
         $worker = $this->loginUser('worker');
         $foreman = $this->loginUser('foreman');
         $crew = $this->crew($foreman);
 
-        // HR rejected the foreman's stated 17:00 time out: payroll pays from
-        // when it was entered on the device (17:45), so the portal must show
+        // HR rejected the foreman's stated 17:00 time out: payroll pays only
+        // until it was entered on the device (17:45), so the portal must show
         // 17:45 — and the words must not claim "your actual tap time", which
         // never happened for a time out.
         $rejected = $this->audit(AuditLog::MANUAL_TIME_OUT, $foreman->employee_id, AuditLog::REVIEW_REJECTED);
@@ -148,7 +170,7 @@ class PortalDataTest extends TestCase
             ->getJson('/api/me/attendance?from=2026-09-01&to=2026-09-30')
             ->assertOk()
             ->assertJsonPath('data.0.time_out', '17:45')
-            ->assertJsonPath('data.0.review', 'Not accepted — paid from when the time out was entered');
+            ->assertJsonPath('data.0.review', 'Not accepted — paid until the time it was entered');
     }
 
     public function test_returned_recovery_reads_under_review_until_signed_off(): void
@@ -266,6 +288,7 @@ class PortalDataTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.run_id', $approved->payroll_id)
             ->assertJsonPath('data.0.run_code', '2026-09-A')
+            ->assertJsonPath('data.0.label', '21 Aug – 05 Sep 2026')
             ->assertJsonPath('data.0.gross_pay', 8000)
             ->assertJsonPath('data.0.deductions', 800)
             ->assertJsonPath('data.0.net_pay', 7200)

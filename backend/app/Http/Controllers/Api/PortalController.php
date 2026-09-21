@@ -140,12 +140,16 @@ class PortalController extends Controller
             'status' => $a->status,
             'time_in' => ($a->effectiveTimeIn() ?? $a->time_in)?->copy()->setTimezone($tz)->format('H:i'),
             'time_out' => ($a->effectiveTimeOut() ?? $a->time_out)?->copy()->setTimezone($tz)->format('H:i'),
-            // "How the time-out was recorded", in plain words.
-            'time_out_source' => match ($a->time_out_type) {
-                Attendance::TIME_OUT_SHIFT_END => 'Close shift credited a time out',
-                Attendance::TIME_OUT_MANUAL => 'Stated by your foreman',
-                default => 'Tapped on the device',
-            },
+            // "How the time-out was recorded", in plain words — or nothing when
+            // there is no time-out at all yet: today's open row used to claim
+            // "Tapped on the device" for a tap that never happened.
+            'time_out_source' => ($a->effectiveTimeOut() ?? $a->time_out) === null
+                ? null
+                : match ($a->time_out_type) {
+                    Attendance::TIME_OUT_SHIFT_END => 'Close shift credited a time out',
+                    Attendance::TIME_OUT_MANUAL => 'Stated by your foreman',
+                    default => 'Tapped on the device',
+                },
             'review' => $this->reviewState($a),
         ];
     }
@@ -172,9 +176,10 @@ class PortalController extends Controller
 
         if ($a->time_out_type === Attendance::TIME_OUT_MANUAL
             && $a->timeOutEvent?->review_status === AuditLog::REVIEW_REJECTED) {
-            // A rejected stated time-out pays from when it was entered on the
-            // device — a time-out has no worker tap to revert to.
-            return 'Not accepted — paid from when the time out was entered';
+            // A rejected stated time-out pays only until it was entered on
+            // the device — a time-out sets where pay ends, and it has no
+            // worker tap to revert to.
+            return 'Not accepted — paid until the time it was entered';
         }
 
         if ($a->overrideEvent?->review_status === AuditLog::REVIEW_REJECTED) {
@@ -194,6 +199,9 @@ class PortalController extends Controller
         $row = [
             'run_id' => $p->payroll_id,
             'run_code' => $p->run_code,
+            // The period in the same words the attendance page uses — the raw
+            // code (2026-09-B) means nothing next to "06 Sep – 20 Sep 2026".
+            'label' => PayPeriod::fromCode($p->run_code)->label(),
             'period' => [
                 'start' => $p->pay_period_start,
                 'end' => $p->pay_period_end,

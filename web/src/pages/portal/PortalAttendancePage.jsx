@@ -78,9 +78,7 @@ export function PortalAttendancePage() {
         >
           {STRINGS.previous}
         </button>
-        <div className="text-sm font-semibold tabular-nums">
-          {period ? `${period.label} · ${period.code}` : '…'}
-        </div>
+        <div className="text-sm font-semibold tabular-nums">{period ? period.label : '…'}</div>
         <button
           type="button"
           onClick={() => period?.next && step(period.next)}
@@ -104,10 +102,10 @@ export function PortalAttendancePage() {
                     <span className="font-semibold">{siteDay(row.date)}</span>
                     <span className="capitalize text-neutral-700">{row.status}</span>
                     <span className="ml-auto tabular-nums">
-                      {row.time_in ?? '—'} – {row.time_out ?? '—'}
+                      {row.time_in ?? '—'} – {row.time_out ?? 'not out yet'}
                     </span>
                   </div>
-                  <div className="mt-1 text-xs text-neutral-700">{row.time_out_source}</div>
+                  <div className="mt-1 text-xs text-neutral-700">{row.time_out_source ?? '—'}</div>
                   <div className="mt-1.5">
                     <span className={`inline-block whitespace-nowrap px-2 py-0.5 text-[11px] ${reviewClass(row.review)}`}>
                       {row.review}
@@ -136,8 +134,8 @@ export function PortalAttendancePage() {
                     <td className="py-2.5 pr-4">{siteDay(row.date)}</td>
                     <td className="py-2.5 pr-4 capitalize">{row.status}</td>
                     <td className="py-2.5 pr-4">{row.time_in ?? '—'}</td>
-                    <td className="py-2.5 pr-4">{row.time_out ?? '—'}</td>
-                    <td className="py-2.5 pr-4">{row.time_out_source}</td>
+                    <td className="py-2.5 pr-4">{row.time_out ?? 'not out yet'}</td>
+                    <td className="py-2.5 pr-4">{row.time_out_source ?? '—'}</td>
                     <td className="py-2.5">
                       <span
                         className={`inline-block whitespace-nowrap px-2 py-0.5 text-[11px] ${reviewClass(row.review)}`}

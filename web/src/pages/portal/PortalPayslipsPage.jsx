@@ -5,7 +5,7 @@ import { peso, approvedDate } from './portalFormat'
 
 const STRINGS = {
   title: 'My payslips',
-  subtitle: 'Approved runs only',
+  subtitle: 'Payslips appear here once HR approves them.',
   empty: 'No approved payslips yet.',
   loadError: 'Unable to load your payslips.',
   approved: 'Approved',
@@ -47,9 +47,9 @@ export function PortalPayslipsPage() {
                   className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm hover:bg-neutral-200/60"
                 >
                   <span>
-                    <span className="block font-semibold">{run.run_code}</span>
+                    <span className="block font-semibold">{run.label ?? run.run_code}</span>
                     <span className="block text-[11px] text-neutral-700">
-                      {run.period?.start} – {run.period?.end}
+                      {run.period?.start} – {run.period?.end} · {run.run_code}
                     </span>
                     <span className="block text-[11px] text-neutral-700">
                       {STRINGS.approved} {approvedDate(run.approved_at)}

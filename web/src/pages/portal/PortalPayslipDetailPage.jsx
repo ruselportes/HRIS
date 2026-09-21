@@ -102,7 +102,7 @@ export function PortalPayslipDetailPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="font-heading text-lg">
-                  {showing.run_code} · {peso(showing.net_pay)} net
+                  {showing.label ?? showing.run_code} · {peso(showing.net_pay)} net
                 </div>
                 <div className="text-xs text-neutral-700">
                   {showing.period?.start} – {showing.period?.end} · Approved {approvedDate(showing.approved_at)}
