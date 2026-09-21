@@ -105,10 +105,20 @@ docker compose exec redis-2 redis-cli --scan
 docker compose exec redis-3 redis-cli --scan
 ```
 Keys named `…hris:reports:…`, `…hris:reference:…` should appear across the
-primaries. And the MySQL fallback should stay empty while Redis is healthy:
+primaries. And the MySQL fallback should not **grow** while Redis is healthy:
 
 ```bash
 docker compose exec api php artisan tinker --execute="echo DB::table('cache')->count();"
+```
+
+The count need not be zero. Rows written during an outage stay afterwards:
+sign-in throttles, a copy or two, a version counter. Expired rows are only
+removed when something reads them, and a counter never expires. They are
+harmless, because the database store is read only while Redis is out. They can
+be cleared at any time:
+
+```bash
+docker compose exec api php artisan tinker --execute="Cache::store('database')->flush();"
 ```
 
 **Is the breaker open?**
