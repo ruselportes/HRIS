@@ -15,14 +15,15 @@ use Illuminate\Support\Facades\Log;
  * and never turn a working page into a 500. Every call here falls back to
  * computing the value from the database.
  *
- * Discovering that the cache is down is not free. Measured on this stack with
- * every node stopped: resolving a stopped container's name takes about four
- * seconds, and the client tries each seed in turn — twenty-four seconds before
- * it can report failure. A page that answers in twenty-four seconds is worse
- * for the user than one that fails, so a failure puts the cache out of use for
- * a cooldown, and the cooldown grows while it stays down: 10s, 30s, 1m, 2m,
- * then 5m. One request pays for the retry, the rest are served straight from
- * the database. The first success clears it.
+ * Discovering that the cache is down is not free: the client tries each seed
+ * in turn before it can report failure. Measured on this stack with every node
+ * stopped, the request that finds out takes about 4.5 s (seeding by container
+ * name, before the nodes had fixed addresses, it was over twenty). So a
+ * failure puts the cache out of use for a cooldown, and the cooldown grows
+ * while it stays down: 15s, 30s, 1m, 2m, then 5m. One request pays for the
+ * retry, the rest are served straight from the database. The first success
+ * clears it. The breaker covers the failover cache store as well as the reads
+ * here — see redisFailedOver().
  *
  * The cooldown is shared between processes through a marker file, because each
  * request is its own PHP process: an in-process flag would let every request
@@ -40,8 +41,17 @@ use Illuminate\Support\Facades\Log;
  */
 class ResilientCache
 {
-    /** Cooldown after the 1st, 2nd, ... consecutive failure, in seconds. */
-    private const COOLDOWNS = [10, 30, 60, 120, 300];
+    /**
+     * Cooldown after the 1st, 2nd, ... consecutive failure, in seconds.
+     *
+     * The first outlasts a failover. When a primary stops, Redis Cluster
+     * refuses every query until its replica is promoted: measured at 9.2 s,
+     * and 11 s before the cluster reports ok. The breaker trips on the first
+     * refusal, which can come within a second of the stop. A first cooldown
+     * of 10 s could end before the promotion did, trip a second time, and
+     * turn one failover into 40 s of database reads; 15 s ends after it.
+     */
+    private const COOLDOWNS = [15, 30, 60, 120, 300];
 
     private static ?float $degradedUntil = null;
 
