@@ -18,11 +18,10 @@ use Tests\TestCase;
 
 /**
  * Add-on B (FR-11, UC-11) — the worker portal lockdown, the HR reset, and the
- * portal's own-data reads (W2), in one suite. The HTTP activation matrix has
- * its own class (PortalActivationTest), which registers the auth.activate route
- * per test until W3 registers it for real; the route opens together with the
- * /portal sign-in surface. Its only survivor here is the password-seeded login
- * proof below, proving a portal role is refused sign-in until that day.
+ * portal's own-data reads (W2/W3), in one suite. The HTTP activation matrix
+ * has its own class (PortalActivationTest), whose auth.activate route lives in
+ * api.php since W3. This suite's login proof shows a real portal password now
+ * works at the same endpoint staff use.
  */
 class PortalScopeTest extends TestCase
 {
@@ -79,7 +78,19 @@ class PortalScopeTest extends TestCase
                 ? ['from' => '2026-09-01', 'to' => '2026-09-30']
                 : [];
 
-            $response = $this->actingAs($user, 'sanctum')->call($method, $uri, $query);
+            // auth.password is allowlisted too, and it demands a body whose
+            // current_password genuinely matches the swept user's ('password',
+            // the loginUser default). The new password sidesteps every policy
+            // rule, so the route is exercised, not 422'd.
+            $body = $route->getName() === 'auth.password'
+                ? [
+                    'current_password' => 'password',
+                    'new_password' => 'NewPass99x-word',
+                    'new_password_confirmation' => 'NewPass99x-word',
+                ]
+                : [];
+
+            $response = $this->actingAs($user, 'sanctum')->call($method, $uri, array_merge($body, $query));
 
             if ($this->isAllowedPortalRoute($route->getName())) {
                 // The allowlisted routes all return 200 today; assertSuccessful
@@ -136,16 +147,20 @@ class PortalScopeTest extends TestCase
      *  Login proof (the full activation matrix lives in PortalActivationTest)
      * ------------------------------------------------------------------ */
 
-    public function test_activated_worker_cannot_login_until_w3(): void
+    public function test_activated_worker_can_sign_in_since_w3(): void
     {
-        // Portal sign-in opens in W3 along with auth.activate; until then even
-        // a real password is refused at login.
+        // W3 opened portal sign-in alongside auth.activate: a real password
+        // now works at the same endpoint staff use, and the role comes back
+        // for the UI to branch on.
         $this->worker(['password' => Hash::make('secret99w')]);
 
         $this->postJson('/api/auth/login', [
             'identifier' => 'ADC-0742',
             'password' => 'secret99w',
-        ])->assertUnprocessable();
+        ])
+            ->assertOk()
+            ->assertJsonStructure(['token', 'user' => ['role' => ['slug']]])
+            ->assertJsonPath('user.role.slug', 'worker');
     }
 
     /* ------------------------------------------------------------------ *

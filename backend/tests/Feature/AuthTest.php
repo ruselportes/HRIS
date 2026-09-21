@@ -65,9 +65,9 @@ class AuthTest extends TestCase
 
     public function test_separated_employee_of_any_role_cannot_login(): void
     {
-        // New in W1 (Add-on B): separation closes sign-in for staff too, so a
-        // live account cannot come back. The same rule is enforced per-request
-        // by EnsurePortalScope, and worker/operator sign-in opens only in W3.
+        // Separation closes sign-in for staff too, so a live account cannot
+        // come back. The same rule is enforced per-request by EnsurePortalScope;
+        // worker/operator sign-in opened alongside the portal in W3.
         $hr = $this->loginUser('hr', ['employment_status' => 'separated', 'email' => 'gone@arcenasdev.ph']);
         $this->assertFalse($hr->canSignIn());
 

@@ -27,10 +27,13 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('auth')->group(function () {
-    // auth.activate is NOT registered yet: it opens in W3 together with the
-    // /portal sign-in surface, so activation and login work at the same
-    // moment (review, 2026-09-21) and no dead endpoint sits on the tunnel.
     Route::post('login', [AuthController::class, 'login']);
+    // Add-on B (FR-11): activation opened in W3, together with the /portal
+    // sign-in surface, so both doors work at the same moment (review,
+    // 2026-09-21) and no dead endpoint sits on the tunnel. PortalActivationTest
+    // registered this route per test until now; Route::has('auth.activate')
+    // turns true here, so the tests exercise the production definition.
+    Route::post('activate', [AuthController::class, 'activate'])->name('auth.activate');
     Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
 });
 
@@ -52,6 +55,10 @@ Route::middleware(['auth:sanctum', 'portal.scope', 'acting.expire'])->group(func
     Route::prefix('auth')->group(function () {
         Route::get('me', [AuthController::class, 'me'])->name('auth.me');
         Route::post('logout', [AuthController::class, 'logout'])->name('auth.logout');
+        // Add-on B (W3): the own-account password change. Any signed-in role
+        // may use it; portal roles reach it through the allowlist. No forced
+        // rotation at first sign-in (team decision), so the session survives.
+        Route::post('password', [AuthController::class, 'changePassword'])->name('auth.password');
     });
 
     Route::get('roles', [ReferenceController::class, 'roles']);

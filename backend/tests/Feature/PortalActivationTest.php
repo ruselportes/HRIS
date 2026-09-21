@@ -13,9 +13,9 @@ use Tests\TestCase;
 
 /**
  * Add-on B (FR-11) — the POST /auth/activate endpoint and its full failure
- * matrix. The route is NOT in api.php yet: it opens in W3 together with the
- * /portal sign-in surface (review, 2026-09-21), so this class registers it
- * per test. W3 moves one line into api.php and drops this setUp registration.
+ * matrix. The route is registered in api.php since W3 (with the /portal
+ * sign-in surface), so setUp's Route::has() guard never triggers and the
+ * tests hit the production definition directly.
  *
  * The route-sweep in PortalScopeTest only visits auth:sanctum routes, so this
  * public route never crosses that sweep.
@@ -30,12 +30,10 @@ class PortalActivationTest extends TestCase
     {
         parent::setUp();
 
-        // The test route is self-guarding: once W3 registers the real
-        // auth.activate in api.php with that name, Route::has() turns true and
-        // this registration stops, so the production route definition is what
-        // the tests exercise from then on. The api middleware group matches
-        // how WithRouting mounts api.php today; a drift in that group would
-        // make the test route diverge instead of silently passing.
+        // The test route is self-guarding: the real auth.activate has been
+        // registered in api.php since W3, so Route::has('auth.activate') is
+        // true here and this fallback registration is skipped entirely — the
+        // tests exercise the production route definition.
         if (! Route::has('auth.activate')) {
             Route::post('api/auth/activate', [AuthController::class, 'activate'])
                 ->middleware('api')
@@ -90,7 +88,7 @@ class PortalActivationTest extends TestCase
         $this->assertFalse(RateLimiter::tooManyAttempts('activate:code:'.sha1('adc-0742'), 5));
     }
 
-    public function test_every_activation_failure_is_the_same_generic_message(): void
+    public function test_identity_and_shape_failures_keep_the_single_generic_message(): void
     {
         $this->worker(['password' => null]);
 
@@ -99,13 +97,6 @@ class PortalActivationTest extends TestCase
             ['employee_code' => 'ADC-0742', 'date_of_birth' => '1980-01-01', 'password' => 'secret99w'],   // wrong DOB
             ['employee_code' => 'ADC-0742', 'date_of_birth' => '1990-05-12T16:00:00.000Z', 'password' => 'secret99w'], // ISO datetime, not Y-m-d
             ['employee_code' => 'ADC-0742', 'date_of_birth' => '1990-02-30', 'password' => 'secret99w'],   // impossible date
-            ['employee_code' => 'ADC-0742', 'date_of_birth' => '1990-05-12', 'password' => 'six'],         // too short
-            ['employee_code' => 'ADC-0742', 'date_of_birth' => '1990-05-12', 'password' => 'adc-0742'],    // equals the code
-            ['employee_code' => 'ADC-0742', 'date_of_birth' => '1990-05-12', 'password' => 'xv19900512q'], // contiguous run spells the DOB
-            ['employee_code' => 'ADC-0742', 'date_of_birth' => '1990-05-12', 'password' => 'juan05-12-1990'], // separator-spelled DOB
-            ['employee_code' => 'ADC-0742', 'date_of_birth' => '1990-05-12', 'password' => 'juan1990.05.12'],  // dotted DOB
-            ['employee_code' => 'ADC-0742', 'date_of_birth' => '1990-05-12', 'password' => 'juan05_12_1990'],  // underscored DOB
-            ['employee_code' => 'ADC-0742', 'date_of_birth' => '1990-05-12', 'password' => 'juan05--12--1990'], // doubled separators
         ];
 
         foreach ($cases as $payload) {
@@ -115,13 +106,48 @@ class PortalActivationTest extends TestCase
         $this->assertDatabaseCount('audit_logs', 0);
     }
 
+    public function test_password_policy_failures_get_specific_messages_and_never_bump_the_code_counter(): void
+    {
+        $this->worker(['password' => null]);
+
+        // Reviewed in W3: password-policy failures hinge on nothing but the
+        // submitted values, so each answers with its own message (no code or
+        // DOB oracle) and bumps only the per-IP backstop — a worker fumbling
+        // their password must not burn the per-code attempts that stop
+        // DOB-guessing.
+        $cases = [
+            ['password' => 'six', 'message' => 'Password must be at least 8 characters.'],
+            ['password' => 'adc-0742', 'message' => 'Password cannot be the same as your employee ID.'],
+            ['password' => 'xv19900512q', 'message' => 'Password cannot contain your date of birth.'],
+            ['password' => 'juan05-12-1990', 'message' => 'Password cannot contain your date of birth.'],
+            ['password' => 'juan1990.05.12', 'message' => 'Password cannot contain your date of birth.'],
+            ['password' => 'juan05_12_1990', 'message' => 'Password cannot contain your date of birth.'],
+            ['password' => 'juan05--12--1990', 'message' => 'Password cannot contain your date of birth.'],
+        ];
+
+        foreach ($cases as $case) {
+            $this->postJson('/api/auth/activate', $this->validPayload(['password' => $case['password']]))
+                ->assertUnprocessable()
+                ->assertJsonPath('message', $case['message'])
+                ->assertJsonPath('errors.password.0', $case['message']);
+        }
+
+        $this->assertDatabaseCount('audit_logs', 0);
+
+        // All seven failures ran before any account lookup, so the per-code
+        // counter that stops date-of-birth guessing was never touched.
+        $this->assertFalse(RateLimiter::tooManyAttempts('activate:code:'.sha1('adc-0742'), 5));
+    }
+
     public function test_invalid_utf8_password_is_refused_not_failed_over(): void
     {
         // A high byte (e.g. a form-encoded %FF) makes preg_replace('/u')
         // return null. The endpoint must refuse, never fall back to the
         // old non-UTF-8 split — that fallback would let a separator-written
-        // birthday through as separate runs (review, 2026-09-21). postJson
-        // would fail to encode the byte, so this travels as a raw form post.
+        // birthday through as separate runs (review, 2026-09-21). W3 handles
+        // this as a password-policy failure: its own message, per-IP bump
+        // only, decided before any lookup. postJson would fail to encode the
+        // byte, so this travels as a raw form post.
         $this->worker(['password' => null]);
         $this->withHeader('Accept', 'application/json')
             ->post('/api/auth/activate', [
@@ -130,7 +156,8 @@ class PortalActivationTest extends TestCase
                 'password' => "juan05_12_1990\xFF",
             ])
             ->assertUnprocessable()
-            ->assertJsonPath('message', self::GENERIC_FAILURE);
+            ->assertJsonPath('message', 'Password contains characters we could not read.')
+            ->assertJsonPath('errors.password.0', 'Password contains characters we could not read.');
     }
 
     public function test_password_with_separated_digit_groups_is_accepted(): void

@@ -94,15 +94,17 @@ class Employee extends Authenticatable
     }
 
     /**
-     * Staff-only in W1 (Add-on B): portal roles are admitted by the same
-     * endpoint in W3, together with the /portal surface. A separated employee
-     * of any role is refused here and by EnsurePortalScope on every request,
-     * so a live token cannot outlive the separation.
+     * A sign-in is possible once a password exists: HR provisioning sets one
+     * for staff, activation or HR's reset sets one for portal roles (Add-on B,
+     * FR-11). Portal roles were admitted to this same endpoint when the
+     * /portal surface opened in W3. A separated employee of any role is
+     * refused here and by EnsurePortalScope on every request, so a live token
+     * cannot outlive the separation.
      */
     public function canSignIn(): bool
     {
         return $this->password !== null
             && $this->employment_status !== 'separated'
-            && $this->role?->isLoginRole();
+            && ($this->role?->isLoginRole() || $this->role?->isPortalRole());
     }
 }

@@ -58,6 +58,9 @@ class AuditLog extends Model
     /** HR reset a portal account with a temporary password (Add-on B, FR-11). */
     public const PORTAL_ACCESS_RESET = 'PORTAL_ACCESS_RESET';
 
+    /** A user changed their own password (Add-on B, FR-11, W3). */
+    public const PASSWORD_CHANGED = 'PASSWORD_CHANGED';
+
     /**
      * Leave & Overtime workflow steps (Phase 9, UC-10). One family for both
      * request kinds: the description carries the type and id, so the list is

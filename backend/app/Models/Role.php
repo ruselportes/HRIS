@@ -39,7 +39,8 @@ class Role extends Model
     /**
      * Field roles with no staff login but with the web worker portal
      * (Add-on B, FR-11). "Staff" is LOGIN_SLUGS; these two stay apart so
-     * canSignIn() can keep meaning "staff login" until the portal exists.
+     * portal roles can be confined to the portal routes by EnsurePortalScope
+     * while canSignIn() admits them alongside staff from W3.
      */
     public const PORTAL_SLUGS = [
         'worker',
