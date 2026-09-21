@@ -1087,7 +1087,11 @@ Built alongside the phases; the files are in the repo root and `deploy/`.
       `usesCleartextTraffic`), compiled base-config `cleartextTrafficPermitted=true`.
 - [ ] Physical-handset tasks now unblocked (each still owed): Phase 4's
       cold-start offline run, TC-01–03 with `HRIS_REQUIRE_HARDWARE_KEYS=true`,
-      TC-04/05, and the demo install. On the hardware-backing claim, note the
+      TC-04/05, and the demo install. Upgrade step first: a phone coming from
+      the old APK has a saved token but no saved user copy yet, so if its
+      first launch after upgrading is offline it lands on the sign-in screen —
+      sign in once while online after installing, then run the offline reopen
+      test. On the hardware-backing claim, note the
       acceptance rule (`config/crypto.php:61`): **STRONGBOX *or*
       TRUSTED_ENVIRONMENT** passes — only `SOFTWARE` fails, so a TEE-only
       mid-range phone passing the flag is a pass, not a miss; StrongBox itself
