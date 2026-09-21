@@ -109,13 +109,14 @@ return [
             'driver' => 'octane',
         ],
 
-        'failover' => [
-            'driver' => 'failover',
-            'stores' => [
-                'database',
-                'array',
-            ],
-        ],
+        /*
+         | There is exactly one `failover` entry, above. The skeleton shipped
+         | its own here (database, then array), and a repeated key in a PHP
+         | array is not an error — the later one simply wins. It did: for as
+         | long as both were present the cache never reached Redis at all,
+         | while every test and every page kept passing, because the database
+         | store answers correctly, only slower. CacheConfigTest pins it.
+         */
 
     ],
 

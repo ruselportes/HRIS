@@ -73,12 +73,22 @@ class ResilientCache
 
         try {
             $cached = Cache::get($versioned);
-            $this->recovered();
         } catch (\Throwable $e) {
             $this->degrade($e);
 
             return $compute();
         }
+
+        // An answer is not proof that Redis gave it: under the failover store
+        // the database answers when Redis cannot, and the only trace of that
+        // is the breaker having just opened (redisFailedOver). Closing it on
+        // such an answer would put Redis straight back in the chain, and
+        // every other request would pay to find it down again.
+        if ($this->isDegraded()) {
+            return $compute();
+        }
+
+        $this->recovered();
 
         if ($cached !== null) {
             return $cached;
@@ -113,10 +123,12 @@ class ResilientCache
 
             /*
              * Stores disagree about incrementing a key that does not exist
-             * yet: the array and redis stores create it at 1, the failover
-             * store refuses and answers false. Either way the version is
-             * still the 1 that reads assume, and the bump would retire
-             * nothing — so set it past that explicitly.
+             * yet: the array and redis stores create it at 1, the database
+             * store refuses and answers false. The failover store passes on
+             * whichever answered, so in the containers it is 1 while Redis
+             * is up and false once it has fallen back to the database.
+             * Either way the version is still the 1 that reads assume, and
+             * the bump would retire nothing — so set it past that explicitly.
              */
             if ($bumped === false || $bumped === 1) {
                 Cache::forever($this->versionKey($namespace), 2);
@@ -143,6 +155,44 @@ class ResilientCache
 
             return 1;
         }
+    }
+
+    /**
+     * The failover store's chain for this request: Redis is left out while
+     * the breaker is open, so the database answers at once instead of after
+     * a connection attempt to every seed.
+     *
+     * @param  list<string>  $chain
+     * @return list<string>
+     */
+    public function failoverChain(array $chain): array
+    {
+        return $this->isDegraded() ? array_values(array_diff($chain, ['redis'])) : $chain;
+    }
+
+    /**
+     * Redis failed underneath the failover store (AppServiceProvider listens
+     * for CacheFailedOver).
+     *
+     * The failover store answers from the database and keeps no memory of the
+     * failure: its next call tries Redis again, and so does every request
+     * after it. Measured with the whole cluster stopped, that was 5.6–9 s on
+     * every page, indefinitely — correct answers, and nothing ever getting
+     * better. Nor could the cooldown above help, because the failover store
+     * catches the exception before anything here sees it. So open the breaker
+     * from here, and rebuild the store without Redis for the rest of this
+     * request; requests after this one start without it (failoverChain).
+     */
+    public function redisFailedOver(\Throwable $e): void
+    {
+        // Once per request: the store that tripped may report again before
+        // it is replaced, and each report would lengthen the cooldown.
+        if (self::$degradedUntil === null || microtime(true) >= self::$degradedUntil) {
+            $this->degrade($e);
+        }
+
+        config(['cache.stores.failover.stores' => $this->failoverChain((array) config('cache.stores.failover.stores', []))]);
+        Cache::forgetDriver('failover');
     }
 
     /** Whether the cache is being skipped right now. */

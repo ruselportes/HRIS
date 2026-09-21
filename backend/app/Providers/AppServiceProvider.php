@@ -13,7 +13,10 @@ use App\Models\Payroll;
 use App\Models\PayrollDetail;
 use App\Models\Site;
 use App\Support\ResilientCache;
+use Illuminate\Cache\Events\CacheFailedOver;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -65,7 +68,35 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('view-crews', fn (Employee $employee) => in_array($employee->role?->slug, ['hr', 'engineer', 'executive'], true));
 
+        $this->skipRedisWhileItIsDown();
         $this->invalidateCachedReadsOnWrite();
+    }
+
+    /**
+     * A circuit breaker for the failover cache store (Redis Cluster add-on):
+     * once Redis is found down, requests leave it out of the chain until the
+     * cooldown ends, instead of each paying a connection attempt to every seed
+     * before the database answers. The reasoning and the measurements are on
+     * ResilientCache::redisFailedOver.
+     */
+    private function skipRedisWhileItIsDown(): void
+    {
+        $cache = $this->app->make(ResilientCache::class);
+
+        $chain = (array) config('cache.stores.failover.stores', []);
+        $current = $cache->failoverChain($chain);
+
+        if ($current !== $chain) {
+            config(['cache.stores.failover.stores' => $current]);
+            // In case anything resolved the store before this ran.
+            Cache::forgetDriver('failover');
+        }
+
+        Event::listen(CacheFailedOver::class, function (CacheFailedOver $event) use ($cache): void {
+            if ($event->storeName === 'redis') {
+                $cache->redisFailedOver($event->exception);
+            }
+        });
     }
 
     private function invalidateCachedReadsOnWrite(): void

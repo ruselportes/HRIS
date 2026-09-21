@@ -37,6 +37,9 @@ x-api: &api
     # vendor/ in a named volume: built for Linux inside the container, and much
     # faster than reading thousands of PHP files across the Windows bind mount.
     - api-vendor:/var/www/html/vendor
+  # `redis` as well as the default: a cluster client is redirected to each
+  # node's own address, which only resolves on the network the nodes are on.
+  networks: [default, redis]
   environment: &api-env
     # Real environment variables win over backend/.env (Laravel loads .env
     # without overwriting), so the containers reach MySQL by service name while
@@ -59,10 +62,15 @@ x-api: &api
     CACHE_STORE: failover
     REDIS_CLIENT: phpredis
     REDIS_CACHE_CONNECTION: cluster
-    # Three seeds, not six: one reachable node is enough to learn the whole
-    # topology, and every seed that is down costs a DNS timeout before the
-    # client gives up (about 4s each for a stopped container).
-    REDIS_CLUSTER_NODES: "redis-1:6379,redis-2:6379,redis-3:6379"
+    # Seeds by address, not by name, and all six. Measured against a stopped
+    # node: looking up its name took 8s to fail (Docker's DNS), connecting to
+    # its fixed address took the 0.5s connect timeout. By name, a dead seed
+    # made about one request in three take seconds even after its replica had
+    # taken over. All six, because after a failover the primaries may be the
+    # nodes that started as replicas — seeds limited to redis-1..3 could not
+    # find a cluster whose first three nodes were all down. The addresses are
+    # the fixed ones given to redis-1..6 below.
+    REDIS_CLUSTER_NODES: "172.28.200.11:6379,172.28.200.12:6379,172.28.200.13:6379,172.28.200.14:6379,172.28.200.15:6379,172.28.200.16:6379"
 
 x-redis: &redis
   image: redis:7-alpine
@@ -166,18 +174,34 @@ services:
       api:
         condition: service_healthy
 
+  # Fixed addresses, and this is load-bearing. A node remembers the cluster in
+  # nodes.conf, which survives a restart (the image keeps /data in a volume),
+  # but Docker hands addresses out afresh each time containers start. Measured
+  # here: after a recreate, redis-5 was given redis-1's old address, so its
+  # saved topology said its own primary was itself; the others listed it as
+  # `noaddr`. cluster_state still read ok and replication looked healthy from
+  # each node's side, while two of three primaries had a replica the cluster
+  # could not reach and so could not vote in — the failover this exists to
+  # demonstrate was quietly gone. With fixed addresses, what a node remembers
+  # stays true.
   redis-1:
     <<: *redis
+    networks: {redis: {ipv4_address: 172.28.200.11}}
   redis-2:
     <<: *redis
+    networks: {redis: {ipv4_address: 172.28.200.12}}
   redis-3:
     <<: *redis
+    networks: {redis: {ipv4_address: 172.28.200.13}}
   redis-4:
     <<: *redis
+    networks: {redis: {ipv4_address: 172.28.200.14}}
   redis-5:
     <<: *redis
+    networks: {redis: {ipv4_address: 172.28.200.15}}
   redis-6:
     <<: *redis
+    networks: {redis: {ipv4_address: 172.28.200.16}}
 
   redis-cluster-init:
     # Runs once per `up`, then exits: it forms the cluster (three primaries,
@@ -185,6 +209,7 @@ services:
     # does not tear a working cluster down.
     image: redis:7-alpine
     restart: "no"
+    networks: [redis]
     depends_on:
       redis-1: {condition: service_healthy}
       redis-2: {condition: service_healthy}
@@ -217,6 +242,17 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+
+networks:
+  default:
+  redis:
+    # A /24 of its own for the cache nodes' fixed addresses (see redis-1).
+    # Chosen clear of Docker's usual 172.17–172.19; if it clashes with another
+    # network on a teammate's machine, change the subnet and the six addresses
+    # together, then `docker compose down` and `up` to form a fresh cluster.
+    ipam:
+      config:
+        - subnet: 172.28.200.0/24
 
 volumes:
   mysql-data:

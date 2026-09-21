@@ -91,9 +91,10 @@ class ResilientCacheTest extends TestCase
 
     /**
      * Stores disagree about incrementing a key that does not exist: the array
-     * store creates it at 1, the failover store (which the containers use)
-     * refuses and answers false. A bump has to retire keys either way — this
-     * went unnoticed once because the tests ran on the forgiving store.
+     * and redis stores create it at 1, the database store — the containers'
+     * fallback — refuses and answers false. A bump has to retire keys either
+     * way; this went unnoticed once because the tests ran on the forgiving
+     * store.
      */
     public function test_a_store_that_will_not_create_a_counter_still_retires_its_keys(): void
     {
