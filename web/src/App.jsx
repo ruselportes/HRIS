@@ -13,6 +13,8 @@ import { OverridesPage } from './pages/OverridesPage'
 import { PayrollPage } from './pages/PayrollPage'
 import { RecoveryPage } from './pages/RecoveryPage'
 import { ReportsPage } from './pages/ReportsPage'
+import { AttendancePage } from './pages/AttendancePage'
+import { SyncHealthPage } from './pages/SyncHealthPage'
 import { ComingSoonPage } from './pages/ComingSoonPage'
 import { NAV, ROLES } from './config/nav'
 
@@ -141,6 +143,24 @@ function OverridesRoute() {
   return <OverridesPage />
 }
 
+function AttendanceRoute() {
+  const { user } = useAuth()
+  const access = NAV.find((n) => n.key === 'attendance').access[roleKey(user?.role?.slug)]
+  if (access === 'none') {
+    return <Navigate to="/" replace />
+  }
+  return <AttendancePage />
+}
+
+function SyncHealthRoute() {
+  const { user } = useAuth()
+  const access = NAV.find((n) => n.key === 'synchealth').access[roleKey(user?.role?.slug)]
+  if (access === 'none') {
+    return <Navigate to="/" replace />
+  }
+  return <SyncHealthPage />
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -152,10 +172,12 @@ function App() {
             <Route element={<Shell />}>
               <Route index element={<DashboardPage />} />
               <Route path="employees" element={<EmployeeRoute />} />
+              <Route path="attendance" element={<AttendanceRoute />} />
               <Route path="manpower" element={<ManpowerRoute />} />
               <Route path="leave" element={<LeaveRoute />} />
               <Route path="overrides" element={<OverridesRoute />} />
               <Route path="recovery" element={<RecoveryRoute />} />
+              <Route path="synchealth" element={<SyncHealthRoute />} />
               <Route path="payroll" element={<PayrollRoute />} />
               <Route path="reports" element={<ReportsRoute />} />
               <Route path=":page" element={<ComingSoonPageShell />} />

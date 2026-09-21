@@ -3,7 +3,7 @@
 Each phase below is weighted **10%** of total project completion (10 phases = 100%).
 Check off tasks as they're completed; a phase counts as done once every task under it is checked.
 
-**Overall progress: ~90% (Phases 1–9 built: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8, Phase 8 5/5, Phase 9 6/6.)** Two add-ons, the production deployment, and nine web pages that still show "Coming soon" sit outside this count and have their own sections after Phase 10. Verified by 378 backend tests (passing on both SQLite and MySQL 8.0) and 219 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works. The release APK is now built and signed (2026-09-21 — see *Mobile release build* under Operations); what remains on all four asterisks is the run itself on a physical handset.
+**Overall progress: ~90% (Phases 1–9 built: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8, Phase 8 5/5, Phase 9 6/6.)** Two add-ons, the production deployment, and seven web pages that still show "Coming soon" sit outside this count and have their own sections after Phase 10. Verified by 421 backend tests (passing on both SQLite and MySQL 8.0) and 219 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works. The release APK is now built and signed (2026-09-21 — see *Mobile release build* under Operations); what remains on all four asterisks is the run itself on a physical handset.
 
 > **Backend test routine (run before committing backend work):**
 > 1. Day-to-day: `docker compose exec api php artisan test` (in-memory SQLite).
@@ -286,37 +286,61 @@ decisions made with the team:
 
 ## Web portal — pages still showing "Coming soon" (found 2026-09-21)
 
-Nine of the 17 nav items in `web/src/config/nav.jsx` have no route in
-`web/src/App.jsx`, so they fall through to the `:page` catch-all and render
-`ComingSoonPage`. The eight that are built: Dashboard, Employees, Manpower
-Allocation, Leave Requests, Overrides & Audit, Attendance Recovery, Payroll
-Runs, Reports & Analytics. These are not weighted into the 10 × 10% above —
-but the first item is a documented promise, not an add-on, and a panel could
-fairly call it a gap in the core system. Say so if asked.
+Seven of the 17 nav items in `web/src/config/nav.jsx` were still falling
+through to the `:page` catch-all and rendering `ComingSoonPage`. Ten are built:
+Dashboard, Employees, Manpower Allocation, Leave Requests, Overrides & Audit,
+Attendance Recovery, Payroll Runs, Reports & Analytics, Attendance & DTR and
+Device & Sync Health (the last two built 2026-09-21, backend API first, in the
+slice below). These are not weighted into the 10 × 10% above — but the Attendance
+& DTR item was a documented promise, not an add-on: a panel could fairly have
+called the missing read side a gap in the core system. It is no longer missing.
+
+**Built 2026-09-21 (backend gates + tests first, then the screens):**
+
+- [x] **Attendance & DTR** (`attendance`; HR/foreman/engineer full,
+      admin/exec view). The one of the SDD's eight web-screen figures with
+      nothing built — **Figure 20.0, "web portal attendance monitoring
+      interface"** — and SRS §2.2 promises authorized users can "record, view,
+      monitor, and manage employee attendance records". A read API for
+      attendance now exists: `GET /api/attendance/records`
+      (`AttendanceController`, role:hr,foreman,engineer,admin,executive) with
+      date range (max 62 days), site, crew and employee filters, RBAC per the
+      nav matrix, the engineer limited to their own site (their filter is
+      ignored, never widened; no home site is a 403), and the foreman scoped
+      to the crews they led at the instant each tap was captured (CrewLeadership
+      per record — one-day cover sees exactly that one day). It maps each row's
+      credited time-in beside the real tap, the time-out with how it was
+      recorded (`time_out_type`: tapped / Close shift / manual), sync and
+      recovery state, and pending override/time-out reviews. Frontend:
+      `web/src/pages/AttendancePage.jsx` — period presets and custom window,
+      site/crew/employee filters (employee picker hidden for foremen, who
+      cannot list the registry), summary cards from a totals summary, and a
+      paginated DTR table. Nothing on it writes; approval stays in the
+      override/recovery flows.
+- [x] **Device & Sync Health** (`synchealth`; admin full, HR view). The only
+      revoke was `DELETE /api/me/devices/{deviceId}` under `role:foreman` — a
+      foreman revoking their own device, from that device. **A lost or stolen
+      phone could not be revoked from the portal**, and it holds a bound
+      signing key plus a live auth token in AsyncStorage. Now
+      `GET /api/devices` (role:hr,admin) lists `device_keys` — owner (name,
+      code, role, site), `security_level`, hardware-backed flag, `bound_at`,
+      **`last_synced_at`** (new `device_keys` column, migration 0009, bumped on
+      every sync ingest as the online/offline signal; the monotonic clock
+      columns only move on trusted events), chain-tip presence (never the
+      digest), per-owner integrity incidents (`AuditLog::integrityIncidentsByOwner`,
+      distinct foreman-days) — and `DELETE /api/devices/{device}` (role:admin,
+      model-bound to the registry key) revokes with a **required** reason so the
+      `DEVICE_REVOKED` audit row says why. The foreman's no-reason self-revoke
+      is untouched. Frontend: `web/src/pages/SyncHealthPage.jsx` — summary
+      cards (registered/online/hardware-backed/incident owners), live "synced
+      x ago" times with an offline marker past 4 h, and an admin revoke confirm
+      that warns the phone's unsynced records never reach the server and the
+      device must be re-bound. HR sees the registry read-only ("admin only" on
+      the action). The `last_synced_at` column is another SDD §3.1 / `drawio`
+      addition owed to Efren.
 
 **Should be built — promised in the documents, or needed to operate:**
 
-- [ ] **Attendance & DTR** (`attendance`; HR/foreman/engineer full,
-      admin/exec view). The only one of the SDD's eight web-screen figures
-      with nothing built — **Figure 20.0, "web portal attendance monitoring
-      interface"** — and SRS §2.2 promises authorized users can "record, view,
-      monitor, and manage employee attendance records". There is **no read
-      API for attendance at all**: `routes/api.php` has only
-      `POST attendance/sync` and `GET attendance/sync/status`. So HR cannot
-      look up a worker's time-in for a given day in the portal, and the
-      time-out columns (`time_out`, `time_out_type`, added 2026-09-18) are
-      stored but shown nowhere. Needs a read endpoint (date range, site, crew
-      and employee filters; RBAC per the nav matrix, with the engineer limited
-      to their own sites as in SRS §3.2.3) and the screen from Fig 20.0.
-- [ ] **Device & Sync Health** (`synchealth`; admin full, HR view). The only
-      revoke is `DELETE /api/me/devices/{deviceId}` under `role:foreman` — a
-      foreman revoking their own device, from that device. **A lost or stolen
-      phone cannot be revoked from the portal**, and it holds a bound signing
-      key plus a live auth token in AsyncStorage. Needs an admin list of
-      `device_keys` (owner, `security_level`, `bound_at`, last sync, chain
-      tip) with a revoke action, and sync failures per device. Worth having
-      before the defense: it is the obvious follow-up question to the crypto
-      engine.
 - [ ] **Holiday calendar** (inside `settings` today). `HolidayController`
       already has index/store/destroy with HR as the writer, but there is no
       screen, so next year's proclaimed holidays need a seeder edit.
@@ -349,8 +373,9 @@ fairly call it a gap in the core system. Say so if asked.
       from `config/nav.jsx`: a panelist clicking through nine "Coming soon"
       screens reads as unfinished, even with the system behind them built.
 
-**Recommended order:** Attendance & DTR, then device revocation, then hide the
-two out-of-scope pages; the rest as time allows.
+**Recommended order:** Attendance & DTR and device revocation are done
+(2026-09-21); next the Holiday calendar, then hide the two out-of-scope pages;
+the rest as time allows.
 
 ---
 
@@ -678,7 +703,13 @@ HTTP 401 on login is W1's proof test.
         does not lose a try to the generic message), **as long as those checks
         move before the employee lookup** so the specific message cannot
         confirm the code and birthday. The birthday check already runs on the
-        submitted date, so a pre-lookup move leaks nothing.
+        submitted date, so a pre-lookup move leaks nothing. These pre-lookup
+        failures must bump **only the per-IP counter, not per-code** — they
+        are not guesses at the secret, and a worker struggling with the
+        password rules must not eat into the code's five attempts (keep the
+        per-IP bump as the anti-spray backstop; a specific message can be
+        sprayed at nothing, but the DOB/password guesses still want the IP
+        throttle).
       - `canSignIn()` accepts the portal roles; login proceeds for them from
         now on.
       - A separate `/portal` route tree: mobile-first layout, no admin
