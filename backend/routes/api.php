@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\PortalController;
 use App\Http\Controllers\Api\RecoveryController;
 use App\Http\Controllers\Api\ReferenceController;
 use App\Http\Controllers\Api\ReportsController;
+use App\Http\Controllers\Api\RollCallMonitorController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -93,6 +94,13 @@ Route::middleware(['auth:sanctum', 'portal.scope', 'acting.expire'])->group(func
 
     // Mobile roster fetch (UC-04) — foreman's own deployed crew only.
     Route::get('me/crew', [ForemanController::class, 'myCrew'])->middleware('role:foreman');
+
+    // Roll Call monitor (C4, UC-04/FR-03) — read-only "today" view over what
+    // the phones sent. Capture stays mobile-only; the date rides the query
+    // string, so the worker lockout sweep needs no new sample value.
+    Route::get('rollcall/today', [RollCallMonitorController::class, 'today'])
+        ->middleware('role:engineer,foreman')
+        ->name('rollcall.today');
 
     // Add-on B (FR-11, UC-11) — the worker portal's own-data reads. The
     // controllers derive the scope from the signed-in employee; there is no
