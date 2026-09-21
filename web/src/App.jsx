@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './auth/AuthContext'
 import { Sidebar } from './components/Sidebar'
 import { TopBar } from './components/TopBar'
 import { LoginPage } from './pages/LoginPage'
+import { ActivatePage } from './pages/ActivatePage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { EmployeesPage } from './pages/EmployeesPage'
@@ -16,7 +17,11 @@ import { ReportsPage } from './pages/ReportsPage'
 import { AttendancePage } from './pages/AttendancePage'
 import { SyncHealthPage } from './pages/SyncHealthPage'
 import { ComingSoonPage } from './pages/ComingSoonPage'
-import { NAV, ROLES } from './config/nav'
+import { PortalLayout } from './pages/portal/PortalLayout'
+import { PortalAttendancePage } from './pages/portal/PortalAttendancePage'
+import { PortalPayslipsPage } from './pages/portal/PortalPayslipsPage'
+import { PortalPasswordPage } from './pages/portal/PortalPasswordPage'
+import { NAV, ROLES, isPortalSlug } from './config/nav'
 
 function roleKey(slug) {
   return slug === 'executive' ? 'exec' : slug
@@ -35,14 +40,20 @@ function Shell() {
   const { user, signOut } = useAuth()
   const location = useLocation()
   const role = ROLES[roleKey(user?.role?.slug)]
-  // Unreachable in W1 (no portal role can hold a token), but once W3 reaches
-  // it, a role with no nav surface must not be left signed in: revoke the
-  // token before bouncing to /login.
+  // A signed-in role with no staff nav surface must not be left signed in:
+  // revoke the token before bouncing to /login. (Portal roles never reach
+  // this — they redirect to /portal above.)
   useEffect(() => {
     if (!role) {
       signOut()
     }
   }, [role, signOut])
+  // Portal roles have their own tree: a worker landing on a staff page goes
+  // to /portal instead of being signed out below. After the hooks, so the
+  // hook order never changes between renders.
+  if (isPortalSlug(user?.role?.slug)) {
+    return <Navigate to="/portal" replace />
+  }
   if (!role) {
     return <Navigate to="/login" replace />
   }
@@ -167,8 +178,17 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/activate" element={<ActivatePage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route element={<RequireAuth />}>
+            <Route element={<PortalGate />}>
+              <Route path="portal" element={<PortalLayout />}>
+                <Route index element={<Navigate to="attendance" replace />} />
+                <Route path="attendance" element={<PortalAttendancePage />} />
+                <Route path="payslips" element={<PortalPayslipsPage />} />
+                <Route path="password" element={<PortalPasswordPage />} />
+              </Route>
+            </Route>
             <Route element={<Shell />}>
               <Route index element={<DashboardPage />} />
               <Route path="employees" element={<EmployeeRoute />} />
@@ -188,6 +208,16 @@ function App() {
       </AuthProvider>
     </BrowserRouter>
   )
+}
+
+function PortalGate() {
+  const { user } = useAuth()
+  // Staff on /portal go to the staff tree; unknown slugs land on / where the
+  // Shell signs them out. Only portal roles reach the portal layout.
+  if (!isPortalSlug(user?.role?.slug)) {
+    return <Navigate to="/" replace />
+  }
+  return <Outlet />
 }
 
 function ComingSoonPageShell() {

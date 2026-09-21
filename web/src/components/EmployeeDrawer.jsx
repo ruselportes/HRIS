@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { http, errorMessage } from '../api/client'
 import { Icon } from './icons'
 
 const TABS = ['Profile', 'Attendance', 'Payroll', 'Documents', 'Audit']
@@ -57,8 +58,20 @@ const Tag = ({ style, children }) => (
 
 export function EmployeeDrawer({ employee, onClose, onEdit, canEdit }) {
   const [tab, setTab] = useState('Profile')
+  const [resetState, setResetState] = useState({ busy: false, error: null, temporaryPassword: null })
   const status = STATUS_STYLE[employee.employment_status] ?? STATUS_STYLE.project_based
   const certs = employee.certification ?? []
+  const isPortalRole = employee.role?.slug === 'worker' || employee.role?.slug === 'operator'
+
+  const resetPortalAccess = async () => {
+    setResetState({ busy: true, error: null, temporaryPassword: null })
+    try {
+      const { data } = await http.post(`/employees/${employee.employee_id}/reset-portal-access`)
+      setResetState({ busy: false, error: null, temporaryPassword: data.temporary_password })
+    } catch (err) {
+      setResetState({ busy: false, error: errorMessage(err, 'Unable to reset portal access.'), temporaryPassword: null })
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-30 flex justify-end bg-black/30" role="dialog" aria-label={`${employee.full_name} — profile`}>
@@ -104,6 +117,31 @@ export function EmployeeDrawer({ employee, onClose, onEdit, canEdit }) {
             >
               Edit profile
             </button>
+          ) : null}
+          {canEdit && isPortalRole ? (
+            <div className="mt-3 border border-neutral-300 bg-canvas p-3">
+              <div className="text-[11px] uppercase tracking-[.1em] text-neutral-700">Worker portal access</div>
+              {resetState.temporaryPassword ? (
+                <div className="mt-2 border-l-[3px] border-[#2F7A4D] bg-[#E6F1EA] p-2.5">
+                  <div className="text-[11px] text-neutral-700">Temporary password — shown once, hand it over in person:</div>
+                  <div className="font-heading text-lg tabular-nums">{resetState.temporaryPassword}</div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={resetPortalAccess}
+                  disabled={resetState.busy}
+                  className="mt-2 h-10 w-full border border-[#A83A2C] text-sm font-semibold text-[#75261C] hover:bg-[#F7E8E5] disabled:opacity-50"
+                >
+                  {resetState.busy ? 'Resetting…' : 'Reset portal access'}
+                </button>
+              )}
+              {resetState.error ? <p className="mt-2 text-[13px] text-[#75261C]">{resetState.error}</p> : null}
+              <p className="mt-2 text-[11px] text-neutral-700">
+                Sets a new temporary password and signs every session out. The worker cannot re-activate on their own
+                afterwards.
+              </p>
+            </div>
           ) : null}
         </div>
 

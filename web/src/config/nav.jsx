@@ -2,6 +2,16 @@ export const GROUP_ORDER = ['Overview', 'Workforce', 'Payroll', 'Sites', 'Insigh
 
 export const ROLE_KEYS = ['hr', 'foreman', 'engineer', 'admin', 'exec']
 
+export const PORTAL_SLUGS = ['worker', 'operator']
+
+export const isPortalSlug = (slug) => PORTAL_SLUGS.includes(slug)
+
+export const PORTAL_LINKS = [
+  { key: 'portal-attendance', to: '/portal/attendance', label: 'My attendance' },
+  { key: 'portal-payslips', to: '/portal/payslips', label: 'My payslips' },
+  { key: 'portal-password', to: '/portal/password', label: 'Change password' },
+]
+
 export const ROLE_LABELS = {
   hr: 'HR Personnel',
   foreman: 'Site Foreman',

@@ -8,7 +8,14 @@ function roleKey(slug) {
 
 export function TopBar({ title, subtitle, searchHint }) {
   const { user } = useAuth()
-  const role = ROLES[roleKey(user?.role?.slug)] ?? ROLES.hr
+  const role = ROLES[roleKey(user?.role?.slug)]
+  // Fail closed like App.jsx's Shell: an unknown role renders nothing while
+  // the Shell's effect signs the session out. Never fall back to HR's shell.
+  if (!role) {
+    return null
+  }
+  const initials = `${user?.first_name?.[0] ?? ''}${user?.last_name?.[0] ?? ''}`.toUpperCase()
+  const short = user?.first_name && user?.last_name ? `${user.first_name[0]}. ${user.last_name}` : ''
 
   return (
     <div className="flex items-center gap-4 border-b border-neutral-300 px-[22px] py-3.5">
@@ -38,9 +45,9 @@ export function TopBar({ title, subtitle, searchHint }) {
 
         <div className="flex items-center gap-2">
           <span className="grid h-7 w-7 place-items-center border border-neutral-300 font-heading text-xs">
-            {role.user.initials}
+            {initials}
           </span>
-          <span className="text-[13px]">{role.user.short}</span>
+          <span className="text-[13px]">{short}</span>
         </div>
       </div>
     </div>

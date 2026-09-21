@@ -68,6 +68,12 @@ export function LoginPage() {
             Use the credentials issued by HR. Accounts are created by an administrator.
           </p>
 
+          {location.state?.activated ? (
+            <div className="mb-5 border-l-[3px] border-[#2F7A4D] bg-[#E6F1EA] p-2.5 text-[13px] text-[#1F5334]">
+              Account activated. Sign in with your employee ID and new password.
+            </div>
+          ) : null}
+
           {error ? (
             <div className="mb-5 flex items-start gap-2.5 border-l-[3px] border-[#A83A2C] bg-[#F7E8E5] p-2.5 text-[13px] text-[#75261C]">
               <Icon.alert className="mt-0.5 flex-none" />
@@ -147,7 +153,7 @@ export function LoginPage() {
             <Icon.info className="mt-0.5 flex-none text-primary-700" size={17} />
             <p className="text-xs text-neutral-700">
               No account? HRIS access is provisioned by an administrator. Contact HR at hr@arcenasdev.ph or local
-              214.
+              214. <Link to="/activate" className="text-primary-700 hover:underline">First time on the worker portal? Activate your account.</Link>
             </p>
           </div>
         </div>

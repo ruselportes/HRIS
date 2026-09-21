@@ -79,12 +79,24 @@ class PortalPasswordTest extends TestCase
                 ->assertJsonPath('errors.current_password.0', 'Your current password does not match.');
         }
 
-        // Even a correct attempt is now locked out for the window.
+        // Even a correct attempt is now locked out for the window — and from a
+        // different address too, proving the throttle is per account, not per
+        // account+IP: with the IP in the key a stolen token could hop
+        // addresses and keep guessing.
         $this->actingAs($worker, 'sanctum')->change([
             'current_password' => 'password',
             'new_password' => 'FreshPass88x',
             'new_password_confirmation' => 'FreshPass88x',
         ])->assertStatus(429);
+
+        $this->withServerVariables(['REMOTE_ADDR' => '10.9.9.9'])
+            ->actingAs($worker, 'sanctum')
+            ->postJson('/api/auth/password', [
+                'current_password' => 'password',
+                'new_password' => 'FreshPass88x',
+                'new_password_confirmation' => 'FreshPass88x',
+            ])
+            ->assertStatus(429);
 
         $worker->refresh();
         $this->assertTrue(Hash::check('password', $worker->getAuthPassword()));

@@ -11,7 +11,12 @@ function roleKey(slug) {
 export function Sidebar() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
-  const role = ROLES[roleKey(user?.role?.slug)] ?? ROLES.hr
+  const role = ROLES[roleKey(user?.role?.slug)]
+  // Fail closed like App.jsx's Shell: an unknown role renders nothing while
+  // the Shell's effect signs the session out. Never fall back to HR's shell.
+  if (!role) {
+    return null
+  }
   const visible = NAV.filter((item) => item.access[roleKey(user?.role?.slug)] !== 'none')
 
   const handleSignOut = async () => {
@@ -30,9 +35,9 @@ export function Sidebar() {
 
       <div className="border-b border-canvas/14 px-[18px] py-4">
         <div className="mb-2 text-[10px] uppercase tracking-[.12em] opacity-50">Signed in as</div>
-        <div className="text-sm">{role.user.name}</div>
-        <div className="mb-2.5 text-xs opacity-65">{role.user.detail}</div>
-        <span className="inline border border-canvas/45 px-2 py-0.5 text-xs">{role.user.role}</span>
+        <div className="text-sm">{user.full_name}</div>
+        <div className="mb-2.5 text-xs opacity-65">{user.site?.site_name ?? 'Head Office'}</div>
+        <span className="inline border border-canvas/45 px-2 py-0.5 text-xs">{user.role?.role_name ?? ''}</span>
       </div>
 
       <nav className="flex-1 overflow-auto pb-3">
