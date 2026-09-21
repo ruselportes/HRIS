@@ -299,7 +299,18 @@ All plan revisions shall be documented with a new version number, date, and desc
 9.3 Q&A preparation
 9.4 Capstone defense execution
 
-> **Note:** The `UC-xx`/`FR-xx`/`PR-xx` IDs above are cross-referenced to SRS §3.2.1/§3.2.2, which previously had no formal ID scheme (use cases were identified only by figure number, e.g. "Fig. 5.0") and only 9 use cases — 6 short of the "UC-01 to UC-15" this WBS originally claimed. SRS has since been given explicit UC-01 to UC-10 / PR-01 to PR-10 IDs, including a new UC-10 (Leave & Overtime Filing and Approval) that covers work item 4.6 below, which previously had no matching SRS use case at all. Items 5.3, 5.4, and 6.1-6.4 are internal/technical tasks with no standalone SRS use case of their own — they're tagged "supports UC-04" (Mobile Digital Attendance Checklist) since that's the user-facing use case they implement underneath. Note also that this WBS's 15-item estimate for `FR-xx`/`UC-xx` was aspirational; the SRS itself only defines 10 of each.
+**10.0 Add-on — Worker Self-Service Portal (UC-11 / FR-11 / PR-11)**
+*Builds after group 9.0; outside the 10 × 10% phase weighting above — see `docs/TASKS.md`, Add-ons and operations, and SRS §3.2.5.*
+10.1 Laravel API — Portal scope lockdown: `EnsurePortalScope` middleware on the authenticated route group, deny-by-default allowlist keyed by route name, and the automated route sweep test proving every other authenticated route returns 403 for portal roles (FR-11)
+10.2 Laravel API — Worker portal activation (`POST /auth/activate`: employee code + date of birth + new password; generic failures, per-code and per-IP rate limits, atomic activation, audit-logged) (FR-11)
+10.3 Laravel API — HR portal-access reset (random temporary password handed over in person, token revocation, officer audit action) (FR-11)
+10.4 React.js — Portal sign-in and `/portal` shell; separated-worker and wrong-role refusals (FR-11)
+10.5 Laravel API — `me/attendance` read-only scoped queries (FR-11)
+10.6 Laravel API — `me/payslips` approved-run itemised payslips (FR-11)
+10.7 React Native — Portal-role refusal at mobile sign-in with token revocation (FR-11)
+10.8 Documentation — SRS §3.2.5, SPMP WBS group 10.0, and their .docx copies (FR-11)
+
+> **Note:** The `UC-xx`/`FR-xx`/`PR-xx` IDs above are cross-referenced to SRS §3.2.1/§3.2.2, which previously had no formal ID scheme (use cases were identified only by figure number, e.g. "Fig. 5.0") and only 9 use cases — 6 short of the "UC-01 to UC-15" this WBS originally claimed. SRS has since been given explicit UC-01 to UC-10 / PR-01 to PR-10 IDs, including a new UC-10 (Leave & Overtime Filing and Approval) that covers work item 4.6 below, which previously had no matching SRS use case at all. Items 5.3, 5.4, and 6.1-6.4 are internal/technical tasks with no standalone SRS use case of their own — they're tagged "supports UC-04" (Mobile Digital Attendance Checklist) since that's the user-facing use case they implement underneath. Note also that this WBS's 15-item estimate for `FR-xx`/`UC-xx` was aspirational; the SRS itself only defines 10 of each. Group **10.0 is the Worker Self-Service Portal add-on**: UC-11/FR-11/PR-11 sit outside the original UC-01 to UC-10 / FR-01 to FR-10 / PR-01 to PR-10 numbering used by the 10% phases above, carry Figure placeholders 21.0/22.0 in the SRS, and are defined in SRS §3.2.5.
 
 #### 3.2.2. Schedule Allocation
 

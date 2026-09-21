@@ -116,8 +116,9 @@ This subsection provides a summary of the major functions that the HRIS for Arce
 - **FR-08 Payroll Management** – Allows authorized personnel to manage payroll-related information and use attendance and employee records as supporting data for payroll processing.
 - **FR-09 Reports and Monitoring** – Allows authorized users to generate and view reports related to employee information, attendance, leave, and payroll, including a per-site compliance scorecard, labor cost split between regular and overtime pay, and a read-only audit trail. The figures behind these reports are defined in §3.2.3.
 - **FR-10 Cryptographic Validation** – Validates attendance records to help maintain data integrity and prevent unauthorized modification or manipulation of attendance information.
+- **FR-11 Worker Self-Service Portal** – Allows a Worker or Operator to activate their own web-portal account and view only their own attendance records and approved payslips. Activation presents the employee code, date of birth, and a new password; the server strictly scopes the portal to the employee's own data. An **add-on** outside the 10 × 10% phase weighting; defined in §3.2.5.
 
-> Note: FR-01 to FR-10 are the formal functional requirement IDs referenced from the SPMP work breakdown structure (§3.2.1).
+> Note: FR-01 to FR-10 are the formal functional requirement IDs referenced from the SPMP work breakdown structure (§3.2.1). FR-11 is an add-on outside that numbering's scope — see §3.2.5.
 
 ### 2.3. User Characteristics
 
@@ -238,10 +239,11 @@ The HRIS relies on web development technologies, mobile development frameworks, 
 | UC-08 | Fig. 8.0 | Philippine Labor Law Automated Payroll Computation |
 | UC-09 | Fig. 9.0 | Executive Compliance Audit & Site Labor Analytics |
 | UC-10 | Fig. 19.0 | Leave & Overtime Filing and Approval |
+| UC-11 | Fig. 21.0 | Worker Self-Service Portal (add-on) |
 
-> Note: UC-01 to UC-09 correspond 1:1 to Figures 1.0-9.0 above. UC-10 (Leave & Overtime Filing and Approval) was added to cover the multi-tier leave/overtime approval workflow, which is implemented as its own module (see SDD §2.1.7, §3.1.11-3.1.12, §4.6) and its own SPMP WBS item (§3.2.1, 4.6) but previously had no corresponding entry here. These IDs (UC-01 to UC-10) are the ones referenced from the SPMP work breakdown structure.
->
-> Use case diagrams for each of the above are maintained as figures in the original document; recreate/attach as needed in the design tooling of choice (draw.io/Figma).
+> Note: UC-01 to UC-09 correspond 1:1 to Figures 1.0-9.0 above. UC-10 (Leave & Overtime Filing and Approval) was added to cover the multi-tier leave/overtime approval workflow, which is implemented as its own module (see SDD §2.1.7, §3.1.11-3.1.12, §4.6) and its own SPMP WBS item (§3.2.1, 4.6) but previously had no corresponding entry here. These IDs (UC-01 to UC-10) are the ones referenced from the SPMP work breakdown structure. **UC-11 is an add-on** outside that numbering's scope — see FR-11 in §2.2 and §3.2.5.
+
+> Use case diagrams for each of the above are maintained as figures in the original document; recreate/attach as needed in the design tooling of choice (draw.io/Figma). Figure 21.0 (UC-11) may be authored from §3.2.5.
 
 #### 3.2.2. Prototypes
 
@@ -257,8 +259,9 @@ The HRIS relies on web development technologies, mobile development frameworks, 
 | PR-08 | Fig. 17.0 | Philippine Labor Law Automated Payroll Computation |
 | PR-09 | Fig. 18.0 | Executive Compliance Audit & Site Labor Analytics |
 | PR-10 | Fig. 20.0 | Leave & Overtime Filing and Approval |
+| PR-11 | Fig. 22.0 | Worker Self-Service Portal (add-on) |
 
-> Note: PR-01 to PR-10 map 1:1 to UC-01 to UC-10 above (§3.2.1) and are the IDs referenced from the SPMP work breakdown structure.
+> Note: PR-01 to PR-10 map 1:1 to UC-01 to UC-10 above (§3.2.1) and are the IDs referenced from the SPMP work breakdown structure. **PR-11 is an add-on** outside that numbering's scope — see §3.2.5.
 
 #### 3.2.3. Reports and Analytics Definitions (FR-09, UC-09)
 
@@ -348,6 +351,77 @@ is overridden), and is refused outright when no home site is recorded for them.
   batch approval reports which rows it skipped and why.
 - **Closed periods.** Approving a request whose dates fall inside an
   already-approved payroll period is refused.
+
+#### 3.2.5. Worker Self-Service Portal (FR-11, UC-11)
+
+The Worker Self-Service Portal is an **add-on**: it sits outside the original
+UC-01 to UC-10 / FR-01 to FR-10 set and outside the 10 × 10% phase weighting
+(see `docs/TASKS.md`, *Add-ons and operations*). Where §2.3 still describes
+Worker and Operator as record-only roles with no HRIS sign-in, this section
+supersedes that for employees who have activated a portal account.
+
+**Actor.** A Worker or Operator — a field employee whose role carries no staff
+login. The portal is the only HRIS surface they may sign into.
+
+**Activation.** A worker activates by presenting their employee code, date of
+birth, and a new password (`POST /auth/activate`):
+
+- Refused once a password is already set, for a staff role, or for a separated
+  employee.
+- Every failure returns the same generic message ("Can't activate — contact
+  HR"), so the endpoint cannot be used to probe which employee codes exist or
+  whether a date of birth is right; only a successful activation differs.
+- Attempts are rate-limited per employee code (tight) and per IP (looser, an
+  anti-spray backstop for shared connections). The per-code limit is what stops
+  guessing a date of birth, since an attacker controls their own IP.
+- The password must be at least 8 characters, must not equal the employee code,
+  and its digits must not contain the date of birth in any common ordering
+  (Ymd, dmY, mdY, and two-digit-year forms).
+- Activation is atomic: only an employee with no password can be activated, so a
+  worker and an attacker racing to the same code have exactly one winner.
+- A successful activation is written to the audit log with the IP, which is
+  meaningful because the API trusts X-Forwarded-For only from the trusted proxy
+  range.
+
+**Sign-in.** A portal account signs in through the same login endpoint as
+staff. Sign-in for portal roles is enabled only together with the web portal
+itself, so a worker is never logged in with nowhere else to go.
+
+**Deny by default.** A Worker or Operator may reach only `auth/me`,
+`auth/logout`, `me/attendance*`, and `me/payslips*`. Every other authenticated
+API route returns 403 for a portal role. One middleware on the authenticated
+route group enforces the allowlist by **route name** — a path prefix has no
+reliable segment boundary, so only exact route names can identify an endpoint —
+and routes added later are covered automatically, as proven by a route-sweep
+test. A separated employee of any role is refused by the same middleware on
+every request (only `auth/logout` stays open), so a live token cannot outlive
+the separation.
+
+**View-only, their own data only.** The portal shows, for the signed-in
+employee alone:
+
+- **My attendance** (`GET /me/attendance?from=&to=`): date, status, time in and
+  out, how the time-out was recorded (tapped, shift end, or stated by the
+  foreman), and any review state in plain words (e.g. "Under HR review"). No
+  hashes, signatures, device ids or reviewer notes.
+- **My payslips** (`GET /me/payslips` and `/me/payslips/{run}`): approved
+  payroll runs only (`Payroll::APPROVED`, never `draft`), with SSS, PhilHealth,
+  Pag-IBIG and withholding tax itemised. A payslip becomes visible when HR
+  approves the run.
+- There is no employee-id parameter anywhere; every query is scoped to the
+  signed-in employee, and another worker's records cannot be reached by guessing
+  an id.
+
+**Account recovery (reset).** When a worker's portal access has been hijacked
+or must be withdrawn, HR "Reset portal access" sets a random temporary password
+and revokes the worker's tokens; the password is shown once to HR and handed
+over in person. Because a password is already set, self-activation stays
+refused, so the hijacker cannot simply re-activate. The worker then changes the
+temporary password to one of their own from within the portal.
+
+**Mobile.** The mobile attendance app refuses portal roles at sign-in
+("Workers use the web portal"); the issued token is revoked before the refusal
+is returned, since tokens otherwise never expire.
 
 ### 3.3. Performance Requirements
 

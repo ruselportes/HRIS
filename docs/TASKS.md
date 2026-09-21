@@ -536,9 +536,14 @@ speed, never correctness. Three separate properties were built:
 ## Add-on B — Worker self-service portal (view-only)
 
 **Asked for:** let workers into the portal to view their own attendance and
-payslip, nothing else. **Decisions taken with the team:** self-activation with
-employee code + date of birth, then the worker sets a password; web only (no
-app install for workers); view-only.
+payslip, nothing else. **Decisions taken with the team (2026-09-21):**
+self-activation with employee code + date of birth, then the worker sets a
+password; web only (no app install for workers); view-only; **the activation
+secret is weak on purpose** — the design **detects abuse and recovers from it**
+rather than preventing it (to be stated plainly at the defense); a payslip
+becomes visible **on HR approval** of the run; a hijacked account is recovered
+by HR **setting a temporary password** handed over in person, not by clearing
+the password.
 
 **This contradicts a decided position and the documents must change with it:**
 Worker and Operator are "record-only, no HRIS login" in CLAUDE.md §5, enforced
@@ -558,39 +563,71 @@ Pag-IBIG, tax and net pay, so the scoping must be exact and tested.
    added later. So portal roles are denied by default **at one point on the
    server**, not route by route.
 
-**Order matters:** there must never be a commit in which a worker can sign in
-with broad access. The lockdown and the test that proves it ship in the same
-commit as opening sign-in.
+**Order matters — and sign-in stays closed until the portal exists (reviewed
+2026-09-21):** there must never be a commit in which a worker can sign in
+anywhere without the matching surface (the `/portal` route tree) and without
+the lockdown already proven. So W1 **does not open sign-in**: `canSignIn()`
+remains staff-only (W1's only change there is refusing *separated* employees),
+the route-sweep test proves the lockdown, and sign-in for portal roles opens in
+W3 together with the portal and the mobile refusal. An activated worker getting
+HTTP 401 on login is W1's proof test.
 
-- [ ] **W0 — the use case first:** draft UC-11 / FR-11 / PR-11 in `SRS.md`
-      (actor, activation, view-only scope) before any code, per CLAUDE.md §8.
-      The rest of the document changes wait for W4.
-- [ ] **W1 — lock down, then open sign-in:**
-      - `EnsurePortalScope` middleware on the authenticated API group: a
-        `worker`/`operator` may reach only `auth/me`, `auth/logout`,
-        `me/attendance*` and `me/payslips*`; everything else is 403.
-      - **Route-sweep test:** walk every registered API route as a worker and
-        assert 403 outside that allowlist, so routes added later are covered
+- [x] **W0 — the use case first (this commit):** UC-11 / FR-11 / PR-11 in
+      `SRS.md` (§2.2 + §3.2.1/§3.2.2 rows + §3.2.5, figures 21.0/22.0), the
+      SPMP §3.2.1 WBS **group 10.0**, and this section reconciled — before any
+      code, per CLAUDE.md §8. The §2.3 roles text and CLAUDE.md §5 changes wait
+      for W4.
+- [ ] **W1 — lock down and the recovery paths (backend, no sign-in change):**
+      - `EnsurePortalScope` middleware on the authenticated API group, listed
+        `['auth:sanctum', 'portal.scope', 'acting.expire']` and registered
+        before `SubstituteBindings` in `app.php`'s priority list, so the 403
+        beats model binding (guessing an id yields 403, not 404) and runs before
+        the DB-writing `acting.expire`. It allows a `worker`/`operator` only
+        `auth/me`, `auth/logout`, `me/attendance*` and `me/payslips*` — matched
+        by **route name** (a path prefix has no reliable segment boundary, so
+        only exact names can identify an endpoint; route names are therefore
+        security-relevant); everything else is 403. The same middleware refuses
+        a **separated employee of any role** on every request (only `auth/logout`
+        stays open), so a live token cannot outlive the separation.
+      - **Route-sweep test:** walk every registered API route carrying
+        `auth:sanctum` as a worker and assert **exactly 403** outside the
+        allowlist (a 404 counts as a failure), sampling each route from its own
+        `wheres` and using a real method, so routes added later are covered
         automatically.
-      - `Role::PORTAL_SLUGS = ['worker', 'operator']`; `canSignIn()` accepts
-        these as well as `LOGIN_SLUGS`, which keeps meaning "staff".
+      - `Role::PORTAL_SLUGS = ['worker', 'operator']` (`isPortalRole()`).
+        `canSignIn()` in W1 stays **staff-only** and additionally refuses
+        separated employees — a behavior change of its own, with its own test
+        and commit-message line.
       - `POST /auth/activate` (employee code + date of birth + new password):
-        refused once a password is set; **one generic failure message for every
-        case** ("Can't activate — contact HR") so it cannot be used to probe
-        which codes exist; rate-limited per employee code **and** per IP — the
-        per-code limit is what stops guessing a date of birth, since the
-        attacker controls the IP; every activation audit-logged with the IP;
-        the password may not equal the date of birth or the employee code.
-      - **HR "Reset portal access":** clears the password, revokes the
-        worker's tokens, audit-logged. Without it, an account a coworker
-        hijacks by activating it first stays hijacked for good.
-      - **The mobile app refuses portal roles** ("Workers use the web
-        portal") — otherwise a worker could sign into the foreman app and land
-        on a screen of 403s.
+        refused once a password is set, for a staff role, or separated; **one
+        generic failure for every case** ("Can't activate — contact HR", HTTP
+        422, including a rate-limit trip) so it cannot be used to probe codes
+        or birthdays; password `min:8`, must not equal the employee code, and
+        its digits must not render the date of birth in any common ordering
+        (birthday digits extracted and compared to Ymd, dmY, mdY and
+        two-digit-year forms); rate-limited per employee code
+        (`activate:code:{sha1(strtolower(trim(code)))}`, 5 per 15 min) **and**
+        per IP (`activate:ip:{sha1(ip)}`, 30 per 15 min as an anti-spray
+        backstop) — both counters hit on **every** failure, the per-code key
+        cleared only on success (the per-IP key decays on its own); activation
+        is **atomic** — a `whereNull('password')` update requiring exactly one
+        affected row, `Hash::make` applied explicitly — so a worker and an
+        attacker racing to the same code have exactly one winner;
+        audit-logged `PORTAL_ACTIVATED` with the IP; no token is issued.
+      - **HR "Reset portal access"** (`POST employees/{employee}/reset-portal-access`,
+        `role:hr,admin`, only ever applied to a portal role): sets a random
+        14-character temporary password from an unambiguous charset (no 0/O,
+        1/l/I), revokes the worker's tokens, audit-logged `PORTAL_ACCESS_RESET`;
+        the password is shown once to HR and handed over in person. Because a
+        password is already set, activation stays refused — the hijacker cannot
+        simply re-activate. W3 adds the worker's own "Change password".
       - **Blocker found in the data:** no worker in the dev database has a
         `date_of_birth` (only one foreman does), so activation would refuse
         everyone — HR fills it on the existing employee form, and the demo
-        workers get seeded dates.
+        workers get seeded dates (which are public: the prod seed warning gets
+        a line about them).
+      - `web/src/App.jsx` fail-open fixed now (fail closed), since W3 needs it
+        and it is independent of opening sign-in.
 - [ ] **W2 — their own data only:**
       - `GET /me/attendance?from=&to=`: their `attendances` rows — date,
         status, time in and out, how the time-out was recorded, and review
@@ -603,16 +640,27 @@ commit as opening sign-in.
         signed-in employee.
       - Tests: worker A cannot read worker B's records; draft runs never
         appear; a guessed `{run}` that belongs to someone else returns 404.
-- [ ] **W3 — the portal in the web app:**
+- [ ] **W3 — portal sign-in and the web app:**
+      - `canSignIn()` accepts the portal roles; login proceeds for them from
+        now on.
       - A separate `/portal` route tree: mobile-first layout, no admin
         navigation, only "My attendance" and "My payslips".
-      - Fix the fallback so an unknown role is **denied**, not given HR's
-        shell. Portal roles on any staff route are sent to `/portal`; staff on
-        `/portal` are sent to `/`.
-      - An activation screen reached from the login page.
-      - A "Reset portal access" button on the HR employee record.
+      - The fallback for an unknown role stays **denied** (already fixed fail-
+        closed in W1). Portal roles on any staff route are sent to `/portal`;
+        staff on `/portal` are sent to `/`.
+      - An activation screen reached from the login page; a "Reset portal
+        access" button on the HR employee record; the worker's own "Change
+        password" so the HR temporary password is rotated.
+      - **The mobile app refuses portal roles** ("Workers use the web
+        portal") — otherwise a worker could sign into the foreman app and land
+        on a screen of 403s. The issued token is revoked **before** the refusal
+        by passing `Authorization: Bearer {token}` explicitly on the logout
+        call — the token is not persisted yet, so the interceptor would
+        otherwise send the previous user's token and revoke **their** session.
 - [ ] **W4 — documents:**
-      - SRS §2.3 roles, and UC-11 / FR-11 / PR-11 finished.
+      - SRS §2.3 roles text updated to match §3.2.5 (the supersedes note there
+        already points at it); SPMP.md and SRS.md rows/copies already written
+        in W0.
       - CLAUDE.md §5: Worker/Operator become portal-login roles.
       - The QA prep answer (§2, Q3) rewritten — its rehearsed answer now says
         the opposite.
@@ -620,26 +668,24 @@ commit as opening sign-in.
         UC-09/10.
       - A note on how credentials are issued in practice, including the
         hijack-then-HR-reset story.
-      - **No schema change:** "activated" is simply a password being set, and
-        the timestamps live in the audit log, so nothing is added to the SDD
+      - **No schema change:** "activated" is a password being set and the
+        timestamps live in the audit log, so nothing is added to the SDD
         §3.1 / ERD backlog.
 
-**Commits:** one per slice — W0, W1 (the sweep test in the same commit as
-opening sign-in), W2, W3, W4.
+**Commits:** Commit A = W0 docs (this section + SRS §3.2.5 + SPMP WBS group
+10.0). Commit B = the whole of W1 in one commit — lockdown, sweep test,
+activation, reset, App.jsx fail-closed, seeded DOBs, prod seed warning — with
+sign-in still staff-only. Then W2, W3, W4.
 
-**Still to decide with the team:**
+**Decided 2026-09-21:** the activation secret's weakness (detect-and-recover,
+stated at the defense), payslip visibility on HR approval, and HR-temp-password
+resets (the former "clears the password" option is superseded). The committed
+SRS §3.2.5 and SPMP group 10.0 encode all three.
 
-1. **The activation secret is weak.** Employee codes are sequential and
-   coworkers know each other's birthdays, so code + date of birth is
-   guessable. The design above **detects abuse and recovers from it**; it does
-   not prevent it. The stronger alternative is HR marking each worker eligible
-   before they can activate (one click per worker). Recommended: detect and
-   recover, stated plainly at the defense.
-2. **When a payslip becomes visible:** on HR approval (as planned), or only
-   once pay is actually released?
-
-**Before starting:** commit or stash the in-flight mobile server-address work,
-so the two change sets do not mix.
+**On the working tree:** the mobile server-address/release work landed in
+`8c65eae`; W1 does not touch mobile at all (the refusal is W3). `.opencode/`
+is git-excluded. If `docs/HRIS_Defense_Reviewer_Bisaya.docx` is still modified
+when Commit B is made, leave it out of the staging set.
 
 ## Operations — production deployment (the old-PC Ubuntu server)
 
