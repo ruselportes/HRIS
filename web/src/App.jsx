@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { Sidebar } from './components/Sidebar'
@@ -29,9 +30,17 @@ function RequireAuth() {
 }
 
 function Shell() {
-  const { user } = useAuth()
-  const role = ROLES[roleKey(user?.role?.slug)]
+  const { user, signOut } = useAuth()
   const location = useLocation()
+  const role = ROLES[roleKey(user?.role?.slug)]
+  // Unreachable in W1 (no portal role can hold a token), but once W3 reaches
+  // it, a role with no nav surface must not be left signed in: revoke the
+  // token before bouncing to /login.
+  useEffect(() => {
+    if (!role) {
+      signOut()
+    }
+  }, [role, signOut])
   if (!role) {
     return <Navigate to="/login" replace />
   }

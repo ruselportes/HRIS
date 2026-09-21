@@ -24,7 +24,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('auth')->group(function () {
-    Route::post('activate', [AuthController::class, 'activate'])->name('auth.activate');
+    // auth.activate is NOT registered yet: it opens in W3 together with the
+    // /portal sign-in surface, so activation and login work at the same
+    // moment (review, 2026-09-21) and no dead endpoint sits on the tunnel.
     Route::post('login', [AuthController::class, 'login']);
     Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
 });

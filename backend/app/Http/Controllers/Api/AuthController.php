@@ -111,12 +111,34 @@ class AuthController extends Controller
      * codes exist or which birthday is right; only a successful activation
      * differs. A successful activation is audit-logged with the IP, which is
      * meaningful because the API trusts X-Forwarded-For only from the trusted
-     * proxy range.
+     * proxy range. The route is registered together with the /portal sign-in
+     * surface in W3, so both doors open at once (review, 2026-09-21).
      */
     public function activate(Request $request): JsonResponse
     {
-        $rawCode = trim((string) $request->input('employee_code'));
-        $codeKey = $rawCode !== '' ? 'activate:code:'.sha1(strtolower($rawCode)) : null;
+        // date_format:Y-m-d instead of 'date': the rule otherwise accepts full
+        // datetimes, and a W3 date picker sending toISOString() would hand a
+        // UTC+8 birthday back as the previous calendar day. It also refuses
+        // arbitrary resolvable strings like 'now' or 'tomorrow'.
+        $validator = Validator::make($request->all(), [
+            'employee_code' => ['required', 'string', 'max:8'],
+            'date_of_birth' => ['required', 'date_format:Y-m-d'],
+            'password' => ['required', 'string', 'min:8'],
+        ]);
+
+        // Malformed input — an array for employee_code, a datetime that is not
+        // strict Y-m-d — is refused before any value is cast, so nothing can
+        // throw, and the failure is the same generic message as any other.
+        if ($validator->fails()) {
+            RateLimiter::hit('activate:ip:'.sha1((string) $request->ip()), self::LOCK_SECONDS);
+            $this->activationFailure();
+        }
+
+        $data = $validator->validated();
+
+        // Rate-limiter keys are derived only from validated (string) values.
+        $rawCode = trim($data['employee_code']);
+        $codeKey = 'activate:code:'.sha1(strtolower($rawCode));
         $ipKey = 'activate:ip:'.sha1((string) $request->ip());
 
         // Both counters are bumped on every failure — unknown code included —
@@ -124,26 +146,11 @@ class AuthController extends Controller
         // On success only the per-code key is cleared; the per-IP key decays on
         // its own, since clearing it would let one worker spam a shared IP.
         $bump = function () use ($codeKey, $ipKey): void {
-            if ($codeKey !== null) {
-                RateLimiter::hit($codeKey, self::LOCK_SECONDS);
-            }
+            RateLimiter::hit($codeKey, self::LOCK_SECONDS);
             RateLimiter::hit($ipKey, self::LOCK_SECONDS);
         };
 
-        $validator = Validator::make($request->all(), [
-            'employee_code' => ['required', 'string', 'max:8'],
-            'date_of_birth' => ['required', 'date'],
-            'password' => ['required', 'string', 'min:8'],
-        ]);
-
-        if ($validator->fails()) {
-            $bump();
-            $this->activationFailure();
-        }
-
-        $data = $validator->validated();
-
-        if (RateLimiter::tooManyAttempts((string) $codeKey, self::MAX_ATTEMPTS)
+        if (RateLimiter::tooManyAttempts($codeKey, self::MAX_ATTEMPTS)
             || RateLimiter::tooManyAttempts($ipKey, self::ACTIVATION_IP_MAX_ATTEMPTS)) {
             $this->activationFailure();
         }
@@ -163,16 +170,17 @@ class AuthController extends Controller
         if ($employee->password !== null
             || $employee->employment_status === 'separated'
             || ! $employee->role?->isPortalRole()
-            || Carbon::parse($data['date_of_birth'])->toDateString() !== $employee->date_of_birth?->toDateString()) {
+            || $data['date_of_birth'] !== $employee->date_of_birth?->toDateString()) {
             $bump();
             $this->activationFailure();
         }
 
-        // The password's digit string must not spell the date of birth in any
-        // common ordering — full and two-digit years, day-month-year variants,
-        // and the bare day-month / month-day pair. Keeping birthdays out of
-        // passwords is the one the worker can silently satisfy.
-        $passwordDigits = preg_replace('/\D+/', '', $data['password']);
+        // The password's digit runs, not its concatenated digits, must not
+        // spell the date of birth in any common ordering — full and two-digit
+        // years, day-month-year variants, and the bare day-month/month-day
+        // pair. Checking each contiguous run separately keeps a password like
+        // "Moon1-Kite4-Lion0-Star7" (runs 1, 4, 0, 7) from being rejected for
+        // a July 14 birthday.
         $dob = Carbon::parse($data['date_of_birth']);
         $dobRenderings = [
             $dob->format('Ymd'), $dob->format('dmY'), $dob->format('mdY'),
@@ -180,10 +188,14 @@ class AuthController extends Controller
             $dob->format('dm'), $dob->format('md'),
         ];
 
-        foreach ($dobRenderings as $rendering) {
-            if (str_contains((string) $passwordDigits, $rendering)) {
-                $bump();
-                $this->activationFailure();
+        preg_match_all('/\d+/', $data['password'], $matches);
+
+        foreach ($matches[0] as $digitRun) {
+            foreach ($dobRenderings as $rendering) {
+                if (str_contains($digitRun, $rendering)) {
+                    $bump();
+                    $this->activationFailure();
+                }
             }
         }
 

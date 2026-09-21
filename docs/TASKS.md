@@ -603,9 +603,10 @@ HTTP 401 on login is W1's proof test.
         generic failure for every case** ("Can't activate — contact HR", HTTP
         422, including a rate-limit trip) so it cannot be used to probe codes
         or birthdays; password `min:8`, must not equal the employee code, and
-        its digits must not render the date of birth in any common ordering
-        (birthday digits extracted and compared to Ymd, dmY, mdY and
-        two-digit-year forms); rate-limited per employee code
+        the password's digit **runs** — checked per contiguous run, not
+        concatenated — must not render the date of birth in any common
+        ordering (Ymd, dmY, mdY and two-digit-year forms), so separated digit
+        groups are not falsely rejected; rate-limited per employee code
         (`activate:code:{sha1(strtolower(trim(code)))}`, 5 per 15 min) **and**
         per IP (`activate:ip:{sha1(ip)}`, 30 per 15 min as an anti-spray
         backstop) — both counters hit on **every** failure, the per-code key
@@ -614,13 +615,23 @@ HTTP 401 on login is W1's proof test.
         affected row, `Hash::make` applied explicitly — so a worker and an
         attacker racing to the same code have exactly one winner;
         audit-logged `PORTAL_ACTIVATED` with the IP; no token is issued.
+        **Review fix (2026-09-21):** the *route* is registered in W3, not
+        here — activation and sign-in open together, and no dead endpoint sits
+        on the tunnel. The controller ships in the review-fix commit (strict
+        `date_format:Y-m-d` so a `toISOString()` UTC+8 birthday cannot shift a
+        day; rate-limiter keys derived only after validation so array input
+        cannot 500; digit-run birthday check).
       - **HR "Reset portal access"** (`POST employees/{employee}/reset-portal-access`,
         `role:hr,admin`, only ever applied to a portal role): sets a random
         14-character temporary password from an unambiguous charset (no 0/O,
         1/l/I), revokes the worker's tokens, audit-logged `PORTAL_ACCESS_RESET`;
         the password is shown once to HR and handed over in person. Because a
         password is already set, activation stays refused — the hijacker cannot
-        simply re-activate. W3 adds the worker's own "Change password".
+        simply re-activate. W3 adds the worker's own "Change password"; the
+        server never **forces** the rotation (accepted 2026-09-21 — the
+        worker-facing surface is the only enforcement), which is the rehearsal
+        answer to "can HR log in as a worker?" (a panelist's phrasing; the
+        temp password is handed over in person, not kept secret from HR).
       - **Blocker found in the data:** no worker in the dev database has a
         `date_of_birth` (only one foreman does), so activation would refuse
         everyone — HR fills it on the existing employee form, and the demo
@@ -641,16 +652,32 @@ HTTP 401 on login is W1's proof test.
       - Tests: worker A cannot read worker B's records; draft runs never
         appear; a guessed `{run}` that belongs to someone else returns 404.
 - [ ] **W3 — portal sign-in and the web app:**
+      - **Register `POST /auth/activate` here** — it lives with the /portal
+        sign-in surface so activation and login open together (review fix,
+        2026-09-21; the route was removed from W1). The controller fixes from
+        the same review are already in the code (strict `date_format:Y-m-d`,
+        digit-**run** birthday check, post-validation rate keys) and this
+        commit re-adds the full HTTP activation suite — success, the generic
+        failure matrix (unknown code, wrong DOB, `date_format` refusal of an
+        ISO datetime like `1990-05-12T16:00:00.000Z`, short password, password
+        == code, a single contiguous digit run spelling the DOB), per-code 5
+        and per-IP 30 locks, refuse-already-activated, refuse staff/separated,
+        refuse-after-HR-reset, and a positive case proving separated digit
+        groups like `Moon1-Kite4-Lion0-Star7` are accepted.
       - `canSignIn()` accepts the portal roles; login proceeds for them from
         now on.
       - A separate `/portal` route tree: mobile-first layout, no admin
         navigation, only "My attendance" and "My payslips".
       - The fallback for an unknown role stays **denied** (already fixed fail-
-        closed in W1). Portal roles on any staff route are sent to `/portal`;
-        staff on `/portal` are sent to `/`.
+        closed in W1; the Shell now also signs the session out there). Portal
+        roles on any staff route are sent to `/portal`; staff on `/portal` are
+        sent to `/`.
       - An activation screen reached from the login page; a "Reset portal
         access" button on the HR employee record; the worker's own "Change
         password" so the HR temporary password is rotated.
+      - **The activation form must send the birthday as strict `Y-m-d`** (not
+        `Date.toISOString()`, which shifts a UTC+8 birthday to the previous
+        calendar day and would make every worker fail with "contact HR").
       - **The mobile app refuses portal roles** ("Workers use the web
         portal") — otherwise a worker could sign into the foreman app and land
         on a screen of 403s. The issued token is revoked **before** the refusal
@@ -680,7 +707,14 @@ sign-in still staff-only. Then W2, W3, W4.
 **Decided 2026-09-21:** the activation secret's weakness (detect-and-recover,
 stated at the defense), payslip visibility on HR approval, and HR-temp-password
 resets (the former "clears the password" option is superseded). The committed
-SRS §3.2.5 and SPMP group 10.0 encode all three.
+SRS §3.2.5 and SPMP group 10.0 encode all three. **Review fixes, same date:**
+`auth.activate` registers in W3 (activation + sign-in open together),
+`date_format:Y-m-d`, digit-run birthday check, post-validation rate keys,
+`assertSuccessful` in the sweep's allowlist branch, the sweep covers
+worker *and* operator, the no-role Shell signs the session out, and the
+temp-password rotation is not forced server-side (above). All but the W3
+re-registration and its restored activation suite shipped in the
+`fix(addon-b)` review commit.
 
 **On the working tree:** the mobile server-address/release work landed in
 `8c65eae`; W1 does not touch mobile at all (the refusal is W3). `.opencode/`
