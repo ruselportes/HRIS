@@ -7,8 +7,10 @@ use App\Http\Requests\PortalAttendanceRequest;
 use App\Models\Attendance;
 use App\Models\AuditLog;
 use App\Models\Payroll;
+use App\Services\Payroll\PayPeriod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 /**
  * Add-on B (FR-11, UC-11) — the worker portal's own-data reads.
@@ -22,27 +24,58 @@ use Illuminate\Http\Request;
 class PortalController extends Controller
 {
     /**
-     * GET /api/me/attendance?from=&to= — one worker's attendance rows.
+     * GET /api/me/attendance — one worker's attendance rows.
      *
      * Deliberately narrower than the staff DTR (AttendanceController): the
      * worker sees the day, its status, the credited and recorded times, how a
      * time-out was entered in plain words, and whether HR is still reviewing
      * anything on the record. No filtering beyond the window, no pagination
      * params, no ids they were not part of.
+     *
+     * The window is optional. With no from/to the read defaults to the
+     * current pay period, and every response carries the period block the
+     * page steps through — code, label, start/end, and the previous/next
+     * windows (next is null once that period starts after today, so the page
+     * can never step into the future). The cutoffs live in config
+     * (payroll.cutoff_start_days) and are resolved here, never in JavaScript.
      */
     public function attendance(PortalAttendanceRequest $request): JsonResponse
     {
         $filters = $request->validated();
+        $today = Carbon::now(config('attendance.timezone', 'Asia/Manila'))->toDateString();
+
+        if (isset($filters['from'], $filters['to'])) {
+            $from = $filters['from'];
+            $to = $filters['to'];
+            $period = PayPeriod::containing($from);
+        } else {
+            $period = PayPeriod::containing($today);
+            $from = $period->start;
+            $to = $period->end;
+        }
 
         $rows = Attendance::query()
             ->with(['overrideEvent', 'timeOutEvent', 'cryptoSignature'])
             ->where('employee_id', $request->user()->employee_id)
-            ->whereBetween('date', [$filters['from'], $filters['to']])
+            ->whereBetween('date', [$from, $to])
             ->orderBy('date')
             ->get();
 
+        $next = $period->next();
+        $previous = $period->previous();
+
         return response()->json([
             'data' => $rows->map(fn (Attendance $a) => $this->attendanceRow($a))->values(),
+            'period' => [
+                'code' => $period->code,
+                'label' => $period->label(),
+                'start' => $period->start,
+                'end' => $period->end,
+                'previous' => ['start' => $previous->start, 'end' => $previous->end],
+                'next' => $next->start > $today
+                    ? null
+                    : ['start' => $next->start, 'end' => $next->end],
+            ],
         ]);
     }
 

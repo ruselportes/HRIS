@@ -10,11 +10,15 @@ use Illuminate\Validation\Validator;
  * Query contract for the worker portal's own-attendance read (Add-on B, FR-11).
  *
  * The portal shows one worker their own records, so the only query input is
- * the window. The same strict pair as the staff DTR: required together,
- * strict Y-m-d (a raw string leaking into the SQL comparison is a bug), to on
- * or after from, and capped at 62 days — four semi-monthly payroll periods,
- * about two months — so a years-spanning query cannot balloon the response
- * (the staff DTR carries the same cap for its CSV export).
+ * the window — and since W3 it is optional: with no from/to the read defaults
+ * to the current pay period, and the response carries the period block the
+ * page steps through, so no cutoff rule ever lives in JavaScript (a copy
+ * there would silently drift when payroll.cutoff_start_days changes). An
+ * explicit window still travels as a strict Y-m-d pair (a raw string leaking
+ * into the SQL comparison is a bug), required together, to on or after from,
+ * and capped at 62 days — four semi-monthly payroll periods, about two
+ * months — so a years-spanning query cannot balloon the response (the staff
+ * DTR carries the same cap for its CSV export).
  */
 class PortalAttendanceRequest extends FormRequest
 {
@@ -29,8 +33,8 @@ class PortalAttendanceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'from' => ['required', 'date_format:Y-m-d'],
-            'to' => ['required', 'date_format:Y-m-d'],
+            'from' => ['nullable', 'date_format:Y-m-d', 'required_with:to'],
+            'to' => ['nullable', 'date_format:Y-m-d', 'required_with:from'],
         ];
     }
 
@@ -39,7 +43,12 @@ class PortalAttendanceRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             // Field rules have run by now; a malformed date that already
             // failed must not be parsed again, or a 422 turns into a 500.
+            // A missing pair is the default-period read, not an error.
             if ($validator->errors()->has('from') || $validator->errors()->has('to')) {
+                return;
+            }
+
+            if ($this->query('from') === null || $this->query('to') === null) {
                 return;
             }
 

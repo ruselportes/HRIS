@@ -57,6 +57,12 @@ final class PayPeriod
         return self::containing(Carbon::parse($this->start)->subDay()->toDateString());
     }
 
+    /** The cut-off after this one. */
+    public function next(): self
+    {
+        return self::containing(Carbon::parse($this->end)->addDay()->toDateString());
+    }
+
     /** "21 Aug – 05 Sep 2026" */
     public function label(): string
     {

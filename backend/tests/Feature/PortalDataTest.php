@@ -194,11 +194,57 @@ class PortalDataTest extends TestCase
         $worker = $this->loginUser('worker');
         $acting = $this->actingAs($worker, 'sanctum');
 
-        $acting->getJson('/api/me/attendance')->assertUnprocessable();
+        // No window at all is the default-period read, not an error.
+        $acting->getJson('/api/me/attendance')->assertOk()->assertJsonStructure(['period']);
         $acting->getJson('/api/me/attendance?from=2026-09-10')->assertUnprocessable();
         $acting->getJson('/api/me/attendance?from=09/10/2026&to=2026-09-10')->assertUnprocessable();
         $acting->getJson('/api/me/attendance?from=2026-09-10&to=2026-09-01')->assertUnprocessable();
         $acting->getJson('/api/me/attendance?from=2026-01-01&to=2026-12-31')->assertUnprocessable();
+    }
+
+    public function test_attendance_defaults_to_the_current_pay_period(): void
+    {
+        // Frozen on 10 Sep: period 2026-09-B runs 06–20 Sep, so the next
+        // period (2026-10-A, starting 21 Sep) is still in the future and
+        // reads as null — the page can never step forward into it.
+        Carbon::setTestNow('2026-09-10 08:00:00');
+
+        $worker = $this->loginUser('worker');
+        $crew = $this->crew($worker);
+        $row = $this->attendance($worker->employee_id, $crew->crew_id, '2026-09-10', 'present');
+        $this->verifiedSignature($row->attendance_id);
+
+        $this->actingAs($worker, 'sanctum')
+            ->getJson('/api/me/attendance')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.date', '2026-09-10')
+            ->assertJsonPath('period.code', '2026-09-B')
+            ->assertJsonPath('period.start', '2026-09-06')
+            ->assertJsonPath('period.end', '2026-09-20')
+            ->assertJsonPath('period.previous', ['start' => '2026-08-21', 'end' => '2026-09-05'])
+            ->assertJsonPath('period.next', null);
+    }
+
+    public function test_attendance_period_steps_across_a_month_boundary(): void
+    {
+        // Frozen on 22 Sep: viewing 2026-09-B (06–20 Sep) by explicit window,
+        // the block steps back over the Aug/Sep boundary and forward over the
+        // Sep/Oct one — and forward exists because 2026-10-A has started.
+        Carbon::setTestNow('2026-09-22 08:00:00');
+
+        $worker = $this->loginUser('worker');
+        $crew = $this->crew($worker);
+        $row = $this->attendance($worker->employee_id, $crew->crew_id, '2026-09-10', 'present');
+        $this->verifiedSignature($row->attendance_id);
+
+        $this->actingAs($worker, 'sanctum')
+            ->getJson('/api/me/attendance?from=2026-09-06&to=2026-09-20')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('period.code', '2026-09-B')
+            ->assertJsonPath('period.previous', ['start' => '2026-08-21', 'end' => '2026-09-05'])
+            ->assertJsonPath('period.next', ['start' => '2026-09-21', 'end' => '2026-10-05']);
     }
 
     /* ------------------------------------------------------------------ *
