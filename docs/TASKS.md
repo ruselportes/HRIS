@@ -3,7 +3,7 @@
 Each phase below is weighted **10%** of total project completion (10 phases = 100%).
 Check off tasks as they're completed; a phase counts as done once every task under it is checked.
 
-**Overall progress: ~90% (Phases 1–9 built: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8, Phase 8 5/5, Phase 9 6/6.)** Two add-ons and the production deployment sit outside this count and have their own section after Phase 10. Verified by 378 backend tests (passing on both SQLite and MySQL 8.0) and 219 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works.
+**Overall progress: ~90% (Phases 1–9 built: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8, Phase 8 5/5, Phase 9 6/6.)** Two add-ons, the production deployment, and nine web pages that still show "Coming soon" sit outside this count and have their own sections after Phase 10. Verified by 378 backend tests (passing on both SQLite and MySQL 8.0) and 219 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works. The release APK is now built and signed (2026-09-21 — see *Mobile release build* under Operations); what remains on all four asterisks is the run itself on a physical handset.
 
 > **Backend test routine (run before committing backend work):**
 > 1. Day-to-day: `docker compose exec api php artisan test` (in-memory SQLite).
@@ -68,6 +68,11 @@ Check off tasks as they're completed; a phase counts as done once every task und
 > the bundle and runs with no dev server. Budget for this before the defense —
 > a panelist asking "now open it with no signal" on a debug build will see a
 > red error screen.
+>
+> **That release build now exists** (2026-09-21, *Mobile release build* under
+> Operations): `app-release.apk` embeds the bundle and the native modules, so
+> the cold-start offline run — WiFi off, close, reopen — is finally testable
+> and still owed, on a handset.
 
 ## Phase 5 — Cryptographic Attendance Integrity Engine (supports UC-04) (10%)
 
@@ -85,7 +90,9 @@ Check off tasks as they're completed; a phase counts as done once every task und
 >    defaults `false` so emulator development isn't blocked. The claim only holds
 >    on a physical Android device with that flag on. STD §2.1 already specifies a
 >    physical device for all mobile test cases — so TC-01–03 pass automatically
->    here, but the *manual* STD runs still need real hardware.
+>    here, but the *manual* STD runs still need real hardware. The release
+    APK (2026-09-21) now makes that run an actual install-and-test, not a
+    build exercise.
 > 2. **SQLCipher is still deferred.** The HMAC secret sits in AsyncStorage —
 >    app-private but unencrypted. Root access reads it and forges self-verifying
 >    chain entries. The ECDSA key is non-exportable in the TEE, so that attacker
@@ -272,10 +279,78 @@ decisions made with the team:
 ## Phase 10 — Integration, Testing & Capstone Defense (10%)
 
 - [ ] Full end-to-end integration testing (web + mobile + API)
-- [ ] All STD test cases TC-01–TC-06 passing — every case has automated tests; the manual device runs (TC-01–05) and the payroll walkthrough (TC-06) are still owed, on a physical handset and a release APK
+- [ ] All STD test cases TC-01–TC-06 passing — every case has automated tests; the manual device runs (TC-01–05) and the payroll walkthrough (TC-06) are still owed on a physical handset — the release APK they need is built (2026-09-21)
 - [ ] UAT sign-off from Arcenas Development Corporation stakeholder
 - [ ] SPMP / SRS / SDD / STD finalized and packaged
 - [ ] Defense presentation and live demo prepared
+
+## Web portal — pages still showing "Coming soon" (found 2026-09-21)
+
+Nine of the 17 nav items in `web/src/config/nav.jsx` have no route in
+`web/src/App.jsx`, so they fall through to the `:page` catch-all and render
+`ComingSoonPage`. The eight that are built: Dashboard, Employees, Manpower
+Allocation, Leave Requests, Overrides & Audit, Attendance Recovery, Payroll
+Runs, Reports & Analytics. These are not weighted into the 10 × 10% above —
+but the first item is a documented promise, not an add-on, and a panel could
+fairly call it a gap in the core system. Say so if asked.
+
+**Should be built — promised in the documents, or needed to operate:**
+
+- [ ] **Attendance & DTR** (`attendance`; HR/foreman/engineer full,
+      admin/exec view). The only one of the SDD's eight web-screen figures
+      with nothing built — **Figure 20.0, "web portal attendance monitoring
+      interface"** — and SRS §2.2 promises authorized users can "record, view,
+      monitor, and manage employee attendance records". There is **no read
+      API for attendance at all**: `routes/api.php` has only
+      `POST attendance/sync` and `GET attendance/sync/status`. So HR cannot
+      look up a worker's time-in for a given day in the portal, and the
+      time-out columns (`time_out`, `time_out_type`, added 2026-09-18) are
+      stored but shown nowhere. Needs a read endpoint (date range, site, crew
+      and employee filters; RBAC per the nav matrix, with the engineer limited
+      to their own sites as in SRS §3.2.3) and the screen from Fig 20.0.
+- [ ] **Device & Sync Health** (`synchealth`; admin full, HR view). The only
+      revoke is `DELETE /api/me/devices/{deviceId}` under `role:foreman` — a
+      foreman revoking their own device, from that device. **A lost or stolen
+      phone cannot be revoked from the portal**, and it holds a bound signing
+      key plus a live auth token in AsyncStorage. Needs an admin list of
+      `device_keys` (owner, `security_level`, `bound_at`, last sync, chain
+      tip) with a revoke action, and sync failures per device. Worth having
+      before the defense: it is the obvious follow-up question to the crypto
+      engine.
+- [ ] **Holiday calendar** (inside `settings` today). `HolidayController`
+      already has index/store/destroy with HR as the writer, but there is no
+      screen, so next year's proclaimed holidays need a seeder edit.
+      **Access mismatch:** `settings` is admin-only (HR `none`), while the API
+      makes HR the owner. Build it where HR can reach it — under Payroll Runs,
+      or as an HR-visible Holidays page — not inside admin-only System
+      Settings.
+
+**Partially backed — lower priority:**
+
+- [ ] **Project Sites** (`sites`). Only a read-only `GET /api/sites`; the 11
+      sites come from `SiteSeeder`, so adding a project site needs code.
+      Needs site CRUD for admin/engineer.
+- [ ] **Roll Call** (`rollcall`, web). Capture is mobile-only by design.
+      Decide: a read-only "today's roll call" view for engineers, or drop it
+      from the web nav (it overlaps Attendance & DTR).
+- [ ] **Gov't Remittances** (`gov`). `payroll_details` already itemises SSS,
+      PhilHealth, Pag-IBIG and withholding tax per payslip, so a monthly
+      per-agency report is aggregation only. No UC covers it; it would sit
+      under UC-08.
+- [ ] **Users & Roles** (`users`). Login provisioning already lives in the
+      Employee form. This page would add lockout reset, token revoke and a
+      role audit. Without it the System Administrator role has little to do
+      in the portal.
+
+**No backend, no use case — hide before the defense:**
+
+- [ ] **Compliance & Docs** (`compliance`) and **Announcements**
+      (`announce`). Prototype nav only, never in scope. Remove both entries
+      from `config/nav.jsx`: a panelist clicking through nine "Coming soon"
+      screens reads as unfinished, even with the system behind them built.
+
+**Recommended order:** Attendance & DTR, then device revocation, then hide the
+two out-of-scope pages; the rest as time allows.
 
 ---
 
@@ -471,24 +546,100 @@ by `Role::LOGIN_SLUGS`, and the QA prep has a rehearsed answer to "why can't a
 worker see their own attendance?" (§2, Q3). Payslips carry SSS, PhilHealth,
 Pag-IBIG, tax and net pay, so the scoping must be exact and tested.
 
-- [ ] **W1 — activation and login:** open `worker`/`operator` to sign-in;
-      `POST /auth/activate` (employee code + date of birth → set password),
-      rate-limited and locked like login, refused once a password exists, and
-      written to the audit log. **Blocker found in the data:** no worker in the
-      dev database has a `date_of_birth` (only one foreman does), so activation
-      would refuse everyone — HR fills it on the existing employee form, and
-      the demo workers get seeded dates.
-- [ ] **W2 — their own data only:** `GET /me/attendance` (their roll call, with
-      time-out and any review state in plain words) and `GET /me/payslips` +
-      `/me/payslips/{run}` (approved payroll runs only). Scoped to the signed-in
-      employee, with tests that another worker's records cannot be reached by
-      guessing an id.
-- [ ] **W3 — the portal itself:** a view-only area in the web app (usable in a
-      phone browser), no admin navigation, and a guard that a worker cannot
-      reach any other route.
-- [ ] **W4 — documents:** SRS §2.3 roles and a new UC-11/FR-11, the QA prep
-      answer rewritten, CLAUDE.md §5, and a note on how credentials are issued
-      in practice.
+**Two findings that fix the build order (2026-09-21):**
+
+1. **The web app fails open.** `web/src/App.jsx` resolves the shell with
+   `ROLES[roleKey(slug)] ?? ROLES.hr`, so any role it does not know —
+   including `worker` and `operator` — gets **HR's shell**. Opening sign-in
+   before fixing this would drop workers into HR navigation.
+2. **Protection is spread across many route groups.** Each API group is guarded
+   on its own, by `role:` middleware or a policy. Trusting every one of them to
+   deny a new role means auditing every route now and again for every route
+   added later. So portal roles are denied by default **at one point on the
+   server**, not route by route.
+
+**Order matters:** there must never be a commit in which a worker can sign in
+with broad access. The lockdown and the test that proves it ship in the same
+commit as opening sign-in.
+
+- [ ] **W0 — the use case first:** draft UC-11 / FR-11 / PR-11 in `SRS.md`
+      (actor, activation, view-only scope) before any code, per CLAUDE.md §8.
+      The rest of the document changes wait for W4.
+- [ ] **W1 — lock down, then open sign-in:**
+      - `EnsurePortalScope` middleware on the authenticated API group: a
+        `worker`/`operator` may reach only `auth/me`, `auth/logout`,
+        `me/attendance*` and `me/payslips*`; everything else is 403.
+      - **Route-sweep test:** walk every registered API route as a worker and
+        assert 403 outside that allowlist, so routes added later are covered
+        automatically.
+      - `Role::PORTAL_SLUGS = ['worker', 'operator']`; `canSignIn()` accepts
+        these as well as `LOGIN_SLUGS`, which keeps meaning "staff".
+      - `POST /auth/activate` (employee code + date of birth + new password):
+        refused once a password is set; **one generic failure message for every
+        case** ("Can't activate — contact HR") so it cannot be used to probe
+        which codes exist; rate-limited per employee code **and** per IP — the
+        per-code limit is what stops guessing a date of birth, since the
+        attacker controls the IP; every activation audit-logged with the IP;
+        the password may not equal the date of birth or the employee code.
+      - **HR "Reset portal access":** clears the password, revokes the
+        worker's tokens, audit-logged. Without it, an account a coworker
+        hijacks by activating it first stays hijacked for good.
+      - **The mobile app refuses portal roles** ("Workers use the web
+        portal") — otherwise a worker could sign into the foreman app and land
+        on a screen of 403s.
+      - **Blocker found in the data:** no worker in the dev database has a
+        `date_of_birth` (only one foreman does), so activation would refuse
+        everyone — HR fills it on the existing employee form, and the demo
+        workers get seeded dates.
+- [ ] **W2 — their own data only:**
+      - `GET /me/attendance?from=&to=`: their `attendances` rows — date,
+        status, time in and out, how the time-out was recorded, and review
+        state in plain words ("Under HR review"). No hashes, signatures, device
+        ids or reviewer notes.
+      - `GET /me/payslips` and `/me/payslips/{run}`: **approved runs only**
+        (`Payroll::APPROVED`, never `draft`), with SSS, PhilHealth, Pag-IBIG
+        and tax itemised.
+      - No employee id parameter anywhere — everything is scoped to the
+        signed-in employee.
+      - Tests: worker A cannot read worker B's records; draft runs never
+        appear; a guessed `{run}` that belongs to someone else returns 404.
+- [ ] **W3 — the portal in the web app:**
+      - A separate `/portal` route tree: mobile-first layout, no admin
+        navigation, only "My attendance" and "My payslips".
+      - Fix the fallback so an unknown role is **denied**, not given HR's
+        shell. Portal roles on any staff route are sent to `/portal`; staff on
+        `/portal` are sent to `/`.
+      - An activation screen reached from the login page.
+      - A "Reset portal access" button on the HR employee record.
+- [ ] **W4 — documents:**
+      - SRS §2.3 roles, and UC-11 / FR-11 / PR-11 finished.
+      - CLAUDE.md §5: Worker/Operator become portal-login roles.
+      - The QA prep answer (§2, Q3) rewritten — its rehearsed answer now says
+        the opposite.
+      - STD Table 9.0: a row tracing UC-11 to its suites, the same pattern as
+        UC-09/10.
+      - A note on how credentials are issued in practice, including the
+        hijack-then-HR-reset story.
+      - **No schema change:** "activated" is simply a password being set, and
+        the timestamps live in the audit log, so nothing is added to the SDD
+        §3.1 / ERD backlog.
+
+**Commits:** one per slice — W0, W1 (the sweep test in the same commit as
+opening sign-in), W2, W3, W4.
+
+**Still to decide with the team:**
+
+1. **The activation secret is weak.** Employee codes are sequential and
+   coworkers know each other's birthdays, so code + date of birth is
+   guessable. The design above **detects abuse and recovers from it**; it does
+   not prevent it. The stronger alternative is HR marking each worker eligible
+   before they can activate (one click per worker). Recommended: detect and
+   recover, stated plainly at the defense.
+2. **When a payslip becomes visible:** on HR approval (as planned), or only
+   once pay is actually released?
+
+**Before starting:** commit or stash the in-flight mobile server-address work,
+so the two change sets do not mix.
 
 ## Operations — production deployment (the old-PC Ubuntu server)
 
@@ -563,6 +714,61 @@ Built alongside the phases; the files are in the repo root and `deploy/`.
 - [x] First-run note in the compose header: seed **only** `RoleSeeder` and
       `HolidaySeeder`. A bare `db:seed` creates the sample accounts, including
       an admin whose password is literally `password`.
+
+### Mobile release build (2026-09-21)
+
+- [x] `app-release.apk` built, **signed** — 75.6 MB, verified with `apksigner`
+      (APK Signature Scheme v2, signer `CN=Arcenas Development Corporation
+      HRIS`). All four ABIs (arm64-v8a, armeabi-v7a, x86, x86_64) with op-sqlite
+      and the TEESigner glue (`libappmodules.so`), and the embedded JS bundle in
+      `assets/index.android.bundle` — no Metro at launch, so offline cold-start
+      is genuinely testable. `mobile/android/app/build/outputs/apk/release/app-release.apk`.
+- [x] Signing wired into `mobile/android/app/build.gradle`: a `release`
+      signingConfig reads `mobile/android/keystore.properties` (storeFile /
+      passwords / alias), gitignored via `android/keystore.properties` and the
+      existing `*.keystore` rule. On a machine without that file release falls
+      back to the debug keystore, exactly as the stock template did.
+- [x] Keystore: `mobile/android/app/hris-release.keystore`, RSA 2048, alias
+      `hris`, 10,000-day validity. **Back it up** — it and its password are the
+      one thing that cannot be re-created. The exact consequence of losing it
+      is narrower than it first sounds: Android refuses an update signed with a
+      *different* key, so shipping the next fix means uninstall and reinstall —
+      and uninstalling wipes the app's Keystore entries **and its local SQLite,
+      including any signed-but-unsynced attendance**. So every device re-binds,
+      and unsynced records are lost for good. (This has nothing to do with
+      `device_keys` — what orphans *those* is rotating `APP_KEY`, per
+      CLAUDE.md §4.) The password was generated on the build machine and lives
+      in the gitignored `keystore.properties`; move it into a password manager
+      too.
+- [x] **Server-address field on the login screen.** The out-of-the-box URL is
+      the emulator alias (`http://10.0.2.2:8090/api`), which a phone cannot
+      reach. The login screen now has a *Server* field: it normalises whatever
+      is typed (`normalizeBaseUrl`: trims, defaults to `http://`, forces the
+      `/api` suffix), validates it, applies it (`setAndPersistApiBaseUrl`) and
+      stores it in AsyncStorage, which `App.tsx` re-applies at every launch
+      (`loadApiBaseUrl`). Unit-tested (`src/api/__tests__/client.test.ts`).
+      This also covers the quick tunnel: its URL is HTTPS, changes per
+      restart, and now needs no rebuild to adopt. So the stable-address decision
+      (below) blocks *nothing* — the field accepts any host at runtime.
+- [x] **Cleartext for the release build.** React Native's Gradle plugin forces
+      `usesCleartextTraffic=false` on release (overriding a `manifestPlaceholders`
+      change, so NSC is the way). The manifest now references a
+      `network_security_config.xml` (API 24+ makes it authoritative) whose
+      `base-config` permits cleartext. **Blanker than the ideal** — decided
+      with the team on 2026-09-21: HTTPS on the LAN is still deferred and the
+      stable server address is undecided, so whitelisting specific LAN/Tailscale
+      IPs would have blocked the handset tests a second time. Once that address
+      lands, replace the `base-config` with a `domain-config` whitelisting just
+      the server (the tunnel URL is HTTPS and needs no entry). Verified in the
+      built APK: manifest carries `networkSecurityConfig` (no
+      `usesCleartextTraffic`), compiled base-config `cleartextTrafficPermitted=true`.
+- [ ] Physical-handset tasks now unblocked (each still owed): Phase 4's
+      cold-start offline run, TC-01–03 with `HRIS_REQUIRE_HARDWARE_KEYS=true`,
+      TC-04/05, and the demo install. On the hardware-backing claim, note the
+      acceptance rule (`config/crypto.php:61`): **STRONGBOX *or*
+      TRUSTED_ENVIRONMENT** passes — only `SOFTWARE` fails, so a TEE-only
+      mid-range phone passing the flag is a pass, not a miss; StrongBox itself
+      needs a discrete secure element (Pixel 3+ and some flagships).
 
 **Owed before anyone outside the team uses it**
 

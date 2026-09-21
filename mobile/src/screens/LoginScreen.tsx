@@ -20,12 +20,19 @@ import {
 } from 'react-native';
 import {useAuth} from '../auth/AuthContext';
 import {ArcenasLogo} from '../components/ArcenasLogo';
-import {apiClient} from '../api/client';
+import {
+  apiClient,
+  setAndPersistApiBaseUrl,
+  isValidBaseUrl,
+  normalizeBaseUrl,
+} from '../api/client';
 
 export function LoginScreen() {
   const {signIn} = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [serverUrl, setServerUrl] = useState(apiClient.defaults.baseURL ?? '');
+  const [serverSaved, setServerSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -33,6 +40,15 @@ export function LoginScreen() {
     setError(null);
     setBusy(true);
     try {
+      // Apply the address field even on a fresh device: it survives the
+      // sign-in attempt only when it parses and was persistable.
+      const normalized = normalizeBaseUrl(serverUrl);
+      if (!isValidBaseUrl(serverUrl)) {
+        setError('That does not look like a server address. Use http://host:port.');
+        return;
+      }
+      await setAndPersistApiBaseUrl(normalized);
+      setServerSaved(true);
       await signIn(identifier.trim(), password);
     } catch (err: any) {
       // Distinguish "server unreachable" from "server said no" — collapsing
@@ -60,6 +76,21 @@ export function LoginScreen() {
       </View>
       <Text style={styles.title}>HRIS</Text>
       <Text style={styles.subtitle}>Site Foreman sign in</Text>
+
+      <Text style={styles.label}>Server</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="http://192.168.1.50:8090/api"
+        keyboardType="url"
+        autoCapitalize="none"
+        autoCorrect={false}
+        value={serverUrl}
+        onChangeText={text => {
+          setServerUrl(text);
+          setServerSaved(false);
+        }}
+      />
+      {serverSaved && <Text style={styles.saved}>Server address saved.</Text>}
 
       <TextInput
         style={styles.input}
@@ -114,6 +145,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   error: {color: '#a83a2c', fontSize: 14, marginBottom: 14},
+  label: {fontSize: 13, color: '#5d5d60', marginBottom: 6},
+  saved: {color: '#2e7d32', fontSize: 13, marginBottom: 10},
   button: {
     minHeight: 56,
     borderRadius: 4,

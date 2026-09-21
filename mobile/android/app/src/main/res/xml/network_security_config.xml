@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext policy for the release build. The React Native Gradle plugin forces
+  usesCleartextTraffic=false on release (AgpConfiguratorUtils.kt); on API 24+
+  (minSdk) this file supersedes that attribute entirely — the manifest no longer
+  carries the ${usesCleartextTraffic} placeholder.
+
+  Scope decision (2026-09-21, with the team): HTTPS on the LAN is still
+  deferred (the internet hop rides the TLS quick tunnel; the LAN segment stays
+  plaintext, documented in compose.prod.yaml). Until the "stable address for
+  the mobile app" decision lands, cleartext is allowed at large so the login
+  screen's Server-address field can point the app at any LAN/Tailscale host.
+
+  Tightening: once that address is fixed, kill the base-config line and list the
+  allowed hosts explicitly, e.g.:
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">192.168.1.50</domain>
+    </domain-config>
+  The quick-tunnel URL is HTTPS and needs no entry here. An app that sets
+  cleartextTrafficPermitted=false but never covers the certificate pinning is
+  out of scope for this file; HTTPS trust stays the platform default.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
