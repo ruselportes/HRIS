@@ -35,7 +35,7 @@ class PortalController extends Controller
         $filters = $request->validated();
 
         $rows = Attendance::query()
-            ->with(['overrideEvent', 'timeOutEvent'])
+            ->with(['overrideEvent', 'timeOutEvent', 'cryptoSignature'])
             ->where('employee_id', $request->user()->employee_id)
             ->whereBetween('date', [$filters['from'], $filters['to']])
             ->orderBy('date')
@@ -50,6 +50,7 @@ class PortalController extends Controller
     public function payslips(Request $request): JsonResponse
     {
         $rows = Payroll::query()
+            ->with('detail')
             ->where('employee_id', $request->user()->employee_id)
             ->where('status', Payroll::APPROVED)
             ->orderByDesc('pay_period_end')
@@ -88,12 +89,19 @@ class PortalController extends Controller
     {
         $tz = config('attendance.timezone', 'Asia/Manila');
 
+        // The times payroll actually uses. effectiveTimeIn/Out return null
+        // while a record is held (pending, unverified, an unapproved
+        // recovery), so those rows fall back to the recorded times — the
+        // worker still sees SOMETHING, and reviewState() says why it is held.
+        // A rejected override pays from the real tap, so the portal shows the
+        // real tap too: showing the credited 07:00 next to a payslip computed
+        // from 08:40 is a pay dispute waiting to happen.
         return [
             'attendance_id' => $a->attendance_id,
             'date' => $a->date,
             'status' => $a->status,
-            'time_in' => $a->time_in?->copy()->setTimezone($tz)->format('H:i'),
-            'time_out' => $a->time_out?->copy()->setTimezone($tz)->format('H:i'),
+            'time_in' => ($a->effectiveTimeIn() ?? $a->time_in)?->copy()->setTimezone($tz)->format('H:i'),
+            'time_out' => ($a->effectiveTimeOut() ?? $a->time_out)?->copy()->setTimezone($tz)->format('H:i'),
             // "How the time-out was recorded", in plain words.
             'time_out_source' => match ($a->time_out_type) {
                 Attendance::TIME_OUT_SHIFT_END => 'Close shift credited a time out',
@@ -104,13 +112,28 @@ class PortalController extends Controller
         ];
     }
 
-    /** The review state HR is responsible for, in plain words. */
+    /**
+     * The review state HR is responsible for, in plain words — driven by the
+     * same model logic payroll uses, so the portal cannot drift from the
+     * payslip.
+     */
     private function reviewState(Attendance $a): string
     {
-        if ($a->overrideEvent?->review_status === AuditLog::REVIEW_PENDING
-            || ($a->time_out_type === Attendance::TIME_OUT_MANUAL
-                && $a->timeOutEvent?->review_status === AuditLog::REVIEW_PENDING)) {
+        $statuses = array_filter([
+            $a->overrideEvent?->review_status,
+            $a->time_out_type === Attendance::TIME_OUT_MANUAL ? $a->timeOutEvent?->review_status : null,
+        ]);
+
+        if (array_intersect($statuses, [AuditLog::REVIEW_PENDING, AuditLog::REVIEW_RETURNED])) {
             return 'Under HR review';
+        }
+
+        if (! $a->isPayrollReady()) {
+            return 'On hold — ask HR';
+        }
+
+        if (in_array(AuditLog::REVIEW_REJECTED, $statuses, true)) {
+            return 'Not accepted — paid from your actual tap time';
         }
 
         return 'Cleared';

@@ -12,8 +12,9 @@ use Illuminate\Validation\Validator;
  * The portal shows one worker their own records, so the only query input is
  * the window. The same strict pair as the staff DTR: required together,
  * strict Y-m-d (a raw string leaking into the SQL comparison is a bug), to on
- * or after from, and capped at two semi-monthly payroll periods so a months-
- * spanning query cannot balloon the response.
+ * or after from, and capped at 62 days — four semi-monthly payroll periods,
+ * about two months — so a years-spanning query cannot balloon the response
+ * (the staff DTR carries the same cap for its CSV export).
  */
 class PortalAttendanceRequest extends FormRequest
 {

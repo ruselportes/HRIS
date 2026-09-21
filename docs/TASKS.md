@@ -785,10 +785,17 @@ HTTP 401 on login is W1's proof test.
         `me.attendance` / `me.payslips` / `me.payslips.show` (the sweep's
         allowlist now names them exactly — wildcards do not match
         segment-wise under `Str::is`). `{run}` is the payroll row id bound by
-        `whereNumber`, never a model, so a draft, a guess, or someone else's
-        run all read as the same 404. The sweep seeds one approved run per
-        swept role and hands `me/attendance` a valid from/to window. Suite:
-        `PortalDataTest` (6 tests), full backend 429 passed / 1820 assertions.
+        a `[0-9]{1,10}` run (a longer id 404s instead of TypeError-500ing),
+        never a model, so a draft, a guess, or someone else's run all read as
+        the same 404. The sweep seeds one approved run per swept role and hands
+        `me/attendance` a valid from/to window. The attendance times shown are
+        the ones payroll uses (`effectiveTimeIn/Out`, recorded fallback while
+        held) and the review follows `isPayrollReady()` — a rejected override
+        shows the real tap with "Not accepted…", anything held reads "On hold
+        — ask HR" (review fix, 2026-09-21). Staff roles may call these for
+        their own data (deliberate self-service; portal roles stay confined by
+        the allowlist). Suite: `PortalDataTest` (10 tests), full backend 433
+        passed / 1830 assertions.
 - [ ] **W3 — portal sign-in and the web app:**
       - **Move `POST /auth/activate` into `api.php`** — one line in the public
         `auth` group, `->name('auth.activate')`, and it lives with the /portal

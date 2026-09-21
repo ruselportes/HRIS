@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Attendance;
 use App\Models\AuditLog;
 use App\Models\Crew;
+use App\Models\CryptoSignature;
 use App\Models\Employee;
 use App\Models\Payroll;
 use App\Models\PayrollDetail;
@@ -39,6 +40,13 @@ class PortalDataTest extends TestCase
         $this->attendance($worker->employee_id, $crew->crew_id, '2026-09-20', 'present'); // outside the window
         $this->attendance($other->employee_id, $crew->crew_id, '2026-09-03', 'present');  // someone else's
 
+        // Synced rows carry verified signatures in production; without one
+        // the portal honestly reads "On hold" (see below), so the Cleared
+        // cases below seed theirs.
+        foreach (Attendance::where('employee_id', $worker->employee_id)->get() as $row) {
+            $this->verifiedSignature($row->attendance_id);
+        }
+
         $response = $this->actingAs($worker, 'sanctum')
             ->getJson('/api/me/attendance?from=2026-09-01&to=2026-09-15')
             ->assertOk()
@@ -68,16 +76,19 @@ class PortalDataTest extends TestCase
         $crew = $this->crew($foreman);
 
         // Shift close credits the time out.
-        $this->attendance($worker->employee_id, $crew->crew_id, '2026-09-01', 'present', [
+        $shiftEnd = $this->attendance($worker->employee_id, $crew->crew_id, '2026-09-01', 'present', [
             'time_out_type' => Attendance::TIME_OUT_SHIFT_END,
         ]);
 
         // A foreman-stated time out under pending HR review.
         $pending = $this->audit(AuditLog::MANUAL_TIME_OUT, $foreman->employee_id, AuditLog::REVIEW_PENDING);
-        $this->attendance($worker->employee_id, $crew->crew_id, '2026-09-02', 'present', [
+        $manual = $this->attendance($worker->employee_id, $crew->crew_id, '2026-09-02', 'present', [
             'time_out_type' => Attendance::TIME_OUT_MANUAL,
             'time_out_audit_id' => $pending->audit_id,
         ]);
+
+        $this->verifiedSignature($shiftEnd->attendance_id);
+        $this->verifiedSignature($manual->attendance_id);
 
         $response = $this->actingAs($worker, 'sanctum')
             ->getJson('/api/me/attendance?from=2026-09-01&to=2026-09-02')
@@ -88,6 +99,69 @@ class PortalDataTest extends TestCase
             ->assertJsonPath('data.0.review', 'Cleared')
             ->assertJsonPath('data.1.time_out_source', 'Stated by your foreman')
             ->assertJsonPath('data.1.review', 'Under HR review');
+    }
+
+    public function test_rejected_override_shows_the_real_tap_time_not_the_credit(): void
+    {
+        $worker = $this->loginUser('worker');
+        $foreman = $this->loginUser('foreman');
+        $crew = $this->crew($foreman);
+
+        // HR rejected the credited 07:00: payroll pays from the real 08:40
+        // tap, so the portal must show 08:40 too — a credited time beside a
+        // payslip computed from another is a pay dispute.
+        $rejected = $this->audit(AuditLog::LATE_OVERRIDE, $foreman->employee_id, AuditLog::REVIEW_REJECTED);
+        $row = $this->attendance($worker->employee_id, $crew->crew_id, '2026-09-03', 'late', [
+            'time_in' => $this->manila('2026-09-03 07:00'),
+            'captured_at' => $this->manila('2026-09-03 08:40'),
+            'override_flag' => 'late',
+            'override_audit_id' => $rejected->audit_id,
+        ]);
+        $this->verifiedSignature($row->attendance_id);
+
+        $this->actingAs($worker, 'sanctum')
+            ->getJson('/api/me/attendance?from=2026-09-01&to=2026-09-30')
+            ->assertOk()
+            ->assertJsonPath('data.0.time_in', '08:40')
+            ->assertJsonPath('data.0.review', 'Not accepted — paid from your actual tap time');
+    }
+
+    public function test_returned_recovery_reads_under_review_until_signed_off(): void
+    {
+        $worker = $this->loginUser('worker');
+        $engineer = $this->loginUser('engineer');
+        $crew = $this->crew($engineer);
+
+        // HR sent the reconstructed day back: nothing is paid on it yet, and
+        // the recorded times are all the portal has to show while it is held.
+        $returned = $this->audit(AuditLog::RETROACTIVE_RECOVERY, $engineer->employee_id, AuditLog::REVIEW_RETURNED);
+        $this->attendance($worker->employee_id, $crew->crew_id, '2026-09-04', 'present', [
+            'sync_status' => Attendance::RECONSTRUCTED,
+            'override_audit_id' => $returned->audit_id,
+        ]);
+
+        $this->actingAs($worker, 'sanctum')
+            ->getJson('/api/me/attendance?from=2026-09-01&to=2026-09-30')
+            ->assertOk()
+            ->assertJsonPath('data.0.time_in', '07:00')
+            ->assertJsonPath('data.0.review', 'Under HR review');
+    }
+
+    public function test_unverified_signature_reads_on_hold(): void
+    {
+        $worker = $this->loginUser('worker');
+        $crew = $this->crew($worker);
+
+        // The event failed verification: payroll pays nothing on this row,
+        // so "Cleared" would be a lie.
+        $row = $this->attendance($worker->employee_id, $crew->crew_id, '2026-09-05', 'present');
+        $this->verifiedSignature($row->attendance_id, verified: false);
+
+        $this->actingAs($worker, 'sanctum')
+            ->getJson('/api/me/attendance?from=2026-09-01&to=2026-09-30')
+            ->assertOk()
+            ->assertJsonPath('data.0.time_in', '07:00')
+            ->assertJsonPath('data.0.review', 'On hold — ask HR');
     }
 
     public function test_attendance_window_must_be_valid(): void
@@ -175,6 +249,18 @@ class PortalDataTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_an_absurdly_long_run_id_is_404_not_500(): void
+    {
+        // Twenty digits cannot become the int $run parameter (TypeError), so
+        // the route simply must not match — a worker probing ids gets a 404,
+        // never a server error.
+        $worker = $this->loginUser('worker');
+
+        $this->actingAs($worker, 'sanctum')
+            ->getJson('/api/me/payslips/12345678901234567890')
+            ->assertNotFound();
+    }
+
     /* ------------------------------------------------------------------ *
      *  Helpers
      * ------------------------------------------------------------------ */
@@ -186,6 +272,21 @@ class PortalDataTest extends TestCase
             'site_id' => $employee->site_id,
             'foreman_id' => null,
             'status' => 'deployed',
+        ]);
+    }
+
+    /** A Manila wall-clock time as the UTC instant it is stored as. */
+    private function manila(string $datetime): Carbon
+    {
+        return Carbon::parse($datetime, config('attendance.timezone', 'Asia/Manila'))->setTimezone('UTC');
+    }
+
+    /** The signature row a synced event leaves behind (verified, unless the test says otherwise). */
+    private function verifiedSignature(int $attendanceId, bool $verified = true): CryptoSignature
+    {
+        return CryptoSignature::create([
+            'attendance_id' => $attendanceId,
+            'verified' => $verified,
         ]);
     }
 

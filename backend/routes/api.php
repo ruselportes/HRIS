@@ -88,12 +88,16 @@ Route::middleware(['auth:sanctum', 'portal.scope', 'acting.expire'])->group(func
     // controllers derive the scope from the signed-in employee; there is no
     // employee id parameter, and me/payslips only ever shows APPROVED runs
     // (a draft row, a guessed id, or someone else's run reads as 404). {run}
-    // is the payroll row id, bound by whereNumber, not by a route model, so
-    // the middleware-403 ordering stays out of the picture.
+    // is the payroll row id, bound by a digit run no longer than a 32-bit id
+    // — whereNumber alone would let a 20-digit value through to the int
+    // parameter as a TypeError 500 — never a route model, so the
+    // middleware-403 ordering stays out of the picture. Staff roles may call
+    // these too and get their own data (deliberate: harmless self-service,
+    // and portal roles are still confined to exactly these by portal.scope).
     Route::get('me/attendance', [PortalController::class, 'attendance'])->name('me.attendance');
     Route::get('me/payslips', [PortalController::class, 'payslips'])->name('me.payslips');
     Route::get('me/payslips/{run}', [PortalController::class, 'payslip'])
-        ->whereNumber('run')
+        ->where('run', '[0-9]{1,10}')
         ->name('me.payslips.show');
 
     // Device binding (Phase 5) — the trust anchor for the integrity engine.
