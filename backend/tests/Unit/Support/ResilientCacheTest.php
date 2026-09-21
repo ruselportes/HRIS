@@ -140,6 +140,43 @@ class ResilientCacheTest extends TestCase
         $this->assertFalse($this->cache->isDegraded());
     }
 
+    /**
+     * An edit made while the cache was unreachable could not retire what the
+     * cache held. When the cache answers again, that entry must not be what
+     * the first reader gets.
+     */
+    public function test_a_write_during_an_outage_is_honoured_once_the_cache_answers_again(): void
+    {
+        $this->cache->remember('employees', 'index', 60, fn () => 'before the edit');
+
+        // Another request found the cache down; this write lands meanwhile.
+        $this->writeMarker(['failures' => 1, 'until' => time() + 10]);
+        $this->cache->bump('employees');
+
+        // The cooldown ends and the cache answers — with the old entry.
+        $this->writeMarker([...$this->readMarker(), 'until' => time() - 1]);
+
+        $this->assertSame(
+            'after the edit',
+            $this->cache->remember('employees', 'index', 60, fn () => 'after the edit'),
+        );
+        $this->assertFileDoesNotExist($this->markerPath());
+    }
+
+    /** What is owed survives the cache failing again before it is paid. */
+    public function test_a_pending_retirement_outlasts_a_second_failure(): void
+    {
+        Log::spy();
+        $this->writeMarker(['failures' => 1, 'until' => time() + 10, 'pending' => ['reports']]);
+
+        Cache::shouldReceive('get')->andThrow(new RuntimeException('still down'));
+        $this->writeMarker([...$this->readMarker(), 'until' => time() - 1]);
+        $this->cache->remember('employees', 'index', 60, fn () => 'x');
+
+        $this->assertSame(['reports'], $this->readMarker()['pending'] ?? null);
+        $this->assertSame(2, $this->readMarker()['failures'] ?? null);
+    }
+
     public function test_a_bumped_namespace_recomputes_instead_of_serving_the_old_entry(): void
     {
         $this->cache->remember('employees', 'index', 60, fn () => 'before');
@@ -147,5 +184,22 @@ class ResilientCacheTest extends TestCase
         $this->cache->bump('employees');
 
         $this->assertSame('after', $this->cache->remember('employees', 'index', 60, fn () => 'after'));
+    }
+
+    /** @param  array<string, mixed>  $marker */
+    private function writeMarker(array $marker): void
+    {
+        file_put_contents($this->markerPath(), (string) json_encode($marker));
+    }
+
+    /** @return array<string, mixed> */
+    private function readMarker(): array
+    {
+        return json_decode((string) @file_get_contents($this->markerPath()), true) ?? [];
+    }
+
+    private function markerPath(): string
+    {
+        return storage_path('framework/cache/cache-degraded');
     }
 }

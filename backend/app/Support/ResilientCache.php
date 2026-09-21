@@ -88,7 +88,12 @@ class ResilientCache
             return $compute();
         }
 
-        $this->recovered();
+        // The first answer after an outage may be an entry from before it. If
+        // this namespace was written to meanwhile it has just been retired,
+        // so read again under its new version.
+        if (in_array($namespace, $this->recovered(), true)) {
+            return $this->remember($namespace, $key, $ttl, $compute);
+        }
 
         if ($cached !== null) {
             return $cached;
@@ -114,10 +119,27 @@ class ResilientCache
     /** Invalidate a namespace: later reads build keys the old entries cannot match. */
     public function bump(string $namespace): void
     {
-        if ($this->isDegraded()) {
-            return;
+        if (! $this->isDegraded()) {
+            $this->incrementVersion($namespace);
         }
 
+        /*
+         * Down before the bump, or found down during it — under the failover
+         * store that second case throws nothing, the database absorbs the
+         * increment, and only the breaker opening shows that Redis missed it.
+         * Either way the counter reads will use once Redis is back has not
+         * moved, and whatever it holds from before this write would be served
+         * until its ttl ran out: a failover window is enough for an edit to
+         * go missing from the lists for minutes. So the namespace is retired
+         * when the cache answers again (recovered()).
+         */
+        if ($this->isDegraded()) {
+            $this->rememberPendingBump($namespace);
+        }
+    }
+
+    private function incrementVersion(string $namespace): void
+    {
         try {
             $bumped = Cache::increment($this->versionKey($namespace));
 
@@ -283,11 +305,13 @@ class ResilientCache
         self::$degradedUntil = microtime(true) + $cooldown;
 
         // Best effort: if the marker cannot be written, the cooldown still
-        // holds for this process.
-        @file_put_contents(
-            $this->markerPath(),
-            (string) json_encode(['failures' => $failures, 'until' => time() + $cooldown]),
-        );
+        // holds for this process. Pending bumps carry over — they are owed
+        // until the cache answers, however many cooldowns that takes.
+        $this->writeMarker([
+            'failures' => $failures,
+            'until' => time() + $cooldown,
+            'pending' => $this->marker()['pending'] ?? [],
+        ]);
 
         // Once per cooldown: a failing cache would otherwise write a line per
         // cached read, which is when the log is most needed and least readable.
@@ -302,16 +326,47 @@ class ResilientCache
         }
     }
 
-    /** The cache answered: drop any cooldown so the next failure starts over. */
-    private function recovered(): void
+    /**
+     * The cache answered: drop any cooldown so the next failure starts over,
+     * and retire what was written while it could not be told.
+     *
+     * @return list<string> the namespaces retired
+     */
+    private function recovered(): array
     {
-        if (is_file($this->markerPath())) {
-            @unlink($this->markerPath());
-            Log::info('Cache answering again.');
+        if (! is_file($this->markerPath())) {
+            return [];
+        }
+
+        $pending = $this->marker()['pending'] ?? [];
+        @unlink($this->markerPath());
+
+        foreach ($pending as $namespace) {
+            $this->bump($namespace);
+        }
+
+        Log::info('Cache answering again.', ['retired' => $pending]);
+
+        return $pending;
+    }
+
+    private function rememberPendingBump(string $namespace): void
+    {
+        $marker = $this->marker();
+        $pending = $marker['pending'] ?? [];
+
+        if (! in_array($namespace, $pending, true)) {
+            $this->writeMarker([...$marker, 'pending' => [...$pending, $namespace]]);
         }
     }
 
-    /** @return array{failures?: int, until?: int} */
+    /** @param  array{failures?: int, until?: int, pending?: list<string>}  $marker */
+    private function writeMarker(array $marker): void
+    {
+        @file_put_contents($this->markerPath(), (string) json_encode($marker));
+    }
+
+    /** @return array{failures?: int, until?: int, pending?: list<string>} */
     private function marker(): array
     {
         $raw = @file_get_contents($this->markerPath());

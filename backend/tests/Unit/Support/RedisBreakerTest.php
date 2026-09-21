@@ -98,6 +98,21 @@ class RedisBreakerTest extends TestCase
         $this->assertFileExists($this->marker(), 'The breaker closed on an answer the database gave.');
     }
 
+    /**
+     * The failover store absorbs a failed increment into the database without
+     * throwing, so the bump looks done — while the counter in Redis, the one
+     * reads use once it is back, never moved. It has to be owed, not lost.
+     */
+    public function test_a_bump_redis_missed_is_owed_until_it_answers(): void
+    {
+        $this->useRedis($this->redisThatFails(fn () => true));
+
+        $this->cache->bump('employees');
+
+        $marker = json_decode((string) file_get_contents($this->marker()), true);
+        $this->assertSame(['employees'], $marker['pending'] ?? null);
+    }
+
     public function test_the_breaker_closes_once_redis_answers_again(): void
     {
         $this->writeMarker(until: time() - 1, failures: 2);
