@@ -386,7 +386,15 @@ export function EmployeesPage() {
         </div>
       </div>
 
-      {drawer ? <EmployeeDrawer employee={drawer} canEdit={canEdit} onClose={() => setDrawer(null)} onEdit={() => setForm({ mode: 'edit', seed: drawer })} /> : null}
+      {drawer ? (
+        <EmployeeDrawer
+          key={drawer.employee_id}
+          employee={drawer}
+          canEdit={canEdit}
+          onClose={() => setDrawer(null)}
+          onEdit={() => setForm({ mode: 'edit', seed: drawer })}
+        />
+      ) : null}
       {form ? (
         <EmployeeForm
           roles={roles}

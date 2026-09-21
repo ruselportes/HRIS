@@ -41,18 +41,20 @@ function Shell() {
   const { user, signOut } = useAuth()
   const location = useLocation()
   const role = ROLES[roleKey(user?.role?.slug)]
-  // A signed-in role with no staff nav surface must not be left signed in:
-  // revoke the token before bouncing to /login. (Portal roles never reach
-  // this — they redirect to /portal above.)
+  // Portal roles have their own tree: a worker landing on a staff page goes
+  // to /portal below instead of being signed out. This has to be known to
+  // the effect too — ROLES has no worker entry, so without the guard the
+  // effect would sign the worker out in the same breath as the redirect.
+  const portal = isPortalSlug(user?.role?.slug)
+  // A signed-in role with no nav surface anywhere must not be left signed in:
+  // revoke the token before bouncing to /login.
   useEffect(() => {
-    if (!role) {
+    if (!role && !portal) {
       signOut()
     }
-  }, [role, signOut])
-  // Portal roles have their own tree: a worker landing on a staff page goes
-  // to /portal instead of being signed out below. After the hooks, so the
-  // hook order never changes between renders.
-  if (isPortalSlug(user?.role?.slug)) {
+  }, [role, portal, signOut])
+  // After the hooks, so the hook order never changes between renders.
+  if (portal) {
     return <Navigate to="/portal" replace />
   }
   if (!role) {

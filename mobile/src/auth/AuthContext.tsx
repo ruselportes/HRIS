@@ -147,11 +147,16 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       // Refuse before persisting anything, but revoke the just-issued token
       // first — passed explicitly as the bearer, and the interceptor leaves
       // explicit headers alone, so the previous user's stored token can never
-      // be signed out instead. A live token on a shared phone is exactly what
-      // must not linger.
-      await apiClient.post('/auth/logout', undefined, {
-        headers: {Authorization: `Bearer ${data.token}`},
-      });
+      // be signed out instead. Best-effort: with no signal the post throws,
+      // and the worker must still hear the refusal rather than a network
+      // error — the token dies on its own in about 2 hours.
+      try {
+        await apiClient.post('/auth/logout', undefined, {
+          headers: {Authorization: `Bearer ${data.token}`},
+        });
+      } catch {
+        // Revocation failed; the refusal below still stands.
+      }
       throw new Error(FOREMAN_ONLY_REFUSAL);
     }
     await persistToken(data.token);

@@ -38,8 +38,8 @@ export function ForgotPasswordPage() {
 
         {state.stage === 'done' ? (
           <div className="mt-5 border border-[#2F7A4D] bg-[#E6F1EA] p-4 text-[13px] text-[#1F5334]">
-            Recorded — but nobody is paged by this page, so ask HR directly. They will reset your access and hand you
-            a temporary password in person.
+            Recorded — but HR is not notified automatically, so please tell HR directly. They will give you a
+            temporary password in person.
           </div>
         ) : (
           <form onSubmit={submit} className="mt-5 space-y-4" noValidate>

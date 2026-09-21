@@ -38,6 +38,11 @@ class PortalController extends Controller
      * windows (next is null once that period starts after today, so the page
      * can never step into the future). The cutoffs live in config
      * (payroll.cutoff_start_days) and are resolved here, never in JavaScript.
+     * An explicit window that is not a whole pay period still works, but the
+     * period block then describes the period containing `from` — a narrower
+     * span than the rows. The page only ever sends exact periods, so nobody
+     * sees that skew; it is documented here rather than refused so ad-hoc
+     * windows keep working.
      */
     public function attendance(PortalAttendanceRequest $request): JsonResponse
     {

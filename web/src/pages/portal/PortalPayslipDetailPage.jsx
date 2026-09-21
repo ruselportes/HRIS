@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { useAuth } from '../../auth/AuthContext'
 import { http, errorMessage } from '../../api/client'
 import { peso, approvedDate, siteDay } from './portalFormat'
 
@@ -48,6 +49,7 @@ function groupByDate(lines) {
 
 export function PortalPayslipDetailPage() {
   const { run } = useParams()
+  const { user } = useAuth()
   const [detail, setDetail] = useState(null)
   const [error, setError] = useState(null)
 
@@ -87,6 +89,16 @@ export function PortalPayslipDetailPage() {
         {!error && !showing ? <p className="py-4 text-sm text-neutral-700">Loading the breakdown…</p> : null}
         {!error && showing ? (
           <>
+            <div className="hidden print:block">
+              <div className="font-heading text-lg">Arcenas Development Corporation</div>
+              <div className="mt-1 text-sm">
+                {user?.full_name} · {user?.employee_code}
+              </div>
+              <div className="text-sm text-neutral-700">
+                {showing.run_code} · {showing.period?.start} – {showing.period?.end} · Approved{' '}
+                {approvedDate(showing.approved_at)}
+              </div>
+            </div>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="font-heading text-lg">
@@ -127,6 +139,9 @@ export function PortalPayslipDetailPage() {
                 ))}
               </dl>
               {d?.tax_note ? <p className="mt-2 text-xs text-neutral-700">{d.tax_note}</p> : null}
+              <p className="mt-2 text-sm tabular-nums">
+                Total deductions {peso(showing.deductions)} · {STRINGS.net} {peso(showing.net_pay)}
+              </p>
             </section>
 
             <section>

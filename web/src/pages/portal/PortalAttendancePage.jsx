@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { http, errorMessage } from '../../api/client'
+import { siteDay } from './portalFormat'
 
 // Worker-facing copy lives here, in one object, so a Bisaya version can be
 // added later without hunting through markup.
@@ -95,41 +96,67 @@ export function PortalAttendancePage() {
         {loading ? (
           <p className="py-6 text-sm text-neutral-700">Loading your records…</p>
         ) : (
-          <table className="w-full border-collapse text-sm tabular-nums">
-            <thead>
-              <tr className="border-b border-neutral-300 text-left text-[11px] uppercase tracking-[.08em] text-neutral-700">
-                <th className="py-2.5 pr-4 font-normal">Date</th>
-                <th className="py-2.5 pr-4 font-normal">Status</th>
-                <th className="py-2.5 pr-4 font-normal">Time in</th>
-                <th className="py-2.5 pr-4 font-normal">Time out</th>
-                <th className="py-2.5 pr-4 font-normal">How the time out was recorded</th>
-                <th className="py-2.5 font-normal">Review</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            <div className="sm:hidden">
               {rows.map((row) => (
-                <tr key={row.attendance_id} className="border-b border-neutral-200">
-                  <td className="py-2.5 pr-4">{row.date}</td>
-                  <td className="py-2.5 pr-4 capitalize">{row.status}</td>
-                  <td className="py-2.5 pr-4">{row.time_in ?? '—'}</td>
-                  <td className="py-2.5 pr-4">{row.time_out ?? '—'}</td>
-                  <td className="py-2.5 pr-4">{row.time_out_source}</td>
-                  <td className="py-2.5">
+                <div key={row.attendance_id} className="border-b border-neutral-200 py-3">
+                  <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
+                    <span className="font-semibold">{siteDay(row.date)}</span>
+                    <span className="capitalize text-neutral-700">{row.status}</span>
+                    <span className="ml-auto tabular-nums">
+                      {row.time_in ?? '—'} – {row.time_out ?? '—'}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-xs text-neutral-700">{row.time_out_source}</div>
+                  <div className="mt-1.5">
                     <span className={`inline-block whitespace-nowrap px-2 py-0.5 text-[11px] ${reviewClass(row.review)}`}>
                       {row.review}
                     </span>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
               {!rows.length ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-sm text-neutral-700">
-                    {STRINGS.empty}
-                  </td>
-                </tr>
+                <p className="py-8 text-center text-sm text-neutral-700">{STRINGS.empty}</p>
               ) : null}
-            </tbody>
-          </table>
+            </div>
+            <table className="hidden w-full border-collapse text-sm tabular-nums sm:table">
+              <thead>
+                <tr className="border-b border-neutral-300 text-left text-[11px] uppercase tracking-[.08em] text-neutral-700">
+                  <th className="py-2.5 pr-4 font-normal">Date</th>
+                  <th className="py-2.5 pr-4 font-normal">Status</th>
+                  <th className="py-2.5 pr-4 font-normal">Time in</th>
+                  <th className="py-2.5 pr-4 font-normal">Time out</th>
+                  <th className="py-2.5 pr-4 font-normal">How the time out was recorded</th>
+                  <th className="py-2.5 font-normal">Review</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.attendance_id} className="border-b border-neutral-200">
+                    <td className="py-2.5 pr-4">{siteDay(row.date)}</td>
+                    <td className="py-2.5 pr-4 capitalize">{row.status}</td>
+                    <td className="py-2.5 pr-4">{row.time_in ?? '—'}</td>
+                    <td className="py-2.5 pr-4">{row.time_out ?? '—'}</td>
+                    <td className="py-2.5 pr-4">{row.time_out_source}</td>
+                    <td className="py-2.5">
+                      <span
+                        className={`inline-block whitespace-nowrap px-2 py-0.5 text-[11px] ${reviewClass(row.review)}`}
+                      >
+                        {row.review}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {!rows.length ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-sm text-neutral-700">
+                      {STRINGS.empty}
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </>
         )}
       </div>
     </div>

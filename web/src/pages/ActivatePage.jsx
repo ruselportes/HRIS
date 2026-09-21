@@ -14,6 +14,7 @@ const STRINGS = {
   passwordHint: 'At least 8 characters, not your ID or birthday',
   confirm: 'Confirm new password',
   mismatch: 'The new passwords do not match.',
+  birthdayMissing: 'Choose your full birthday.',
   activate: 'Activate',
   activating: 'Activating…',
   fallback: 'Unable to activate. Contact HR.',
@@ -57,16 +58,35 @@ export function ActivatePage() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [banner, setBanner] = useState(null)
+  const [birthdayError, setBirthdayError] = useState(null)
   const [passwordError, setPasswordError] = useState(null)
   const [busy, setBusy] = useState(false)
 
-  const maxDay = day && month && year ? daysIn(Number(year), Number(month)) : 31
+  // The form is noValidate, so the dropdowns' required attributes do nothing
+  // and the check below is the real gate. 2000 stands in for an unpicked year
+  // because it is a leap year: 29 Feb stays open until the year is known.
+  const maxDay = month ? daysIn(Number(year) || 2000, Number(month)) : 31
   const days = Array.from({ length: maxDay }, (_, i) => i + 1)
+
+  const handleMonth = (m) => {
+    setMonth(m)
+    if (day && m && Number(day) > daysIn(Number(year) || 2000, Number(m))) setDay('')
+  }
+
+  const handleYear = (y) => {
+    setYear(y)
+    if (day && month && Number(day) > daysIn(Number(y), Number(month))) setDay('')
+  }
 
   const submit = async (event) => {
     event.preventDefault()
     setBanner(null)
+    setBirthdayError(null)
     setPasswordError(null)
+    if (!day || !month || !year || Number(day) > daysIn(Number(year), Number(month))) {
+      setBirthdayError(STRINGS.birthdayMissing)
+      return
+    }
     if (password !== confirm) {
       setPasswordError(STRINGS.mismatch)
       return
@@ -179,7 +199,7 @@ export function ActivatePage() {
                 <select
                   aria-label="Month"
                   value={month}
-                  onChange={(e) => setMonth(e.target.value)}
+                  onChange={(e) => handleMonth(e.target.value)}
                   required
                   className="h-[44px] border border-neutral-400 bg-canvas px-2 text-ink"
                 >
@@ -193,7 +213,7 @@ export function ActivatePage() {
                 <select
                   aria-label="Year"
                   value={year}
-                  onChange={(e) => setYear(e.target.value)}
+                  onChange={(e) => handleYear(e.target.value)}
                   required
                   className="h-[44px] border border-neutral-400 bg-canvas px-2 text-ink"
                 >
@@ -205,6 +225,7 @@ export function ActivatePage() {
                   ))}
                 </select>
               </div>
+              {birthdayError ? <p className="mt-1.5 text-[13px] text-[#75261C]">{birthdayError}</p> : null}
             </div>
 
             <div className="border border-neutral-300 bg-surface p-3 text-[13px] text-neutral-700">
