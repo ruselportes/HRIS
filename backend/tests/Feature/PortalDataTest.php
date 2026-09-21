@@ -41,8 +41,8 @@ class PortalDataTest extends TestCase
         $this->attendance($other->employee_id, $crew->crew_id, '2026-09-03', 'present');  // someone else's
 
         // Synced rows carry verified signatures in production; without one
-        // the portal honestly reads "On hold" (see below), so the Cleared
-        // cases below seed theirs.
+        // the portal honestly reads "On hold" (see below), so the
+        // counted-for-pay cases below seed theirs.
         foreach (Attendance::where('employee_id', $worker->employee_id)->get() as $row) {
             $this->verifiedSignature($row->attendance_id);
         }
@@ -58,7 +58,7 @@ class PortalDataTest extends TestCase
             ->assertJsonPath('data.0.time_in', '07:00')
             ->assertJsonPath('data.0.time_out', '17:00')
             ->assertJsonPath('data.0.time_out_source', 'Tapped on the device')
-            ->assertJsonPath('data.0.review', 'Cleared')
+            ->assertJsonPath('data.0.review', 'Counted for pay')
             ->assertJsonPath('data.1.date', '2026-09-05')
             ->assertJsonPath('data.1.status', 'late');
 
@@ -96,7 +96,7 @@ class PortalDataTest extends TestCase
 
         $response
             ->assertJsonPath('data.0.time_out_source', 'Close shift credited a time out')
-            ->assertJsonPath('data.0.review', 'Cleared')
+            ->assertJsonPath('data.0.review', 'Counted for pay')
             ->assertJsonPath('data.1.time_out_source', 'Stated by your foreman')
             ->assertJsonPath('data.1.review', 'Under HR review');
     }
@@ -126,6 +126,31 @@ class PortalDataTest extends TestCase
             ->assertJsonPath('data.0.review', 'Not accepted — paid from your actual tap time');
     }
 
+    public function test_rejected_manual_time_out_pays_from_when_it_was_entered(): void
+    {
+        $worker = $this->loginUser('worker');
+        $foreman = $this->loginUser('foreman');
+        $crew = $this->crew($foreman);
+
+        // HR rejected the foreman's stated 17:00 time out: payroll pays from
+        // when it was entered on the device (17:45), so the portal must show
+        // 17:45 — and the words must not claim "your actual tap time", which
+        // never happened for a time out.
+        $rejected = $this->audit(AuditLog::MANUAL_TIME_OUT, $foreman->employee_id, AuditLog::REVIEW_REJECTED);
+        $row = $this->attendance($worker->employee_id, $crew->crew_id, '2026-09-06', 'present', [
+            'time_out_type' => Attendance::TIME_OUT_MANUAL,
+            'time_out_captured_at' => $this->manila('2026-09-06 17:45'),
+            'time_out_audit_id' => $rejected->audit_id,
+        ]);
+        $this->verifiedSignature($row->attendance_id);
+
+        $this->actingAs($worker, 'sanctum')
+            ->getJson('/api/me/attendance?from=2026-09-01&to=2026-09-30')
+            ->assertOk()
+            ->assertJsonPath('data.0.time_out', '17:45')
+            ->assertJsonPath('data.0.review', 'Not accepted — paid from when the time out was entered');
+    }
+
     public function test_returned_recovery_reads_under_review_until_signed_off(): void
     {
         $worker = $this->loginUser('worker');
@@ -153,7 +178,7 @@ class PortalDataTest extends TestCase
         $crew = $this->crew($worker);
 
         // The event failed verification: payroll pays nothing on this row,
-        // so "Cleared" would be a lie.
+        // so "Counted for pay" would be a lie.
         $row = $this->attendance($worker->employee_id, $crew->crew_id, '2026-09-05', 'present');
         $this->verifiedSignature($row->attendance_id, verified: false);
 

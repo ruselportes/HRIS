@@ -132,11 +132,20 @@ class PortalController extends Controller
             return 'On hold — ask HR';
         }
 
-        if (in_array(AuditLog::REVIEW_REJECTED, $statuses, true)) {
+        if ($a->time_out_type === Attendance::TIME_OUT_MANUAL
+            && $a->timeOutEvent?->review_status === AuditLog::REVIEW_REJECTED) {
+            // A rejected stated time-out pays from when it was entered on the
+            // device — a time-out has no worker tap to revert to.
+            return 'Not accepted — paid from when the time out was entered';
+        }
+
+        if ($a->overrideEvent?->review_status === AuditLog::REVIEW_REJECTED) {
             return 'Not accepted — paid from your actual tap time';
         }
 
-        return 'Cleared';
+        // Plain tapped rows never needed a review; this is a pay statement,
+        // not an HR verdict.
+        return 'Counted for pay';
     }
 
     /** One payslip row; itemised only on the detail read. */
