@@ -207,7 +207,7 @@ it.each(['worker', 'operator', 'hr', 'admin', 'executive'])(
     'refuses a %s sign-in, revoking the just-issued token first',
     async slug => {
       const portalUser = {...USER, role: {slug, role_name: 'Field'}};
-      post.mockImplementation((url: string, _body?: unknown, config?: {headers?: object}) => {
+      post.mockImplementation((url: string, _body?: unknown, _config?: {headers?: object}) => {
         if (url === '/auth/login') {
           return Promise.resolve({data: {token: 'tok-portal', user: portalUser}});
         }

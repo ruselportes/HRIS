@@ -18,7 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {useAuth} from '../auth/AuthContext';
+import {useAuth, FOREMAN_ONLY_REFUSAL} from '../auth/AuthContext';
 import {ArcenasLogo} from '../components/ArcenasLogo';
 import {
   apiClient,
@@ -53,7 +53,9 @@ export function LoginScreen() {
     } catch (err: any) {
       // Distinguish "server unreachable" from "server said no" — collapsing
       // both into one message made a wrong API port look like bad credentials.
-      if (!err?.response) {
+      if (err?.message === FOREMAN_ONLY_REFUSAL) {
+        setError(FOREMAN_ONLY_REFUSAL);
+      } else if (!err?.response) {
         setError(
           `Can't reach the server at ${apiClient.defaults.baseURL}. Is the backend running?`,
         );
