@@ -61,6 +61,15 @@ class AuditLog extends Model
     /** A user changed their own password (Add-on B, FR-11, W3). */
     public const PASSWORD_CHANGED = 'PASSWORD_CHANGED';
 
+    /** Project site administration (C2, UC-03): created, renamed, closed, reopened. */
+    public const SITE_CREATED = 'SITE_CREATED';
+
+    public const SITE_UPDATED = 'SITE_UPDATED';
+
+    public const SITE_CLOSED = 'SITE_CLOSED';
+
+    public const SITE_REOPENED = 'SITE_REOPENED';
+
     /**
      * Leave & Overtime workflow steps (Phase 9, UC-10). One family for both
      * request kinds: the description carries the type and id, so the list is

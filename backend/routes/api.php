@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\RecoveryController;
 use App\Http\Controllers\Api\ReferenceController;
 use App\Http\Controllers\Api\ReportsController;
 use App\Http\Controllers\Api\RollCallMonitorController;
+use App\Http\Controllers\Api\SiteController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -67,6 +68,19 @@ Route::middleware(['auth:sanctum', 'portal.scope', 'acting.expire'])->group(func
 
     Route::get('roles', [ReferenceController::class, 'roles']);
     Route::get('sites', [ReferenceController::class, 'sites']);
+
+    // Project Sites (C2, UC-03). The reference list above stays as it is —
+    // every dropdown reads it, and a Site save already retires its cache
+    // entry — while the overview and the admin writes live here. {site}
+    // binds by site_id; the worker lockout sweep's default 1 never reaches
+    // the database, denied first by portal.scope.
+    Route::get('sites/overview', [SiteController::class, 'overview'])
+        ->middleware('role:hr,engineer,admin,executive')
+        ->name('sites.overview');
+    Route::post('sites', [SiteController::class, 'store'])->middleware('role:admin');
+    Route::put('sites/{site}', [SiteController::class, 'update'])->middleware('role:admin');
+    Route::post('sites/{site}/close', [SiteController::class, 'close'])->middleware('role:admin');
+    Route::post('sites/{site}/reopen', [SiteController::class, 'reopen'])->middleware('role:admin');
 
     // Crew builder (UC-03). Writes are engineer-only via CrewPolicy; the role
     // middleware is defense-in-depth. {crew} binds Crew for show/update.

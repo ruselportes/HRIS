@@ -25,6 +25,15 @@ class Site extends Model
         'status' => 'string',
     ];
 
+    public const STATUS_ACTIVE = 'active';
+
+    public const STATUS_CLOSED = 'closed';
+
+    public function isClosed(): bool
+    {
+        return $this->status === self::STATUS_CLOSED;
+    }
+
     public function employees(): HasMany
     {
         return $this->hasMany(Employee::class, 'site_id', 'site_id');
