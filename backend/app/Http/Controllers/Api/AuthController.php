@@ -257,8 +257,11 @@ class AuthController extends Controller
      *
      * No forced rotation at first sign-in (team decision, 2026-09-21): HR's
      * temporary password IS the login credential until the worker changes it
-     * here. Nothing in this flow revokes the current token or any other — the
-     * worker stays signed in and their other sessions stay live.
+     * here. But a change signs every other session out: people change their
+     * password because they think someone else knows it, and that someone's
+     * token — up to 12h web, 30d app, 2h portal — must die with it. Only the
+     * session making the request survives, so the changer stays signed in
+     * (the foreman's phone re-signs on next signal, working offline meanwhile).
      */
     public function changePassword(Request $request): JsonResponse
     {
@@ -269,11 +272,16 @@ class AuthController extends Controller
             'new_password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        // Guessing the current password is throttled per account+IP, exactly
-        // like login. The new_password policy failures below never bump the
-        // counter: they hinge on the new value alone, so no guess is being
-        // exercised.
-        $key = 'password:'.sha1($employee->employee_id.'|'.$request->ip());
+        // Guessing the current password is throttled per account — not per
+        // account+IP like login, where the IP keeps foremen sharing one
+        // site's connection from locking each other out. Here the caller is
+        // already signed in as this account, so the only person a lockout can
+        // affect is whoever holds that session; with the IP in the key, a
+        // stolen token could hop IPs and keep guessing the real password,
+        // turning a 12-hour session into a permanent takeover. The
+        // new_password policy failures below never bump the counter: they
+        // hinge on the new value alone, so no guess is being exercised.
+        $key = 'password:'.sha1((string) $employee->employee_id);
 
         if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
             return response()->json([
@@ -319,6 +327,11 @@ class AuthController extends Controller
 
         $employee->password = $validated['new_password'];
         $employee->save();
+
+        // Every session except this one dies here. A password change means
+        // someone else may know the old one; their token must not outlive it.
+        $current = $request->user()->currentAccessToken();
+        $employee->tokens()->when($current?->id, fn ($q, $id) => $q->where('id', '!=', $id))->delete();
 
         AuditLog::create([
             'actor_id' => $employee->employee_id,

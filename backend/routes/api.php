@@ -28,11 +28,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
-    // Add-on B (FR-11): activation opened in W3, together with the /portal
-    // sign-in surface, so both doors work at the same moment (review,
-    // 2026-09-21) and no dead endpoint sits on the tunnel. PortalActivationTest
-    // registered this route per test until now; Route::has('auth.activate')
-    // turns true here, so the tests exercise the production definition.
+    // Add-on B (FR-11): activation opened in W3 on the API side. The /portal
+    // web pages and the mobile worker refusal are still pending, so only the
+    // API doors work yet — no dead endpoint sits on the tunnel, but nothing
+    // should be deployed until the web and mobile parts land (review,
+    // 2026-09-21). PortalActivationTest registered this route per test until
+    // now; Route::has('auth.activate') turns true here, so the tests exercise
+    // the production definition.
     Route::post('activate', [AuthController::class, 'activate'])->name('auth.activate');
     Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
 });

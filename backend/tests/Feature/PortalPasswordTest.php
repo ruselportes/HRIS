@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AuditLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -12,8 +13,8 @@ use Tests\TestCase;
  *
  * No forced rotation at first sign-in (team decision, 2026-09-21): HR's
  * temporary password IS the login credential until the worker changes it
- * through this endpoint, and nothing here revokes the current token or any
- * other session.
+ * through this endpoint. But the change signs every other session out — only
+ * the session making the request survives.
  */
 class PortalPasswordTest extends TestCase
 {
@@ -40,7 +41,22 @@ class PortalPasswordTest extends TestCase
         $worker->refresh();
         $this->assertTrue(Hash::check('FreshPass88x', $worker->getAuthPassword()));
 
-        // The session survives: nothing in this flow revokes tokens.
+        // Only the session making the request survives: a second token for
+        // the same worker — the session someone else may be holding — dies
+        // with the old password, while the current one still works.
+        $otherToken = $worker->createToken('web')->plainTextToken;
+
+        $this->actingAs($worker, 'sanctum')->change([
+            'current_password' => 'FreshPass88x',
+            'new_password' => 'SecondPass99x',
+            'new_password_confirmation' => 'SecondPass99x',
+        ])->assertOk();
+
+        Auth::forgetGuards();
+
+        $this->withHeader('Authorization', "Bearer {$otherToken}")
+            ->getJson('/api/auth/me')
+            ->assertUnauthorized();
         $this->actingAs($worker, 'sanctum')->getJson('/api/auth/me')->assertOk();
 
         $this->assertDatabaseHas('audit_logs', [
