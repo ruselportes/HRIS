@@ -577,7 +577,7 @@ HTTP 401 on login is W1's proof test.
       SPMP §3.2.1 WBS **group 10.0**, and this section reconciled — before any
       code, per CLAUDE.md §8. The §2.3 roles text and CLAUDE.md §5 changes wait
       for W4.
-- [ ] **W1 — lock down and the recovery paths (backend, no sign-in change):**
+- [x] **W1 — lock down and the recovery paths (backend, no sign-in change):**
       - `EnsurePortalScope` middleware on the authenticated API group, listed
         `['auth:sanctum', 'portal.scope', 'acting.expire']` and registered
         before `SubstituteBindings` in `app.php`'s priority list, so the 403
