@@ -25,15 +25,19 @@ use Symfony\Component\HttpFoundation\Response;
 class EnsurePortalScope
 {
     /**
-     * Portal roles may reach only these named routes. W2 adds the
-     * me.attendance and me.payslips names; they then fall into the sweep
-     * test's not-403 branch automatically.
+     * Portal roles may reach only these named routes. W2 added the worker
+     * portal's own-data reads — me.attendance (their row, in a from/to window)
+     * and me.payslips / me.payslips.show (APPROVED runs only) — and they fall
+     * into the route-sweep test's not-403 branch automatically. The names are
+     * exact because Str::is matches segment-wise: a 'me.payslips' index and a
+     * 'me.payslips.show' detail are different routes.
      */
     public const ALLOWED_PORTAL_ROUTES = [
         'auth.me',
         'auth.logout',
-        'me.attendance.*',
-        'me.payslips.*',
+        'me.attendance',
+        'me.payslips',
+        'me.payslips.show',
     ];
 
     public function handle(Request $request, Closure $next): Response

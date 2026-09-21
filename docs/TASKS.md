@@ -667,7 +667,7 @@ HTTP 401 on login is W1's proof test.
         a line about them).
       - `web/src/App.jsx` fail-open fixed now (fail closed), since W3 needs it
         and it is independent of opening sign-in.
-- [ ] **W2 — their own data only:**
+- [x] **W2 — their own data only (shipped 2026-09-21):**
       - `GET /me/attendance?from=&to=`: their `attendances` rows — date,
         status, time in and out, how the time-out was recorded, and review
         state in plain words ("Under HR review"). No hashes, signatures, device
@@ -679,6 +679,14 @@ HTTP 401 on login is W1's proof test.
         signed-in employee.
       - Tests: worker A cannot read worker B's records; draft runs never
         appear; a guessed `{run}` that belongs to someone else returns 404.
+      - Shipped as `PortalController` + `PortalAttendanceRequest`, routes named
+        `me.attendance` / `me.payslips` / `me.payslips.show` (the sweep's
+        allowlist now names them exactly — wildcards do not match
+        segment-wise under `Str::is`). `{run}` is the payroll row id bound by
+        `whereNumber`, never a model, so a draft, a guess, or someone else's
+        run all read as the same 404. The sweep seeds one approved run per
+        swept role and hands `me/attendance` a valid from/to window. Suite:
+        `PortalDataTest` (6 tests), full backend 429 passed / 1820 assertions.
 - [ ] **W3 — portal sign-in and the web app:**
       - **Move `POST /auth/activate` into `api.php`** — one line in the public
         `auth` group, `->name('auth.activate')`, and it lives with the /portal

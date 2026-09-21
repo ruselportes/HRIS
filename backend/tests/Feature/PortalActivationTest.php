@@ -115,6 +115,24 @@ class PortalActivationTest extends TestCase
         $this->assertDatabaseCount('audit_logs', 0);
     }
 
+    public function test_invalid_utf8_password_is_refused_not_failed_over(): void
+    {
+        // A high byte (e.g. a form-encoded %FF) makes preg_replace('/u')
+        // return null. The endpoint must refuse, never fall back to the
+        // old non-UTF-8 split — that fallback would let a separator-written
+        // birthday through as separate runs (review, 2026-09-21). postJson
+        // would fail to encode the byte, so this travels as a raw form post.
+        $this->worker(['password' => null]);
+        $this->withHeader('Accept', 'application/json')
+            ->post('/api/auth/activate', [
+                'employee_code' => 'ADC-0742',
+                'date_of_birth' => '1990-05-12',
+                'password' => "juan05_12_1990\xFF",
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('message', self::GENERIC_FAILURE);
+    }
+
     public function test_password_with_separated_digit_groups_is_accepted(): void
     {
         // Each dash sits between a digit and a letter, so the separator-aware

@@ -184,6 +184,16 @@ class AuthController extends Controller
         // "Moon1-Kite4-Lion0-Star7" keeps runs 1, 4, 0, 7 — the dashes sit
         // between a digit and a letter, which is punctuation, not a date.
         $separatorAware = preg_replace('/(?<=\d)[^\p{L}\d]+(?=\d)/u', '', $data['password']);
+
+        // The /u flag made this regex also a UTF-8 validator: on a malformed
+        // (invalid UTF-8) password it returns null. Refuse rather than fall
+        // back — the fallback would re-split on every non-digit and let a
+        // separator-written birthday escape through a stray high byte.
+        if ($separatorAware === null) {
+            $bump();
+            $this->activationFailure();
+        }
+
         $dob = Carbon::parse($data['date_of_birth']);
         $dobRenderings = [
             $dob->format('Ymd'), $dob->format('dmY'), $dob->format('mdY'),
@@ -191,7 +201,7 @@ class AuthController extends Controller
             $dob->format('dm'), $dob->format('md'),
         ];
 
-        preg_match_all('/\d+/', $separatorAware ?? $data['password'], $matches);
+        preg_match_all('/\d+/', $separatorAware, $matches);
 
         foreach ($matches[0] as $digitRun) {
             foreach ($dobRenderings as $rendering) {

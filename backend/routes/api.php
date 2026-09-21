@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\Api\AdminDeviceController;
 use App\Http\Controllers\Api\ActingForemanController;
+use App\Http\Controllers\Api\AdminDeviceController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AttendanceSyncController;
 use App\Http\Controllers\Api\AuthController;
@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\LeaveRequestController;
 use App\Http\Controllers\Api\OverrideController;
 use App\Http\Controllers\Api\OvertimeRequestController;
 use App\Http\Controllers\Api\PayrollController;
+use App\Http\Controllers\Api\PortalController;
 use App\Http\Controllers\Api\RecoveryController;
 use App\Http\Controllers\Api\ReferenceController;
 use App\Http\Controllers\Api\ReportsController;
@@ -82,6 +83,18 @@ Route::middleware(['auth:sanctum', 'portal.scope', 'acting.expire'])->group(func
 
     // Mobile roster fetch (UC-04) — foreman's own deployed crew only.
     Route::get('me/crew', [ForemanController::class, 'myCrew'])->middleware('role:foreman');
+
+    // Add-on B (FR-11, UC-11) — the worker portal's own-data reads. The
+    // controllers derive the scope from the signed-in employee; there is no
+    // employee id parameter, and me/payslips only ever shows APPROVED runs
+    // (a draft row, a guessed id, or someone else's run reads as 404). {run}
+    // is the payroll row id, bound by whereNumber, not by a route model, so
+    // the middleware-403 ordering stays out of the picture.
+    Route::get('me/attendance', [PortalController::class, 'attendance'])->name('me.attendance');
+    Route::get('me/payslips', [PortalController::class, 'payslips'])->name('me.payslips');
+    Route::get('me/payslips/{run}', [PortalController::class, 'payslip'])
+        ->whereNumber('run')
+        ->name('me.payslips.show');
 
     // Device binding (Phase 5) — the trust anchor for the integrity engine.
     // Foreman-only, and every handler scopes to the authenticated employee so

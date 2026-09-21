@@ -5,7 +5,10 @@ namespace Tests\Feature;
 use App\Http\Middleware\EnsurePortalScope;
 use App\Models\AuditLog;
 use App\Models\Employee;
+use App\Models\Payroll;
+use App\Models\PayrollDetail;
 use App\Models\Role;
+use App\Services\Payroll\PayPeriod;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Auth;
@@ -14,12 +17,12 @@ use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * Add-on B (FR-11, UC-11) — worker portal lockdown and the HR reset, in one
- * suite because they ship together (W1, `585a835`). The HTTP activation suite
- * vacated in the review-fix commit because auth.activate is now registered in
- * W3 (activation and sign-in open together); its only survivor is the
- * password-seeded login proof below, and the full failure matrix re-enters
- * with the route.
+ * Add-on B (FR-11, UC-11) — the worker portal lockdown, the HR reset, and the
+ * portal's own-data reads (W2), in one suite. The HTTP activation matrix has
+ * its own class (PortalActivationTest), which registers the auth.activate route
+ * per test until W3 registers it for real; the route opens together with the
+ * /portal sign-in surface. Its only survivor here is the password-seeded login
+ * proof below, proving a portal role is refused sign-in until that day.
  */
 class PortalScopeTest extends TestCase
 {
@@ -48,6 +51,7 @@ class PortalScopeTest extends TestCase
     private function sweepPortalRole(string $slug): void
     {
         $user = $this->loginUser($slug, ['date_of_birth' => '1990-05-12']);
+        $approvedRun = $this->seedApprovedPayslip($user);
         $swept = 0;
 
         foreach (app('router')->getRoutes()->getRoutes() as $route) {
@@ -66,14 +70,22 @@ class PortalScopeTest extends TestCase
                 $method = 'GET';
             }
 
-            $uri = '/'.$this->sampleUri($route);
+            $uri = '/'.$this->sampleUri($route, $approvedRun);
             $swept++;
 
-            $response = $this->actingAs($user, 'sanctum')->call($method, $uri);
+            // me/attendance demands its from/to pair; hand it a valid window
+            // so the allowlisted route is actually exercised, not 422'd.
+            $query = $route->getName() === 'me.attendance'
+                ? ['from' => '2026-09-01', 'to' => '2026-09-30']
+                : [];
+
+            $response = $this->actingAs($user, 'sanctum')->call($method, $uri, $query);
 
             if ($this->isAllowedPortalRoute($route->getName())) {
-                // Both allowlisted routes return 200 today; assertSuccessful is
-                // the honest bound — a 500 or 404 must fail the sweep too.
+                // The allowlisted routes all return 200 today; assertSuccessful
+                // is the honest bound — a 500 or a 404 must fail the sweep too,
+                // and me/payslips/{run} is exercised against the run seeded
+                // above (sampleFor substitutes its payroll id for 'run').
                 $response->assertSuccessful();
             } else {
                 $response->assertForbidden();
@@ -121,14 +133,13 @@ class PortalScopeTest extends TestCase
     }
 
     /* ------------------------------------------------------------------ *
-     *  Login proof (activation's route and failure matrix re-enter in W3)
+     *  Login proof (the full activation matrix lives in PortalActivationTest)
      * ------------------------------------------------------------------ */
 
     public function test_activated_worker_cannot_login_until_w3(): void
     {
-        // W1 proof, independent of the auth.activate route (registered in W3):
-        // even with a real password set, a portal role is refused by login
-        // until W3 opens it.
+        // Portal sign-in opens in W3 along with auth.activate; until then even
+        // a real password is refused at login.
         $this->worker(['password' => Hash::make('secret99w')]);
 
         $this->postJson('/api/auth/login', [
@@ -206,25 +217,64 @@ class PortalScopeTest extends TestCase
      *  Helpers
      * ------------------------------------------------------------------ */
 
-    private function sampleUri(Route $route): string
+    private function sampleUri(Route $route, int $approvedRun): string
     {
         $uri = $route->uri();
 
         foreach ($route->parameterNames() as $parameter) {
-            $sample = $this->sampleFor($route, $parameter);
+            $sample = $this->sampleFor($route, $parameter, $approvedRun);
             $uri = str_replace(['{'.$parameter.'?}', '{'.$parameter.'}'], $sample, $uri);
         }
 
         return $uri;
     }
 
-    private function sampleFor(Route $route, string $parameter): string
+    private function sampleFor(Route $route, string $parameter, int $approvedRun): string
     {
+        if ($parameter === 'run') {
+            // me/payslips/{run} must be sampled against this role sweep's own
+            // approved run — a fixed '1' would 404 for everyone but the row
+            // that literally has id 1.
+            return (string) $approvedRun;
+        }
+
         return match ($route->wheres[$parameter] ?? null) {
             '\d{4}-\d{2}-[AB]' => '2026-09-A',
             '\d{4}-\d{2}-\d{2}' => '2026-09-01',
             default => '1',
         };
+    }
+
+    /** An approved payslip row for the sweep user; returns its payroll id. */
+    private function seedApprovedPayslip(Employee $user): int
+    {
+        $period = PayPeriod::fromCode(now(config('attendance.timezone', 'Asia/Manila'))->format('Y-m').'-A');
+
+        $payroll = Payroll::create([
+            'employee_id' => $user->employee_id,
+            'run_code' => $period->code,
+            'pay_period_start' => $period->start,
+            'pay_period_end' => $period->end,
+            'gross_pay' => 8000.00,
+            'net_pay' => 7200.00,
+            'status' => Payroll::APPROVED,
+        ]);
+
+        PayrollDetail::create([
+            'payroll_id' => $payroll->payroll_id,
+            'regular_hours' => 80.00,
+            'basic_pay' => 8000.00,
+            'sss_employee' => 400.00,
+            'philhealth_employee' => 200.00,
+            'pagibig_employee' => 100.00,
+            'withholding_tax' => 100.00,
+            'deductions' => 800.00,
+            'readiness' => PayrollDetail::READY,
+            'blocked_reasons' => [],
+            'breakdown' => [],
+        ]);
+
+        return $payroll->payroll_id;
     }
 
     private function isAllowedPortalRoute(?string $name): bool
