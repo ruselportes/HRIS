@@ -93,8 +93,16 @@ class Employee extends Authenticatable
         return trim("{$this->first_name} {$this->last_name}");
     }
 
+    /**
+     * Staff-only in W1 (Add-on B): portal roles are admitted by the same
+     * endpoint in W3, together with the /portal surface. A separated employee
+     * of any role is refused here and by EnsurePortalScope on every request,
+     * so a live token cannot outlive the separation.
+     */
     public function canSignIn(): bool
     {
-        return $this->password !== null && $this->role?->isLoginRole();
+        return $this->password !== null
+            && $this->employment_status !== 'separated'
+            && $this->role?->isLoginRole();
     }
 }

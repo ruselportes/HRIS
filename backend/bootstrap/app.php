@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Middleware\EndExpiredActingCovers;
+use App\Http\Middleware\EnsurePortalScope;
 use App\Http\Middleware\EnsureRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,7 +20,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => EnsureRole::class,
             'acting.expire' => EndExpiredActingCovers::class,
+            'portal.scope' => EnsurePortalScope::class,
         ]);
+
+        // The portal gate must beat model binding (a worker guessing an id gets
+        // an exact 403, never a fake-id 404) and must run before acting.expire,
+        // which writes to the database on the way in. Both hold because the 403
+        // fires before SubstituteBindings while the group lists portal.scope
+        // between auth and acting.expire.
+        $middleware->prependToPriorityList(SubstituteBindings::class, EnsurePortalScope::class);
 
         // nginx and cloudflared sit on the Compose bridge; real LAN/Tailscale
         // clients never do. Trusting only that range makes the XFF value nginx

@@ -30,8 +30,11 @@ function RequireAuth() {
 
 function Shell() {
   const { user } = useAuth()
-  const role = ROLES[roleKey(user?.role?.slug)] ?? ROLES.hr
+  const role = ROLES[roleKey(user?.role?.slug)]
   const location = useLocation()
+  if (!role) {
+    return <Navigate to="/login" replace />
+  }
   const key = location.pathname.split('/').filter(Boolean)[0] ?? 'dash'
   const item = NAV.find((entry) => entry.key === key)
 

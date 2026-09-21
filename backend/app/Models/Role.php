@@ -36,9 +36,24 @@ class Role extends Model
         'executive',
     ];
 
+    /**
+     * Field roles with no staff login but with the web worker portal
+     * (Add-on B, FR-11). "Staff" is LOGIN_SLUGS; these two stay apart so
+     * canSignIn() can keep meaning "staff login" until the portal exists.
+     */
+    public const PORTAL_SLUGS = [
+        'worker',
+        'operator',
+    ];
+
     public function isLoginRole(): bool
     {
         return in_array($this->slug, self::LOGIN_SLUGS, true);
+    }
+
+    public function isPortalRole(): bool
+    {
+        return in_array($this->slug, self::PORTAL_SLUGS, true);
     }
 
     public function employees(): HasMany

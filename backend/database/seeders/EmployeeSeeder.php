@@ -143,21 +143,24 @@ class EmployeeSeeder extends Seeder
         }
 
         $workers = [
-            ['ADC-0742', 'Kevin', 'Ompad', 'Rafael', 'worker', 'Rebar', 'Site 04 — Cebu North', '2024-03-03', 'probationary'],
-            ['ADC-0810', 'Noel', 'Sarmiento', 'Dinglasan', 'worker', 'Masonry', 'Site 04 — Cebu North', '2023-11-11', 'project_based'],
-            ['ADC-0388', 'Rico', 'Gantuangco', 'Araneta', 'operator', 'Heavy equipment', 'Site 04 — Cebu North', '2017-08-22', 'regular'],
-            ['ADC-0921', 'Lito', 'Cabahug', 'Mercader', 'worker', 'Welding', 'Site 04 — Cebu North', '2025-01-07', 'probationary'],
-            ['ADC-0104', 'Wenceslao', 'Paras', 'Baguio', 'worker', 'Formwork', 'Site 04 — Cebu North', '2014-05-19', 'separated'],
-            ['ADC-0611', 'Anna Lyn', 'Villacruz', 'Sales', 'hr', null, 'Site 01 — Mactan Industrial', '2021-06-30', 'regular'],
-            ['ADC-0904', 'Joseph', 'Lim', 'Antonio', 'foreman', 'Formwork', 'Site 11 — Talisay Housing', '2026-09-08', 'probationary'],
-            ['ADC-0177', 'Divina', 'Cortes', 'Manese', 'hr', null, 'Site 01 — Mactan Industrial', '2015-02-23', 'regular'],
-            ['ADC-0905', 'Emmanuel', 'Perez', 'Go', 'worker', 'Masonry', 'Site 11 — Talisay Housing', '2026-01-15', 'seasonal'],
-            ['ADC-0906', 'Rhoda', 'Malinao', 'Suyo', 'worker', 'Rebar', 'Site 07 — Mandaue Viaduct', '2025-09-15', 'probationary'],
-            ['ADC-0907', 'Greggy', 'Bandala', 'Rosquillos', 'worker', 'Steelwork', 'Site 07 — Mandaue Viaduct', '2026-02-10', 'seasonal'],
-            ['ADC-0908', 'Cherry', 'Nocete', 'Patalinghug', 'worker', 'Masonry', 'Site 11 — Talisay Housing', '2024-10-21', 'regular'],
+            // [code, first, last, middle, role, trade, site, date_of_birth, hired, status]
+            // date_of_birth feeds the worker portal activation (Add-on B); these
+            // seeded dates are public, see compose.prod.yaml's seed warning.
+            ['ADC-0742', 'Kevin', 'Ompad', 'Rafael', 'worker', 'Rebar', 'Site 04 — Cebu North', '1998-05-12', '2024-03-03', 'probationary'],
+            ['ADC-0810', 'Noel', 'Sarmiento', 'Dinglasan', 'worker', 'Masonry', 'Site 04 — Cebu North', '1996-11-03', '2023-11-11', 'project_based'],
+            ['ADC-0388', 'Rico', 'Gantuangco', 'Araneta', 'operator', 'Heavy equipment', 'Site 04 — Cebu North', '1990-02-27', '2017-08-22', 'regular'],
+            ['ADC-0921', 'Lito', 'Cabahug', 'Mercader', 'worker', 'Welding', 'Site 04 — Cebu North', '2001-09-14', '2025-01-07', 'probationary'],
+            ['ADC-0104', 'Wenceslao', 'Paras', 'Baguio', 'worker', 'Formwork', 'Site 04 — Cebu North', '1988-01-30', '2014-05-19', 'separated'],
+            ['ADC-0611', 'Anna Lyn', 'Villacruz', 'Sales', 'hr', null, 'Site 01 — Mactan Industrial', '1995-07-22', '2021-06-30', 'regular'],
+            ['ADC-0904', 'Joseph', 'Lim', 'Antonio', 'foreman', 'Formwork', 'Site 11 — Talisay Housing', '2002-04-08', '2026-09-08', 'probationary'],
+            ['ADC-0177', 'Divina', 'Cortes', 'Manese', 'hr', null, 'Site 01 — Mactan Industrial', '1992-10-16', '2015-02-23', 'regular'],
+            ['ADC-0905', 'Emmanuel', 'Perez', 'Go', 'worker', 'Masonry', 'Site 11 — Talisay Housing', '1999-06-05', '2026-01-15', 'seasonal'],
+            ['ADC-0906', 'Rhoda', 'Malinao', 'Suyo', 'worker', 'Rebar', 'Site 07 — Mandaue Viaduct', '2000-03-19', '2025-09-15', 'probationary'],
+            ['ADC-0907', 'Greggy', 'Bandala', 'Rosquillos', 'worker', 'Steelwork', 'Site 07 — Mandaue Viaduct', '1997-12-25', '2026-02-10', 'seasonal'],
+            ['ADC-0908', 'Cherry', 'Nocete', 'Patalinghug', 'worker', 'Masonry', 'Site 11 — Talisay Housing', '2003-08-09', '2024-10-21', 'regular'],
             // A Site Foreman on record with no HRIS sign-in: shown in the acting
             // foreman picker but not selectable, since they could not open roll call.
-            ['ADC-0640', 'Jeffrey', 'Roska', 'Lopez', 'foreman', 'Rebar', 'Site 07 — Mandaue Viaduct', '2023-02-20', 'regular'],
+            ['ADC-0640', 'Jeffrey', 'Roska', 'Lopez', 'foreman', 'Rebar', 'Site 07 — Mandaue Viaduct', '1994-04-02', '2023-02-20', 'regular'],
         ];
 
         // Daily rates for payroll (Phase 8), all at or above the Region VII
@@ -168,7 +171,7 @@ class EmployeeSeeder extends Seeder
             'ADC-0908' => 560,
         ];
 
-        foreach ($workers as [$code, $first, $last, $middle, $roleSlug, $trade, $siteName, $hired, $status]) {
+        foreach ($workers as [$code, $first, $last, $middle, $roleSlug, $trade, $siteName, $dateOfBirth, $hired, $status]) {
             Employee::query()->updateOrCreate(
                 ['employee_code' => $code],
                 [
@@ -179,6 +182,7 @@ class EmployeeSeeder extends Seeder
                     'middle_name' => $middle,
                     'trade_skill' => $trade,
                     'employment_status' => $status,
+                    'date_of_birth' => $dateOfBirth,
                     'date_hired' => $hired,
                     'daily_rate' => $dailyRates[$code] ?? null,
                 ]

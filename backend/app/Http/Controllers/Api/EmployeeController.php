@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
 use App\Http\Resources\EmployeeResource;
+use App\Models\AuditLog;
 use App\Models\Employee;
 use App\Services\EmployeeService;
 use App\Support\ResilientCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class EmployeeController extends Controller
 {
@@ -121,5 +123,46 @@ class EmployeeController extends Controller
         $employee->update($data);
 
         return new EmployeeResource($employee->fresh(['role', 'site']));
+    }
+
+    /**
+     * POST /api/employees/{employee}/reset-portal-access — Add-on B (FR-11).
+     *
+     * Recovery for a hijacked or misbehaving portal account. Sets a random
+     * temporary password (handed over in person — shown once, in this
+     * response), revokes every live token, and is audit-logged. Because a
+     * password is then set, self-activation stays refused, so whoever hijacked
+     * the account cannot simply re-activate it.
+     */
+    public function resetPortalAccess(Request $request, Employee $employee): JsonResponse
+    {
+        if (! $employee->role?->isPortalRole()) {
+            throw ValidationException::withMessages([
+                'employee' => 'Portal access can only be reset for a worker or operator.',
+            ]);
+        }
+
+        // Unambiguous: no 0/O, 1/l/I, so an in-person handover is reproducible.
+        $charset = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz';
+        $temporaryPassword = '';
+        for ($i = 0; $i < 14; $i++) {
+            $temporaryPassword .= $charset[random_int(0, strlen($charset) - 1)];
+        }
+
+        // Regular model save applies the hashed cast; a query-builder update
+        // would not, which is why the atomic activation hashes explicitly.
+        $employee->update(['password' => $temporaryPassword]);
+        $employee->tokens()->delete();
+
+        AuditLog::create([
+            'actor_id' => $request->user()->employee_id,
+            'action_type' => AuditLog::PORTAL_ACCESS_RESET,
+            'description' => 'Portal access reset for '.$employee->employee_code.' from '.$request->ip().'.',
+            'timestamp' => now(),
+        ]);
+
+        return response()->json([
+            'temporary_password' => $temporaryPassword,
+        ]);
     }
 }

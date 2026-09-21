@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('auth')->group(function () {
+    Route::post('activate', [AuthController::class, 'activate'])->name('auth.activate');
     Route::post('login', [AuthController::class, 'login']);
     Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
 });
@@ -34,12 +35,18 @@ Route::prefix('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 
+// portal.scope is the deny-by-default gate for the worker portal (Add-on B,
+// FR-11): listed between auth and acting.expire, and registered before
+// SubstituteBindings in bootstrap/app.php's priority list, so a denied worker
+// gets an exact 403 that beats model binding (no fake-id 404 shadow) and runs
+// before acting.expire's database write. Route names are security-relevant —
+// the allowlist lives in EnsurePortalScope::ALLOWED_PORTAL_ROUTES.
 // acting.expire ends acting foreman covers that have run out before anything
 // reads crew leadership (Phase 7, UC-06).
-Route::middleware(['auth:sanctum', 'acting.expire'])->group(function () {
+Route::middleware(['auth:sanctum', 'portal.scope', 'acting.expire'])->group(function () {
     Route::prefix('auth')->group(function () {
-        Route::get('me', [AuthController::class, 'me']);
-        Route::post('logout', [AuthController::class, 'logout']);
+        Route::get('me', [AuthController::class, 'me'])->name('auth.me');
+        Route::post('logout', [AuthController::class, 'logout'])->name('auth.logout');
     });
 
     Route::get('roles', [ReferenceController::class, 'roles']);
@@ -169,6 +176,12 @@ Route::middleware(['auth:sanctum', 'acting.expire'])->group(function () {
 
     // Must precede apiResource so 'next-code' isn't captured as {employee}.
     Route::middleware('role:hr,admin')->get('employees/next-code', [EmployeeController::class, 'nextCode']);
+
+    // Add-on B (FR-11): HR recovers a hijacked or withdrawn portal account.
+    // portal.scope is in the group above the apiResource, so a worker probing
+    // another worker's id gets an exact 403 from the middleware before the
+    // route model even binds.
+    Route::middleware('role:hr,admin')->post('employees/{employee}/reset-portal-access', [EmployeeController::class, 'resetPortalAccess']);
 
     Route::apiResource('employees', EmployeeController::class)->except('destroy');
 });

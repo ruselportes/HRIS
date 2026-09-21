@@ -52,6 +52,12 @@ class AuditLog extends Model
     /** HR approved a payroll run's ready rows (Phase 8). */
     public const PAYROLL_APPROVED = 'PAYROLL_APPROVED';
 
+    /** A worker activated their own portal account (Add-on B, FR-11). */
+    public const PORTAL_ACTIVATED = 'PORTAL_ACTIVATED';
+
+    /** HR reset a portal account with a temporary password (Add-on B, FR-11). */
+    public const PORTAL_ACCESS_RESET = 'PORTAL_ACCESS_RESET';
+
     /**
      * Leave & Overtime workflow steps (Phase 9, UC-10). One family for both
      * request kinds: the description carries the type and id, so the list is

@@ -15,6 +15,9 @@
 #   hris exec api php artisan db:seed --class=HolidaySeeder
 # Do NOT run a bare `db:seed` while the tunnel is on: EmployeeSeeder creates
 # sample accounts, including an admin, whose password is literally "password".
+# The seeded worker dates of birth are public too, so a committed database
+# lets anyone activate a demo worker's portal account (Add-on B) — demo-only
+# data, never real crew records.
 #
 # Reaching it:
 #   http://<server LAN or Tailscale IP>/       portal + API, on port 80
