@@ -29,7 +29,13 @@ class PortalPasswordTest extends TestCase
     {
         $worker = $this->loginUser('worker', ['employee_code' => 'ADC-0742']);
 
-        $response = $this->actingAs($worker, 'sanctum')->change([
+        // The change itself travels on a real token. actingAs() would pin a
+        // user onto the guard for the rest of the test with no token behind
+        // it, so currentAccessToken() would resolve null on every later call
+        // — exactly the false-green this test exists to prevent.
+        $first = $worker->createToken('portal')->plainTextToken;
+
+        $response = $this->withToken($first)->change([
             'current_password' => 'password',
             'new_password' => 'FreshPass88x',
             'new_password_confirmation' => 'FreshPass88x',
@@ -41,12 +47,23 @@ class PortalPasswordTest extends TestCase
         $worker->refresh();
         $this->assertTrue(Hash::check('FreshPass88x', $worker->getAuthPassword()));
 
-        // Only the session making the request survives: a second token for
-        // the same worker — the session someone else may be holding — dies
-        // with the old password, while the current one still works.
-        $otherToken = $worker->createToken('web')->plainTextToken;
+        // Only the session making the request survives — and this has to be
+        // proven with real tokens. actingAs() carries no token, so
+        // currentAccessToken() would be null, the `where id !=` branch would
+        // never run, and a "current one still works" check would pass while
+        // proving nothing.
+        $current = $worker->createToken('portal')->plainTextToken;
+        $other = $worker->createToken('web')->plainTextToken;
 
-        $this->actingAs($worker, 'sanctum')->change([
+        // The guard instance (and its authenticated user) persists across
+        // requests inside one test: without forgetting it, the second change
+        // would re-authenticate as the FIRST token's session, spare that one
+        // instead, and kill $current — the exact false-red mirror of the
+        // actingAs() false-green above. Production never sees this; every
+        // real request boots a fresh guard.
+        Auth::forgetGuards();
+
+        $this->withToken($current)->change([
             'current_password' => 'FreshPass88x',
             'new_password' => 'SecondPass99x',
             'new_password_confirmation' => 'SecondPass99x',
@@ -54,10 +71,17 @@ class PortalPasswordTest extends TestCase
 
         Auth::forgetGuards();
 
-        $this->withHeader('Authorization', "Bearer {$otherToken}")
-            ->getJson('/api/auth/me')
-            ->assertUnauthorized();
-        $this->actingAs($worker, 'sanctum')->getJson('/api/auth/me')->assertOk();
+        $this->withToken($other)->getJson('/api/auth/me')->assertUnauthorized();
+
+        Auth::forgetGuards();
+
+        $this->withToken($current)->getJson('/api/auth/me')->assertOk();
+
+        // The first token was another session by the second change, so it
+        // died with it.
+        Auth::forgetGuards();
+
+        $this->withToken($first)->getJson('/api/auth/me')->assertUnauthorized();
 
         $this->assertDatabaseHas('audit_logs', [
             'actor_id' => $worker->employee_id,
