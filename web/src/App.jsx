@@ -20,7 +20,7 @@ import { ComingSoonPage } from './pages/ComingSoonPage'
 import { PortalLayout } from './pages/portal/PortalLayout'
 import { PortalAttendancePage } from './pages/portal/PortalAttendancePage'
 import { PortalPayslipsPage } from './pages/portal/PortalPayslipsPage'
-import { PortalPasswordPage } from './pages/portal/PortalPasswordPage'
+import { PortalAccountPage } from './pages/portal/PortalAccountPage'
 import { NAV, ROLES, isPortalSlug } from './config/nav'
 
 function roleKey(slug) {
@@ -183,10 +183,9 @@ function App() {
           <Route element={<RequireAuth />}>
             <Route element={<PortalGate />}>
               <Route path="portal" element={<PortalLayout />}>
-                <Route index element={<Navigate to="attendance" replace />} />
-                <Route path="attendance" element={<PortalAttendancePage />} />
+                <Route index element={<PortalAttendancePage />} />
                 <Route path="payslips" element={<PortalPayslipsPage />} />
-                <Route path="password" element={<PortalPasswordPage />} />
+                <Route path="account" element={<PortalAccountPage />} />
               </Route>
             </Route>
             <Route element={<Shell />}>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { isPortalSlug } from '../config/nav'
 import { errorMessage } from '../api/client'
 import { Icon } from '../components/icons'
 import { ArcenasMark } from '../components/ArcenasMark'
@@ -11,7 +12,9 @@ export function LoginPage() {
   const location = useLocation()
   const from = location.state?.from?.pathname ?? '/'
 
-  const [identifier, setIdentifier] = useState('')
+  // Activation lands back here with the code filled in (commit 4); a worker
+  // who just activated only has to type the new password.
+  const [identifier, setIdentifier] = useState(location.state?.employeeCode ?? '')
   const [password, setPassword] = useState('')
   const [keep, setKeep] = useState(false)
   const [show, setShow] = useState(false)
@@ -23,8 +26,15 @@ export function LoginPage() {
     setError(null)
     setBusy(true)
     try {
-      await signIn(identifier.trim(), password, keep)
-      navigate(from, { replace: true })
+      const user = await signIn(identifier.trim(), password, keep)
+      // Workers land on the portal and never inherit a staff deep-link;
+      // staff land where they came from but never inside the portal (the
+      // gates repeat this, so a stale `from` can only flash, never stick).
+      if (isPortalSlug(user?.role?.slug)) {
+        navigate(from.startsWith('/portal') ? from : '/portal', { replace: true })
+      } else {
+        navigate(from.startsWith('/portal') ? '/' : from, { replace: true })
+      }
     } catch (err) {
       setError(errorMessage(err, 'Unable to sign in. Check your connection and try again.'))
     } finally {

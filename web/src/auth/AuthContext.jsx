@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { configureClient, http } from '../api/client'
+import { isPortalSlug } from '../config/nav'
 
 const TOKEN_KEY = 'hris.token'
 const USER_KEY = 'hris.user'
@@ -60,7 +61,22 @@ export function AuthProvider({ children }) {
     const { data } = await http.post('/auth/login', { identifier, password, client: 'web' })
     const session = { token: data.token, user: data.user }
     setAuth(session)
-    writeStorage(data.token, data.user, keep)
+    // Shared phones: a worker's session never touches localStorage, however
+    // the "Keep me signed in" checkbox was left — and any copy already there
+    // must go, because readStorage checks localStorage first. The server
+    // already limits portal tokens to about 2 hours; a saved copy on a
+    // shared phone is the real risk.
+    if (isPortalSlug(data.user?.role?.slug)) {
+      writeStorage(data.token, data.user, false)
+      try {
+        localStorage.removeItem(TOKEN_KEY)
+        localStorage.removeItem(USER_KEY)
+      } catch {
+        // storage blocked — session survives in memory only
+      }
+    } else {
+      writeStorage(data.token, data.user, keep)
+    }
     return session.user
   }, [])
 

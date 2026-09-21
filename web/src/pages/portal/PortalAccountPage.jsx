@@ -4,7 +4,7 @@ import { Icon } from '../../components/icons'
 
 const inputCls = 'h-[44px] w-full border border-neutral-400 bg-canvas px-3 text-ink'
 
-export function PortalPasswordPage() {
+export function PortalAccountPage() {
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [confirm, setConfirm] = useState('')
