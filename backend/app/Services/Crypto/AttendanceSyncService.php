@@ -188,6 +188,12 @@ class AttendanceSyncService
             'last_monotonic_timestamp' => $previousClock['monotonic_timestamp'] ?? null,
             'last_captured_at' => $previousClock['captured_at'] ?? null,
             'last_boot_id' => $previousClock['boot_id'] ?? null,
+            // Server receive time, whatever the batch's fate: accepted, flagged,
+            // refused and rejected all mean the device reached out. The Device &
+            // Sync Health page reads this to judge how recently a field device
+            // was heard from without guessing from the clock-history columns,
+            // which only move on TRUSTED events.
+            'last_synced_at' => now(),
         ]);
 
         return [

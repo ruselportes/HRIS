@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\AdminDeviceController;
 use App\Http\Controllers\Api\ActingForemanController;
+use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AttendanceSyncController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CrewController;
@@ -99,6 +101,29 @@ Route::middleware(['auth:sanctum', 'portal.scope', 'acting.expire'])->group(func
     // Server chain tip, for the sync engine to reconcile after a lost response.
     Route::get('attendance/sync/status', [AttendanceSyncController::class, 'status'])
         ->middleware('role:foreman');
+
+    // Attendance & DTR (the web portal's Fig 20.0 read side — Phase 10). Same
+    // roles as the nav `attendance` matrix: HR full, Site Foreman full (but
+    // scoped to the crews they led per the AttendanceController), Site
+    // Engineer full (clamped to their home site), Admin/Executive view.
+    Route::get('attendance/records', [AttendanceController::class, 'records'])
+        ->middleware('role:hr,foreman,engineer,admin,executive');
+
+    // Device & Sync Health (Phase 10) — the nav `synchealth` matrix: HR view,
+    // Admin full. Listing and revocation both hit the same registry; HR may
+    // read the field-device fleet, only Admin may cut a device out of it. The
+    // revoke route is bound to the DeviceKey by its primary key, so a body id
+    // can never reach a device the URL did not name.
+    Route::prefix('devices')->group(function () {
+        Route::get('/', [AdminDeviceController::class, 'index'])
+            ->middleware('role:hr,admin')
+            ->name('devices.index');
+
+        Route::delete('{device}', [AdminDeviceController::class, 'revoke'])
+            ->whereNumber('device')
+            ->middleware('role:admin')
+            ->name('devices.revoke');
+    });
 
     // Overrides & Audit (Phase 7, UC-05). Viewing per the nav matrix, foremen
     // scoped to their own in the controller; only HR decides, since approval

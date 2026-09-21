@@ -37,6 +37,7 @@ class DeviceKey extends Model
         'last_boot_id',
         'bound_at',
         'revoked_at',
+        'last_synced_at',
     ];
 
     protected function casts(): array
@@ -47,6 +48,7 @@ class DeviceKey extends Model
             'hmac_key' => 'encrypted',
             'bound_at' => 'datetime',
             'revoked_at' => 'datetime',
+            'last_synced_at' => 'datetime',
         ];
     }
 

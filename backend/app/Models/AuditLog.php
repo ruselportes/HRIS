@@ -244,6 +244,36 @@ class AuditLog extends Model
         return $this->timestamp?->copy()->setTimezone($timezone)->toDateString();
     }
 
+    /**
+     * Integrity incidents grouped per OWNER — the figure the Device & Sync
+     * Health page shows beside each device (review: incidents are counted per
+     * owner and labelled as such, because the audit log carries device_id only
+     * in description text, which must never be parsed).
+     *
+     * Same rule as integrityIncidents(): one incident per distinct foreman-day
+     * per owner, so a single attack that orphans a whole batch does not count
+     * twenty times over. The flood is the foreman's, not the batch's.
+     *
+     * @return array<int, int> owner employee_id => distinct incident days
+     */
+    public static function integrityIncidentsByOwner(): array
+    {
+        $timezone = config('attendance.timezone', 'Asia/Manila');
+
+        $rows = self::query()
+            ->select(['audit_id', 'actor_id', 'timestamp'])
+            ->whereIn('action_type', self::INTEGRITY_TYPES)
+            ->whereNotNull('actor_id')
+            ->orderBy('audit_id')
+            ->get();
+
+        return $rows
+            ->unique(fn (AuditLog $row): string => (string) $row->actor_id.'|'.$row->dayIn($timezone))
+            ->groupBy('actor_id')
+            ->map->count()
+            ->all();
+    }
+
     public function isOverrideEvent(): bool
     {
         return in_array($this->action_type, self::OVERRIDE_TYPES, true);
