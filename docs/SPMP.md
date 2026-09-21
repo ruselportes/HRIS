@@ -62,6 +62,7 @@ The HRIS for Arcenas Development Corporation covers the full scope of HR and pay
 **Constraints**
 
 - Fixed technology stack: Laravel 8+ (PHP), React.js, MySQL 8.0, React Native, SQLite with SQLCipher (AES-256), HMAC-SHA256, ECDSA P-256.
+  - **Amendment (September 2026):** Redis 7, run as a cluster of three primary nodes each with a replica, was added after the stack was fixed, as a cache in front of MySQL. It is an add-on, not a change to the store of record: MySQL still holds every record, and the system runs without the cache, more slowly. Recorded here so the stack as documented matches the stack as built; team sign-off on the amendment is still owed. Operating notes: `docs/REDIS_CLUSTER_RUNBOOK.md`.
 - System development is bound by the capstone academic timeline and submission deadlines.
 - Mobile application targets Android as primary platform, iOS as secondary.
 - Philippine Labor Code regulations (Articles 83, 86, 87, 93, 94) strictly govern all payroll computation logic.
@@ -213,6 +214,7 @@ All plan revisions shall be documented with a new version number, date, and desc
 | Node.js + npm | Software | React.js and React Native build environment. |
 | PHP 8.x + Composer | Software | Laravel backend environment. |
 | MySQL 8.0 | Software | Central HRIS relational database. |
+| Redis 7 (six-node cluster, in Docker) | Software | Cache in front of MySQL (add-on; see the amendment under Constraints). |
 | Git + GitHub/GitLab | Software | Version control and team collaboration. |
 | VS Code | Software | Primary code editor. |
 | Postman | Software | API endpoint testing. |
@@ -414,6 +416,7 @@ The project follows an **Agile-Waterfall Hybrid Development Model**:
 | Mobile Framework | React Native (Android primary, iOS secondary) |
 | Local Mobile Database | SQLite via SQLCipher (AES-256 encryption) |
 | Central Database | MySQL 8.0 |
+| Cache (add-on) | Redis 7 Cluster: three primaries, each with a replica |
 | Cryptography | HMAC-SHA256, ECDSA P-256, Hardware Monotonic Clock |
 | Hardware Security | Android Keystore TEE / iOS Secure Enclave |
 | Version Control | Git (GitHub or GitLab) |
@@ -426,7 +429,7 @@ The project follows an **Agile-Waterfall Hybrid Development Model**:
 
 | Environment | Stack | Purpose |
 |---|---|---|
-| Local Development | XAMPP / Docker (PHP + MySQL) | Individual developer machines for building and testing. |
+| Local Development | Docker (PHP, MySQL, Redis Cluster), or XAMPP (PHP + MySQL, without the cache) | Individual developer machines for building and testing. |
 | Mobile Test Environment | Physical Android Device | Testing offline attendance logging, SQLCipher encryption, TEE signing, and background sync. |
 | Staging Server | Local Network Server | Full-stack integration testing simulating production environment. |
 | Production (Future) | Cloud Hosting (TBD post-capstone) | Actual deployment to Arcenas Development Corporation after defense. |

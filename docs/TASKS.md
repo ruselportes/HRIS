@@ -3,7 +3,7 @@
 Each phase below is weighted **10%** of total project completion (10 phases = 100%).
 Check off tasks as they're completed; a phase counts as done once every task under it is checked.
 
-**Overall progress: ~90% (Phases 1–9 built: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8, Phase 8 5/5, Phase 9 6/6.)** Two add-ons and the production deployment sit outside this count and have their own section after Phase 10. Verified by 368 backend tests (passing on both SQLite and MySQL 8.0) and 219 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works.
+**Overall progress: ~90% (Phases 1–9 built: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8, Phase 8 5/5, Phase 9 6/6.)** Two add-ons and the production deployment sit outside this count and have their own section after Phase 10. Verified by 378 backend tests (passing on both SQLite and MySQL 8.0) and 219 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works.
 
 > **Backend test routine (run before committing backend work):**
 > 1. Day-to-day: `docker compose exec api php artisan test` (in-memory SQLite).
@@ -288,29 +288,34 @@ and a panel question about scope should get that answer plainly.
 ## Add-on A — Redis cache with clustering
 
 **Asked for:** caching, and clustering so that one Redis node going down does
-not push traffic onto MySQL. **Flagged before starting, still owed:** Redis is
-outside the SPMP's fixed stack (CLAUDE.md §2), so the SPMP, SRS §2 and the SDD
-have to record it and the team has to sign it off.
+not push traffic onto MySQL. **Flagged before starting:** Redis is outside the
+SPMP's fixed stack (CLAUDE.md §2). **Now recorded** (2026-09-21, R3) in the SPMP,
+SRS and SDD, `.md` and `.docx` alike. **Still owed:** the team's sign-off on that
+stack amendment.
 
 **One correction worth carrying into the defense.** Falling back to MySQL when
-the cache cannot answer is the *safe* behaviour, not the failure — it costs
-speed, never correctness. Two separate properties were built:
+the cache cannot answer is the *safe* behaviour, not the failure. It costs
+speed, never correctness. Three separate properties were built:
 
 1. **Surviving one node:** a replica is promoted, and the cache keeps working.
 2. **Surviving the whole cache:** every cached read falls back to MySQL instead
-   of erroring, which Laravel does **not** do on its own — a Redis exception is
-   a 500 unless something catches it.
+   of erroring, which Laravel does **not** do on its own (a Redis exception is
+   a 500 unless something catches it). Only the first request pays to find
+   the cache down.
+3. **Never staler than it has to be:** a write retires the cached reads it
+   affects, including a write made while the cache was out.
 
 - [x] **R1 — the cluster** (`97d6ede`): six nodes in `compose.yaml` (three
       primaries, one replica each), formed by a `redis-cluster-init` one-shot
-      that re-runs harmlessly. Cache only — no appendonly, no snapshots — so a
-      lost node loses cached copies and nothing else. No host ports: a cluster
-      client is redirected to addresses that resolve only inside the compose
-      network. phpredis added to `backend/Dockerfile`; a named `cluster`
-      connection in `config/database.php` built from `REDIS_CLUSTER_NODES`, so
-      a plain single node (or none) still works; `phpunit.xml` and
-      `phpunit.mysql.xml` force `CACHE_STORE=array` as both `<env>` and
-      `<server>`, so no test run depends on Redis or leaves keys in it.
+      that re-runs harmlessly. Cache only, with no appendonly and no
+      snapshots, so a lost node loses cached copies and nothing else. No host
+      ports: a cluster client is redirected to addresses that resolve only
+      inside the compose network. phpredis added to `backend/Dockerfile`; a
+      named `cluster` connection in `config/database.php` built from
+      `REDIS_CLUSTER_NODES`, so a plain single node (or none) still works;
+      `phpunit.xml` and `phpunit.mysql.xml` force `CACHE_STORE=array` as both
+      `<env>` and `<server>`, so no test run depends on Redis or leaves keys
+      in it.
 - [x] **R2 — cached reads that fall back** (`afc0f89`): `App\Support\ResilientCache`
       wraps every cached read. Cached: the reports dashboard (2 min), reference
       lists — roles, sites, a year's holidays (10 min), the employee registry
@@ -323,48 +328,135 @@ speed, never correctness. Two separate properties were built:
       login throttle is a cache consumer, and a Redis hiccup was surfacing as
       a 500 on the sign-in page ("Timed out attempting to find data in the
       correct node"), with the raw message shown to the user. The store is now
-      Laravel's `failover` driver — Redis first, the database store when Redis
-      cannot answer — so every cache user is covered, not only the reads that
+      Laravel's `failover` driver (Redis first, the database store when Redis
+      cannot answer), so every cache user is covered, not only the reads that
       go through `ResilientCache`. The cluster read timeout went from 0.5s to
       2s, which is what tripped on ordinary sign-ins while the cluster was
-      healthy. Verified: sign-in works with the whole cluster stopped (about
-      1.5–4.5s, from the database), and no 500s in 10 consecutive attempts
-      with it healthy.
-- [x] **R2b — invalidation actually worked in the containers**: the failover
-      store answers `false` to incrementing a key that does not exist, while
-      the array store the tests use creates it at 1. Version counters
-      therefore never advanced outside the test suite, so a cached list could
-      have outlived the edit that changed it. `bump()` now sets the counter
-      explicitly when a store will not create it, with a unit test that does
-      not rely on the forgiving store. Verified live: v1 → v2 → v3.
-- [ ] **R3 — documents and runbook:** the stack change in CLAUDE.md §2, the
-      SPMP, SRS §2 and SDD; a failover runbook (kill a primary, watch the
-      replica take over, kill the cluster, watch the fallback); and the
-      defense wording for what this does and does not prove.
+      healthy. **Correction (2026-09-21):** the verification recorded here
+      ("sign-in works with the whole cluster stopped, 1.5–4.5 s; no 500s in 10
+      attempts") never touched Redis. The chain was database-then-array the
+      whole time (R2d), so those timings are the database store alone. The
+      whole-cluster behaviour was first really measured under R2e.
+- [x] **R2b — invalidation actually worked in the containers**: the store the
+      containers were really using (the database store, as R2d later showed)
+      answers `false` to incrementing a key that does not exist, and the
+      failover store passes that on. The array store the tests use creates
+      the key at 1, and so does Redis. Version counters therefore never
+      advanced outside the test suite, so a cached list could have outlived
+      the edit that changed it. `bump()` now sets the counter to 2 whenever a
+      store answers `false` or 1, with a unit test that does not rely on the
+      forgiving store. Verified live then as v1 → v2 → v3, on the database
+      store; on Redis, R2g's drill exercises the same path.
+- [x] **R2c — only plain data goes in the cache** (`d6b1306`): the *Overrides &
+      Audit* site filter crashed (`sites.map is not a function`) because the
+      cached reference lists came back as `{}`. Laravel 13 ships
+      `serializable_classes => false`, so a leaked `APP_KEY` cannot become a
+      gadget chain; as a result, an Eloquent collection read back from the
+      cache is an `__PHP_Incomplete_Class`. The first request was right and
+      every cached one wrong. Reference lists now cache arrays, and
+      `ResilientCache` refuses an object when it is written (a warning in
+      production, a failed test under PHPUnit). The regression test runs on
+      the database store, because the array store keeps objects untouched,
+      which is exactly why this had passed every test.
+- [x] **R2d — the cache actually reaches Redis** (`830de58`), found running R3's
+      drills: the cluster was empty and the cached entries were in MySQL's
+      `cache` table. `config/cache.php` still held the skeleton's own
+      `failover` entry (database, then array) below ours, and in PHP a
+      repeated array key silently replaces the first. From R2a until this
+      fix, the cache never used Redis, and no page and no test showed it: the
+      database store gives the same answers, only slower. The duplicate is
+      gone, and `CacheConfigTest` pins the chain (it fails on the old file).
+- [x] **R2e — a dead cluster costs one slow request, not all of them**
+      (`830de58`): Laravel's failover store retries Redis on every call and
+      catches the exception itself, so `ResilientCache`'s cooldown never
+      engaged. Measured with all six nodes stopped: 5.6–8.4 s on **every**
+      request, indefinitely. Now a `CacheFailedOver` from the redis store
+      opens the cross-process breaker, the store is rebuilt without Redis for
+      the rest of that request, and later requests boot without it until the
+      cooldown ends. A read the database answered no longer counts as Redis
+      recovering. Measured: ~4.1–4.7 s for the first request, then 0.33–0.94 s;
+      sign-in 0.9–1.6 s. `RedisBreakerTest` drives a stand-in `redis` store.
+- [x] **R2f — restarts keep the failover** (`830de58`): Docker gave the nodes
+      new addresses on every start, while `nodes.conf` remembered the old
+      ones. After one recreate, `redis-5` was handed `redis-1`'s old address
+      and believed it was its own primary, and two replicas showed as
+      `noaddr`, so they could not be promoted, while `cluster_state` read
+      `ok`. The six nodes now have fixed addresses on their own network
+      (`172.28.200.11`–`.16`). The API seeds from those addresses, because a
+      stopped node's *name* took 8 s to fail and its address 0.5 s, and from
+      all six, so it can still find a cluster whose first three nodes are
+      down. Verified: all six force-recreated at once, topology intact.
+- [x] **R2g — an edit made during an outage shows when the cache is back**
+      (`42579ab`): while the breaker was open, `bump()` returned early, and
+      under the failover store a bump that hit a failing Redis did not even
+      throw. Either way Redis's counter never moved, so the copy from before
+      the edit could be served until its ttl expired, up to 10 minutes for
+      reference lists. A failover window is enough to cause this. Skipped
+      namespaces are now owed in the breaker's marker and retired on
+      recovery, and the read that finds the cache back re-reads under the new
+      version. Verified live: an employee renamed during a failover showed
+      the new name on the first read after recovery (`retired: employees,
+      reports`).
+- [x] **R2h — one failover trips the breaker once** (`c27a045`): the first
+      cooldown was 10 s, shorter than a promotion (9.2 s, `cluster_state:ok`
+      at ~11 s). A trip early in the window could end before the promotion,
+      trip again and fall into the 30 s cooldown. The first cooldown is now
+      15 s. Measured: one trip and 18 s of reads computed from MySQL, then
+      the copy made before the stop, served from the promoted replica.
+- [x] **R3 — documents and runbook** (2026-09-21):
+      `docs/REDIS_CLUSTER_RUNBOOK.md` covers what the add-on guarantees and
+      what it does not, everyday checks, and four drills (one primary, the
+      whole cluster, recovery, an edit during an outage) with the figures
+      measured on this stack. It also has troubleshooting and the wording for
+      the defense. The stack is recorded in:
+      - CLAUDE.md §2;
+      - the SPMP (Constraints amendment, resources, tools, infrastructure;
+        `.docx`: stack list, definitions, Table 8.0, reference [13]);
+      - the SRS §2.1, §2.5 (new *Cache Availability*), §3.1.2 and §3.4.1, in
+        both files;
+      - the SDD §1.3 (two definitions), §1.4 (reference), the §2 opening and
+        a new **§2.2 Caching Layer**, in both files. Word numbers it 2.2.
+
+      The drills found R2d–R2h, and each has a test. **Still owed:** the
+      team's sign-off on the stack amendment.
 - [ ] **Production parity:** `compose.prod.yaml` has **no Redis**. Production
       therefore uses the database cache (Laravel's default) and none of this
       add-on runs there. Decide: add the cluster to production, run a single
       node there, or state plainly that clustering is demonstrated in
-      development only.
+      development only. Until then, the runbook (§1, §9) says plainly that
+      production runs without it.
 
-> **Measured on the running stack, worth quoting rather than claiming:**
-> dashboard 1.56 s cold and 0.37 s cached; stopping a primary promoted its
-> replica in about 3 s with the cached value intact and the API reading and
-> writing throughout, no restart; the stopped node rejoined as a replica.
+> **Measured on the running stack (2026-09-21), worth quoting rather than
+> claiming.** The full table is in the runbook, §10.
 >
-> **The failure mode that actually bit, and the fix.** With all six nodes
-> stopped the first request took **49 seconds** — far worse for a user than an
-> error. The cause was not Redis: Docker's DNS takes about 4 s to fail for a
-> stopped container's name, and the client tries every seed. Now the seed list
-> is three nodes, the cluster connection has a 0.5 s timeout, and a failure
-> puts the cache out of use for a growing cooldown (10 s, 30 s, 1 m, 2 m, 5 m)
-> shared between requests through a marker file, since each request is its own
-> PHP process. One request per cooldown pays the discovery; the rest answer in
-> about 0.2 s from MySQL, logged once per cooldown. The first success clears
-> it. On a real server DNS for a dead host fails faster, so this is mostly a
-> containers-on-one-laptop effect — say so rather than presenting the cluster
-> as production-grade high availability: every node is on one machine, and one
-> dead machine is still a dead cache.
+> - A stopped primary's replica was promoted in 9.2 s (`cluster_state:ok` at
+>   about 11 s), with no errors and the pre-stop copy intact. That failover
+>   costs about 18 s of reads computed from MySQL.
+> - With the whole cluster stopped, one request takes about 4.5 s, then each
+>   takes 0.33–0.94 s.
+> - Restarted, the cluster re-forms in 4–8 s, empty, and the API returns to
+>   Redis on its own.
+> - A stopped node rejoins as a replica, because Redis never fails back by
+>   itself; `redis-cli cluster failover` on that node restores the layout in
+>   under 3 s.
+>
+> An earlier figure here, "promoted in about 3 s", could not be reproduced: the
+> 5 s node timeout alone rules it out. The "1.56 s cold, 0.37 s cached"
+> dashboard figures came from R2, when the store was still Redis directly.
+> Today this laptop adds 150–650 ms of framework start-up to every request,
+> cached or not, so the reliable sign of a cache hit is an unchanged
+> `generated_at`, not the timing.
+>
+> **The failure mode that bit first, and the fix.** With all six nodes stopped,
+> the first request took **49 seconds**. The cause was not Redis: Docker's DNS
+> takes seconds to fail for a stopped container's name, and the client tries
+> every seed. The seeds are now fixed addresses, 0.5 s each to fail. A failure
+> opens a breaker that requests share through a marker file, with cooldowns of
+> 15 s, 30 s, 1 m, 2 m and 5 m while Redis stays down. One request per cooldown
+> pays for the check, and the first success clears it. Every node is still on
+> one machine, and one dead machine is still a dead cache. So present this as
+> the *mechanism* of high availability, not as production-grade high
+> availability.
 
 ## Add-on B — Worker self-service portal (view-only)
 

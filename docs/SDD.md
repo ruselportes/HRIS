@@ -99,6 +99,8 @@ This document describes the design of the HRIS, covering nine core modules: (1) 
 | Foreman Late Override | System flag applied when a foreman logs attendance after shift start time, crediting workers from standard shift start. |
 | Retroactive Recovery | Workflow allowing Site Engineers to review and sign off on crew attendance for days where no logging occurred. |
 | Background Sync | Automatic transmission of queued offline attendance data to the central HRIS once mobile internet connectivity is detected. |
+| Redis Cluster | An in-memory key-value store run as several cooperating nodes. The HRIS runs six (three primaries, each with a replica) and uses it only as a cache in front of MySQL. |
+| Circuit Breaker | A guard that stops the API from retrying a failed service on every request: after a failure the service is skipped for a cooldown period, then tried again. |
 
 *Table 1.0 Definitions, Acronyms, and Abbreviations*
 
@@ -120,9 +122,11 @@ This document describes the design of the HRIS, covering nine core modules: (1) 
 
 [8] Software Project Management Plan (SPMP) for HRIS, Arcenas Development Corporation, v1.0, 2026.
 
+[9] Redis Documentation — redis.io/docs
+
 ## 2. System Architecture
 
-The HRIS follows a layered client-server architecture composed of a React Native mobile client, a React.js web client, a Laravel REST API layer, and a MySQL 8.0 relational database. This section presents the class diagrams for each major module of the system.
+The HRIS follows a layered client-server architecture composed of a React Native mobile client, a React.js web client, a Laravel REST API layer, and a MySQL 8.0 relational database, with a Redis Cluster in front of the database as a read cache. This section presents the class diagrams for each major module of the system (2.1) and the design of the caching layer (2.2).
 
 ### 2.1. Class Diagram
 
@@ -201,6 +205,29 @@ Represents the classes that log override events and generate executive-level das
 ![Figure 8.0 Audit & Analytics Class Diagram](assets/sdd-fig-8-0-audit-analytics-class-diagram.png)
 
 *Figure 8.0 Audit & Analytics Class Diagram*
+
+### 2.2. Caching Layer (Redis Cluster)
+
+*Added in September 2026 as an add-on to the fixed technology stack (see the SPMP, Constraints). Operating procedures, failure drills and measurements are in `docs/REDIS_CLUSTER_RUNBOOK.md`.*
+
+A Redis 7 Cluster sits between the Laravel API and MySQL as a read cache. It holds copies only. MySQL is the single store of record, and every figure the system is judged on is computed from MySQL. The design is implemented in `App\Support\ResilientCache` and wired in `AppServiceProvider`.
+
+**Topology.** The cluster has six nodes. Three primaries divide the key space between them, and each has one replica that is promoted if its primary fails. The nodes keep nothing on disk, so a node that restarts comes back empty. Each node has a fixed network address, so the cluster's record of its own members stays correct across restarts.
+
+**What is cached.** Only reads that are repeated often:
+
+- the executive reports dashboard (each copy lives 2 minutes);
+- the role, site and holiday lists behind filters and forms (10 minutes);
+- the employee registry, per combination of filters (1 minute);
+- the attendance recovery queue (1 minute).
+
+Attendance capture, synchronisation, signature verification and payroll computation never read from the cache.
+
+**Invalidation.** Each group of cached reads (a namespace) carries a version number, and every cache key includes it. When a record that a group depends on is saved or deleted, the group's version is incremented. Later reads then build keys the old copies cannot match, and the old copies expire on their own. Counters are used instead of deleting keys by pattern, because pattern deletion needs operations that a cluster spreads across nodes. Each copy's lifetime bounds anything a missed increment could leave behind.
+
+**Behaviour when the cache fails.** Laravel's cache store is configured as a failover store: Redis first, then the MySQL cache table when Redis cannot answer. Every user of the cache therefore keeps working, including the sign-in rate limiter. The cached reads listed above go further and compute directly from MySQL. A circuit breaker stops the API from retrying a cache that is down on every request. The first failure takes Redis out of use for a cooldown, and all API processes share it. The cooldown is 15 seconds, longer than a replica takes to be promoted, and grows to 30 seconds, then 1, 2 and 5 minutes while Redis stays down. The first successful answer restores the cache. A write made while the cache is out cannot increment the version counters held in Redis. The affected groups are therefore recorded and incremented as soon as the cache answers again, so an edit made during an outage is shown on the first read afterwards.
+
+**Constraint on cached values.** Only plain data (arrays, strings, numbers) is cached. The cache is configured never to rebuild PHP objects from stored data, so a leaked application key cannot be used to execute code through it. An attempt to cache an object is refused when it is written.
 
 ## 3. Data Design
 

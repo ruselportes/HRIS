@@ -28,6 +28,13 @@ with special focus on:
 | Hardware security | Android Keystore TEE / iOS Secure Enclave |
 | Monotonic time source | `elapsedRealtime` (Android) / `mach_continuous_time` (iOS) |
 | Version control | Git (GitHub/GitLab) |
+| Cache (add-on) | Redis 7 Cluster: 3 primaries + 3 replicas, cache only; MySQL stays the store of record |
+
+> **Redis is an add-on outside the original fixed stack** (asked for 2026-09-20,
+> flagged before starting). The SPMP, SRS and SDD, both `.md` and `.docx`, record it
+> as of 2026-09-21; **team sign-off on the amendment is still owed.** Production
+> does not run it (`compose.prod.yaml` has no Redis; that decision is open). How it
+> behaves when nodes fail, with measurements: `docs/REDIS_CLUSTER_RUNBOOK.md`.
 
 ## 3. Core modules
 
@@ -260,6 +267,17 @@ Both are named per `C:\capstone\internal\Request-Letter-to-Conduct-a-Study.docx`
   `config/payroll.php`; (c) `payroll_details` now itemises SSS, PhilHealth,
   Pag-IBIG and withholding tax, with effective-dated rate sets. The `[VERIFY]`
   flags carry over into `config/payroll.php` and still need checking.
+- `/docs/REDIS_CLUSTER_RUNBOOK.md` — the Redis Cluster add-on: what it guarantees
+  and what it does not, health checks, four failure drills with the figures measured
+  on 2026-09-21, troubleshooting, and defense wording. Written from live drills, which
+  found four faults (fixed in `830de58`, `42579ab`, `c27a045`). The most important
+  one: the cache had never reached Redis, because a duplicated `failover` key in
+  `config/cache.php` sent everything to MySQL while every page and test still passed.
+  Re-run its drills after any change to the cache or `compose.yaml`'s Redis services.
+  The same day, SRS §2.1/§2.5/§3.1.2/§3.4.1, the SPMP (Constraints amendment,
+  resources, tools, infrastructure) and a new SDD §2.2 *Caching Layer* (plus two
+  §1.3 definitions and a reference) were added to both the `.md` and `.docx`
+  versions of each.
 - `/docs/HRIS_ERD.drawio` — entity-relationship diagram (editable in draw.io)
 - `/docs/HRIS_ERD_reference.md` — ERD design/formatting notes
 

@@ -96,7 +96,7 @@ This section presents the overall description of the Human Resource Information 
 
 The Human Resource Information System (HRIS) is built to strengthen and streamline the existing human resource operations of Arcenas Development Corporation. It offers a centralized platform for handling employee records, attendance, leave, payroll, reports, and overall workforce monitoring. Included in the system is a mobile attendance application intended for site foremen, allowing them to log employee attendance directly at construction sites.
 
-The system is built on a modern technology stack. The web-based interface runs on React.js, while the mobile attendance application is developed using React Native. Laravel handles the backend, managing system requests and core business logic, with MySQL serving as the centralized database. SQLite is used for local storage on the mobile application, enabling offline attendance recording at the site level.
+The system is built on a modern technology stack. The web-based interface runs on React.js, while the mobile attendance application is developed using React Native. Laravel handles the backend, managing system requests and core business logic, with MySQL serving as the centralized database. A Redis Cluster sits in front of MySQL as a cache for frequently read data, such as the dashboard and the lists behind filters and forms. It holds copies only: MySQL remains the single store of record, and if the cache becomes unavailable the system keeps working from MySQL, more slowly. SQLite is used for local storage on the mobile application, enabling offline attendance recording at the site level.
 
 The mobile application is designed with an offline-first approach, letting site foremen continue logging attendance even without an internet connection. Once the device reconnects, the locally stored records automatically sync with the central system. To protect the integrity of this data, cryptographic validation is applied to help detect and prevent unauthorized changes or tampering with attendance records.
 
@@ -157,8 +157,9 @@ The following assumptions and dependencies are made to maximize the utilization 
 
 - **User Hardware and Operating System Compatibility:** Users must have devices with hardware specifications and operating systems compatible with the HRIS web application and mobile attendance application.
 - **Internet Connectivity:** Internet access is required for online system operations, data synchronization, and communication between the mobile application and central system. The mobile attendance application can continue recording attendance temporarily without internet access.
-- **Software Dependencies:** The system relies on technologies such as React.js, React Native, Laravel, MySQL, and SQLite, which must be properly configured and maintained for the system to function correctly.
+- **Software Dependencies:** The system relies on technologies such as React.js, React Native, Laravel, MySQL, Redis, and SQLite, which must be properly configured and maintained for the system to function correctly.
 - **Database Availability:** The central database must be available and properly configured to store and retrieve employee, attendance, leave, payroll, and other system records.
+- **Cache Availability:** The Redis cache is not required for correct operation. When it is unavailable, every request is served from the central database, and responses are slower but not affected otherwise.
 - **User Information:** The accuracy of the system depends on authorized personnel providing complete and correct employee, attendance, leave, and payroll information.
 - **Synchronization Availability:** Offline attendance records depend on a stable connection becoming available for successful synchronization with the central system.
 - **User Access and Permissions:** Users are assumed to access only the functions and information permitted by their assigned roles.
@@ -214,6 +215,7 @@ The HRIS relies on web development technologies, mobile development frameworks, 
 - Programming Language: PHP
 - Backend Framework: Laravel
 - Database Management System: MySQL
+- Cache: Redis 7 Cluster (three primary nodes, each with a replica)
 
 **Development and Design Tools:**
 - UI/UX Design: Figma
@@ -363,7 +365,7 @@ The efficiency of the HRIS refers to its ability to perform its functions while 
 
 #### 3.4.1. Software Language
 
-The HRIS is developed using a combination of web, mobile, backend, and database technologies. React.js is used for the web-based user interface, while React Native is used for the mobile attendance application. Laravel and PHP are used for backend processing and system logic. MySQL serves as the primary database, while SQLite is used for local storage of attendance records in the mobile application.
+The HRIS is developed using a combination of web, mobile, backend, and database technologies. React.js is used for the web-based user interface, while React Native is used for the mobile attendance application. Laravel and PHP are used for backend processing and system logic. MySQL serves as the primary database, with a Redis Cluster used only as a cache in front of it, while SQLite is used for local storage of attendance records in the mobile application.
 
 #### 3.4.2. Graphical-User Interface
 
