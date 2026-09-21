@@ -1,3 +1,7 @@
+# ── Production deployment (secrets and database dumps) ─────────────
+/.env.prod
+/backups/
+
 # ── Laravel / backend ──────────────────────────────────────────────
 /backend/vendor/
 /backend/node_modules/

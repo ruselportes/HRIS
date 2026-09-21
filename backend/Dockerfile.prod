@@ -1,0 +1,38 @@
+# Production image for the HRIS API (see compose.prod.yaml at the repo root).
+# Unlike the dev Dockerfile, the source is baked in and served by php-fpm.
+FROM php:8.4-fpm-bookworm AS base
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libzip-dev libicu-dev \
+    && docker-php-ext-install pdo_mysql bcmath intl zip pcntl opcache \
+    && rm -rf /var/lib/apt/lists/*
+
+FROM base AS build
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git unzip \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --no-scripts --prefer-dist --no-progress
+
+COPY . .
+RUN composer dump-autoload --no-dev --optimize --no-interaction
+
+FROM base
+
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+COPY docker/php-prod.ini /usr/local/etc/php/conf.d/zz-hris.ini
+COPY docker/php-fpm-prod.conf /usr/local/etc/php-fpm.d/zz-hris.conf
+
+WORKDIR /var/www/html
+COPY --from=build --chown=www-data:www-data /var/www/html ./
+
+COPY docker/entrypoint.prod.sh /usr/local/bin/hris-entrypoint
+RUN sed -i 's/\r$//' /usr/local/bin/hris-entrypoint && chmod +x /usr/local/bin/hris-entrypoint
+
+EXPOSE 9000
+ENTRYPOINT ["hris-entrypoint"]
+CMD ["php-fpm"]

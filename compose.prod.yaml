@@ -1,0 +1,199 @@
+# Production deployment for the HRIS (the old-PC Ubuntu server).
+# compose.yaml next to this file is the DEV setup and is not used here.
+#
+# One-time setup, on the server, in the repo root:
+#   cp .env.prod.example .env.prod          then fill in every value in it
+#   alias hris='docker compose --env-file .env.prod -f compose.prod.yaml'
+#
+# Deploy / update:
+#   git pull && hris up -d --build          first build takes several minutes
+#   hris ps                                 all services should be healthy
+#   hris logs -f api
+#
+# First run only, load the reference data the system cannot start without:
+#   hris exec api php artisan db:seed --class=RoleSeeder
+#   hris exec api php artisan db:seed --class=HolidaySeeder
+# Do NOT run a bare `db:seed` while the tunnel is on: EmployeeSeeder creates
+# sample accounts, including an admin, whose password is literally "password".
+#
+# Reaching it:
+#   http://<server LAN or Tailscale IP>/       portal + API, on port 80
+#   hris --profile tunnel up -d                also start a Cloudflare quick tunnel
+#   hris logs tunnel | grep trycloudflare      shows its public https URL
+#   A quick tunnel gets a NEW random URL every time it restarts, so the mobile
+#   app's API address must be updated to match. A domain-backed named tunnel
+#   removes that problem later.
+#
+# Transport security (decided with the team): the origin listens on plain HTTP
+# for the LAN demo. The internet hop (client -> Cloudflare -> cloudflared ->
+# nginx) is always TLS-encrypted inside the tunnel; cloudflared -> nginx never
+# leaves the Docker bridge. The genuinely plaintext segment is the LAN itself,
+# where the mobile app's bearer token crosses the wire in the clear — if the
+# demo runs on a shared/untrusted network, put HTTPS in front before showing
+# it. Login/rate-limit keys and audit IPs are real: nginx appends the client to
+# X-Forwarded-For and Laravel trusts only the Docker bridge CIDR
+# (backend/bootstrap/app.php), so a forged XFF header is ignored. Verified with
+# a spoofed XFF through nginx from a source outside the bridge.
+#
+# Caveat: Docker Desktop presents every published-port client as the bridge
+# gateway (e.g. 172.20.0.1), which IS inside the trust range, so local test
+# traffic can look spoofed. On the Linux target server, iptables DNAT preserves
+# the real client source IP, so LAN clients (192.168.x / 10.x / Tailscale
+# 100.64.x) are recorded correctly.
+#
+# Memory: mem_limit is set per service for the 7GB box. api = 1g against to a
+# 256M-per-worker cap with pm.max_children = 4 (docker/php-fpm-prod.conf), so a
+# spike fails with a PHP memory error rather than an OOM kill.
+#
+# MySQL and php-fpm publish no ports: only nginx (80) is reachable from outside.
+# Data: mysql-data (database) and api-storage (Laravel storage). Back up with
+# deploy/backup.sh; the disk is an old spinning drive.
+
+name: hris
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-api-env: &api-env
+  APP_ENV: production
+  APP_DEBUG: "false"
+  APP_KEY: ${APP_KEY:?set APP_KEY in .env.prod}
+  APP_URL: ${APP_URL:?set APP_URL in .env.prod}
+  LOG_CHANNEL: stderr
+  LOG_LEVEL: warning
+  DB_CONNECTION: mysql
+  DB_HOST: mysql
+  DB_PORT: 3306
+  DB_DATABASE: hris
+  DB_USERNAME: hris
+  DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env.prod}
+  # Nothing uses sessions today, but the default driver (database) has no table
+  # and the first session-based feature would 500. file needs no schema and
+  # lands on the api-storage volume.
+  SESSION_DRIVER: file
+  HRIS_REQUIRE_HARDWARE_KEYS: ${HRIS_REQUIRE_HARDWARE_KEYS:-false}
+  # Every setting an operator can override must appear here (with its default)
+  # AND in .env.prod.example: `--env-file` only substitutes compose variables,
+  # it does not inject env vars into containers. Values default to the same
+  # defaults the backend config would use if unset, so empty .env.prod lines
+  # behave identically to a fresh checkout.
+  HRIS_TIME_OUT_TRACKED_FROM: ${HRIS_TIME_OUT_TRACKED_FROM:-2026-09-21}
+  HRIS_REGIONAL_MINIMUM_WAGE: ${HRIS_REGIONAL_MINIMUM_WAGE:-501.00}
+  HRIS_WORK_DAYS: ${HRIS_WORK_DAYS:-1,2,3,4,5,6}
+  HRIS_REST_DAY_ISO: ${HRIS_REST_DAY_ISO:-7}
+  HRIS_SHIFT_START: ${HRIS_SHIFT_START:-07:00}
+  HRIS_SHIFT_END: ${HRIS_SHIFT_END:-16:00}
+  HRIS_MEAL_START: ${HRIS_MEAL_START:-12:00}
+  HRIS_MEAL_END: ${HRIS_MEAL_END:-13:00}
+  HRIS_RECOVERY_LOOKBACK_DAYS: ${HRIS_RECOVERY_LOOKBACK_DAYS:-14}
+  HRIS_CLOCK_SKEW_TOLERANCE: ${HRIS_CLOCK_SKEW_TOLERANCE:-120}
+  HRIS_LATE_OVERRIDE_GRACE_MINUTES: ${HRIS_LATE_OVERRIDE_GRACE_MINUTES:-15}
+  HRIS_ATTENDANCE_TIMEZONE: ${HRIS_ATTENDANCE_TIMEZONE:-Asia/Manila}
+
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    mem_limit: 2g
+    logging: *logging
+    environment:
+      MYSQL_DATABASE: hris
+      MYSQL_USER: hris
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env.prod}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env.prod}
+    # Sized for 7GB RAM shared with PHP and nginx, on a spinning disk.
+    command:
+      - --innodb-buffer-pool-size=1G
+      - --max-connections=60
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  api:
+    image: hris-api:prod
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    mem_limit: 1g
+    logging: *logging
+    environment:
+      <<: *api-env
+      # Kept in the api service (not x-api-env) so the scheduler does not inherit
+      # it and race a migrate against the API on boot. --force is idempotent.
+      HRIS_MIGRATE_ON_START: ${HRIS_MIGRATE_ON_START:-true}
+    volumes:
+      - api-storage:/var/www/html/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@fsockopen('127.0.0.1', 9000) ? 0 : 1);"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  scheduler:
+    # Ends expired acting-foreman covers (routes/console.php).
+    image: hris-api:prod
+    restart: unless-stopped
+    mem_limit: 512m
+    logging: *logging
+    user: www-data
+    environment:
+      <<: *api-env
+    command: ["php", "artisan", "schedule:work"]
+    volumes:
+      - api-storage:/var/www/html/storage
+    depends_on:
+      api:
+        condition: service_healthy
+
+  web:
+    image: hris-web:prod
+    build:
+      context: ./web
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    mem_limit: 128m
+    logging: *logging
+    ports:
+      - "${WEB_PORT:-80}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      # nginx serves /index.html itself; checking it (not /up, which proxies to
+      # the API) keeps this container's health decoupled from the API's.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/index.html || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  tunnel:
+    # Optional: a free Cloudflare quick tunnel, so the app is reachable from
+    # outside the LAN with no domain, no account and no router changes.
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    mem_limit: 64m
+    logging: *logging
+    command: ["tunnel", "--no-autoupdate", "--url", "http://web:80"]
+    depends_on:
+      - web
+
+volumes:
+  mysql-data:
+  api-storage:

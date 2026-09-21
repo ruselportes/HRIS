@@ -392,12 +392,31 @@ Built alongside the phases; the files are in the repo root and `deploy/`.
       scheduler (ends expired acting-foreman covers), and nginx. Only nginx
       publishes a port (80); MySQL and php-fpm publish none. Logs are capped
       (10 MB × 3 per service). Data lives in the `mysql-data` and `api-storage`
-      volumes.
+      volumes. Per-service `mem_limit`s (mysql 2g, api 1g, scheduler 512m, web
+      128m, tunnel 64m), the port overridable via `WEB_PORT` (the Windows dev
+      box cannot bind 80), `SESSION_DRIVER=file` (the default `database` driver
+      has no `sessions` table and the first session-based feature would 500),
+      every overridable `HRIS_*` setting mapped through `x-api-env` with its
+      default, and `HRIS_MIGRATE_ON_START` env-gated (default `true`) so the
+      scheduler does not inherit it.
 - [x] `backend/Dockerfile.prod` — multi-stage: Composer install with
       `--no-dev`, an optimised autoloader, and the source baked in (not
       bind-mounted as in development). Production php.ini plus
       `docker/php-prod.ini`: opcache on with `validate_timestamps=0`, since the
-      image never changes under a running container.
+      image never changes under a running container. `docker/php-fpm-prod.conf`
+      (pool, not php.ini) sets `pm.max_children = 4`, so a genuine spike hits a
+      legible PHP memory error under the 1g limit rather than an OOM kill.
+- [x] `backend/bootstrap/app.php` — trusts the Compose bridge CIDR only
+      (`172.16.0.0/12`), limited to the `X-Forwarded-For`/`X-Forwarded-Proto`
+      headers nginx mirrors. Spoofed client XFF is ignored, so audit logs and
+      login rate-limits key on real client IPs (fix rationale: audit-traceable
+      IPs and per-account-per-IP lockout buckets — there is no cross-account DoS
+      from the shared container IP). Hardcoded on purpose: `env()` is
+      unavailable in the deferred middleware closure under php-fpm's
+      `clear_env = yes`. Verified with a spoofed XFF from a non-bridge source
+      (recorded the real IP). Caveat: Docker Desktop presents published-port
+      clients as the bridge gateway (inside /12), so local tests can look
+      spoofed; the Linux server preserves real client IPs via iptables DNAT.
 - [x] `backend/docker/entrypoint.prod.sh` — caches config and views at start,
       not at build, because the values come from the environment; runs
       migrations when `HRIS_MIGRATE_ON_START=true`; and runs artisan as
@@ -407,13 +426,21 @@ Built alongside the phases; the files are in the repo root and `deploy/`.
       and serves it from nginx, which also forwards `/api` and `/up` to php-fpm
       by FastCGI (nginx needs no copy of the backend), sets
       `X-Content-Type-Options`, `X-Frame-Options` and `Referrer-Policy`,
-      caches fingerprinted `/assets` for a year, and falls back to `index.html`
-      for BrowserRouter paths.
+      caches fingerprinted `/assets` for a year, gzips text/json/js/css/svg
+      (the JS bundle is ~438 kB), appends the real client to `X-Forwarded-For`
+      and mirrors `X-Forwarded-Proto` (Host/Port deliberately not forwarded so
+      Laravel cannot be made to trust a client-sent host), falls back to
+      `index.html` for BrowserRouter paths, and has a healthcheck on
+      `/index.html` — nginx-owned, so the web container's health is not coupled
+      to the API's.
 - [x] `.env.prod.example` — every secret the stack refuses to start without
       (`DB_PASSWORD`, `DB_ROOT_PASSWORD`, `APP_KEY`, `APP_URL`), with the
       warning that `device_keys.hmac_key` is encrypted with `APP_KEY`, so
       changing it orphans every bound device. `.env.prod` and `backups/` are
-      gitignored.
+      gitignored. The overridable `HRIS_*` settings and `SESSION_DRIVER` are
+      also documented here — each is mapped through `compose.prod.yaml`'s
+      `x-api-env` (a `.env.prod` value with no mapping is silently ignored), and
+      the payroll figures carry their `[VERIFY]` flags.
 - [x] `deploy/backup.sh` — nightly `mysqldump` (single transaction, routines)
       gzipped into `backups/`, keeping 14 days, with a cron line in its header
       and a reminder to copy them off the machine.
@@ -425,9 +452,12 @@ Built alongside the phases; the files are in the repo root and `deploy/`.
 
 **Owed before anyone outside the team uses it**
 
-- [ ] **HTTPS.** The portal is plain HTTP on port 80. Passwords, payslips and
-      Sanctum tokens cross the network in the clear on the LAN. A quick tunnel
-      gives HTTPS only for the tunnelled hostname.
+- [ ] **HTTPS on the LAN.** Decided with the team (review, production): the
+      origin stays plain HTTP for the demo. The internet hop is already TLS
+      inside the quick tunnel; the genuinely plaintext segment is the LAN
+      itself, where the mobile app's bearer token crosses the wire in the clear
+      — documented in the compose header. Still owed before real use outside
+      the demo: put HTTPS in front (self-signed or a named tunnel).
 - [ ] **A stable address for the mobile app.** A quick tunnel gets a new random
       URL each restart, and the app's base URL is a dev default
       (`10.0.2.2:8090`, overridable through `setApiBaseUrl`). Decide: a named
