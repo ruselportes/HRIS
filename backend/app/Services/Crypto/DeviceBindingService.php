@@ -115,10 +115,22 @@ class DeviceBindingService
         return $this->signatureVerifier->inspectPublicKey($publicKeyPem);
     }
 
-    public function revoke(DeviceKey $deviceKey, Employee $actor, string $reason): void
+    /**
+     * Revoke also cuts the owner's app session: revoke only sets revoked_at,
+     * which refuses sync, but the phone's sign-in token would keep working on
+     * every other foreman endpoint (crew list, leave/overtime filing). Tokens
+     * are named by granted tier at login, so the phone's `mobile` tokens can
+     * be picked out by name. Admin-only: the foreman self-revoke passes
+     * nothing and must not sign its own phone out mid-request.
+     */
+    public function revoke(DeviceKey $deviceKey, Employee $actor, string $reason, bool $deleteMobileTokens = false): void
     {
-        DB::transaction(function () use ($deviceKey, $actor, $reason) {
+        DB::transaction(function () use ($deviceKey, $actor, $reason, $deleteMobileTokens) {
             $deviceKey->update(['revoked_at' => now()]);
+
+            if ($deleteMobileTokens) {
+                $deviceKey->employee->tokens()->where('name', 'mobile')->delete();
+            }
 
             AuditLog::create([
                 'actor_id' => $actor->employee_id,

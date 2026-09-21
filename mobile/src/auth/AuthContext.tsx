@@ -15,7 +15,16 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import {apiClient, clearToken, getPersistedToken, persistToken} from '../api/client';
+import axios from 'axios';
+import {
+  apiClient,
+  clearToken,
+  clearUser,
+  getPersistedToken,
+  getPersistedUser,
+  persistToken,
+  persistUser,
+} from '../api/client';
 
 interface EmployeeUser {
   employee_id: number;
@@ -39,6 +48,22 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** Only the server rejecting the token ends the session (401/403). */
+function isAuthRejection(err: unknown): boolean {
+  return (
+    axios.isAxiosError(err) &&
+    (err.response?.status === 401 || err.response?.status === 403)
+  );
+}
+
+function looksLikeUser(value: unknown): value is EmployeeUser {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as EmployeeUser).employee_id === 'number'
+  );
+}
+
 export function AuthProvider({children}: {children: React.ReactNode}) {
   const [auth, setAuth] = useState<AuthState | null>(null);
   const [ready, setReady] = useState(false);
@@ -49,18 +74,50 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       if (token) {
         try {
           const {data} = await apiClient.get('/auth/me');
-          setAuth({token, user: data});
-        } catch {
-          await clearToken();
+          // `me` wraps the record as {user} — the whole body is not the user.
+          // Saving it whole is what showed "undefined undefined" after an
+          // online restart and keyed drafts under `undefined`.
+          const user = (data as {user?: unknown} | null)?.user;
+          if (looksLikeUser(user)) {
+            await persistUser(user);
+            setAuth({token, user});
+          } else {
+            await restoreSaved(token);
+          }
+        } catch (err) {
+          if (isAuthRejection(err)) {
+            await clearToken();
+            await clearUser();
+          } else {
+            // No network, 500, 429, timeout — the token is only checked when
+            // the phone reaches the server, so the saved sign-in stays and
+            // the app opens offline from it.
+            await restoreSaved(token);
+          }
         }
       }
       setReady(true);
     })();
+
+    async function restoreSaved(token: string): Promise<void> {
+      const user = await getPersistedUser<unknown>();
+      if (looksLikeUser(user)) {
+        setAuth({token, user});
+      }
+    }
   }, []);
 
   const signIn = useCallback(async (identifier: string, password: string) => {
-    const {data} = await apiClient.post('/auth/login', {identifier, password});
+    // The server decides the lifetime from role and client: a foreman here
+    // gets the 30-day app token. Must ship in the same APK as this restore
+    // fix — an older app sends no client and would take a 12-hour token.
+    const {data} = await apiClient.post('/auth/login', {
+      identifier,
+      password,
+      client: 'mobile',
+    });
     await persistToken(data.token);
+    await persistUser(data.user);
     setAuth({token: data.token, user: data.user});
     return data.user as EmployeeUser;
   }, []);
@@ -72,6 +129,7 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       // token already invalid server-side — clear locally regardless
     }
     await clearToken();
+    await clearUser();
     setAuth(null);
   }, []);
 

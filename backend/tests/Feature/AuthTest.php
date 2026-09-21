@@ -176,4 +176,91 @@ class AuthTest extends TestCase
 
         $this->assertSame(0, AuditLog::count());
     }
+
+    public function test_login_and_me_return_the_slim_session_record_without_rates_or_ids(): void
+    {
+        // The full employee row — rates and government IDs — must never sit
+        // in browser storage, where the web app persists the login user.
+        $sensitive = [
+            'daily_rate', 'tin', 'sss', 'philhealth', 'pag_ibig',
+            'date_of_birth', 'address', 'blood_type', 'email', 'mobile',
+            'certification', 'emergency_contact',
+        ];
+
+        $hr = $this->loginUser('hr', ['email' => 'slim@arcenasdev.ph']);
+
+        $login = $this->postJson('/api/auth/login', [
+            'identifier' => 'slim@arcenasdev.ph',
+            'password' => 'password',
+        ])->assertOk();
+
+        $login->assertJsonStructure(['token', 'user' => [
+            'employee_id', 'employee_code', 'first_name', 'middle_name',
+            'last_name', 'full_name', 'role' => ['role_name', 'slug'],
+            'site' => ['site_id', 'site_name'],
+        ]]);
+        foreach ($sensitive as $field) {
+            $login->assertJsonMissingPath("user.{$field}");
+        }
+
+        $me = $this->withHeader('Authorization', 'Bearer '.$login->json('token'))
+            ->getJson('/api/auth/me')
+            ->assertOk();
+        foreach ($sensitive as $field) {
+            $me->assertJsonMissingPath("user.{$field}");
+        }
+        $me->assertJsonPath('user.full_name', $hr->full_name)
+            ->assertJsonPath('user.site.site_id', $hr->site_id);
+    }
+
+    public function test_hr_login_claiming_mobile_still_gets_an_expiring_web_token(): void
+    {
+        $hr = $this->loginUser('hr', ['email' => 'webmobile@arcenasdev.ph']);
+
+        $this->postJson('/api/auth/login', [
+            'identifier' => 'webmobile@arcenasdev.ph',
+            'password' => 'password',
+            'client' => 'mobile',
+        ])->assertOk();
+
+        // The claimed client only names the token when the role earns it —
+        // staff claiming `mobile` still get the 12-hour web token.
+        $token = $hr->tokens()->first();
+        $this->assertSame('web', $token->name);
+        $this->assertLessThan(
+            60,
+            abs(now()->addMinutes(720)->diffInSeconds($token->expires_at)),
+        );
+    }
+
+    public function test_foreman_mobile_login_gets_a_thirty_day_token(): void
+    {
+        $foreman = $this->loginUser('foreman', ['email' => 'appforeman@arcenasdev.ph']);
+
+        $this->postJson('/api/auth/login', [
+            'identifier' => 'appforeman@arcenasdev.ph',
+            'password' => 'password',
+            'client' => 'mobile',
+        ])->assertOk();
+
+        $token = $foreman->tokens()->first();
+        $this->assertSame('mobile', $token->name);
+        $this->assertLessThan(
+            120,
+            abs(now()->addDays(30)->diffInSeconds($token->expires_at)),
+        );
+    }
+
+    public function test_an_expired_token_is_refused(): void
+    {
+        $hr = $this->loginUser('hr');
+
+        $plain = $hr->createToken('web', ['*'], now()->subHour())->plainTextToken;
+
+        Auth::forgetGuards();
+
+        $this->withHeader('Authorization', "Bearer {$plain}")
+            ->getJson('/api/auth/me')
+            ->assertUnauthorized();
+    }
 }

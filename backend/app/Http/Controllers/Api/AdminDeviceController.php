@@ -82,6 +82,7 @@ class AdminDeviceController extends Controller
             $device,
             $request->user(),
             $request->string('reason')->toString(),
+            deleteMobileTokens: true,
         );
 
         return response()->json([

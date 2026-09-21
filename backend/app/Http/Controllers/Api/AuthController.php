@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\EmployeeResource;
+use App\Http\Resources\SessionResource;
 use App\Models\AuditLog;
 use App\Models\Employee;
 use App\Models\Role;
+use App\Support\SessionLifetime;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -39,12 +40,19 @@ class AuthController extends Controller
      * Failed attempts are throttled per identifier+IP so foremen sharing one
      * site's connection cannot lock each other out, and identifier rotation
      * cannot trivially bypass the limiter.
+     *
+     * The response carries a slim session record, never the full employee
+     * row (App\Http\Resources\SessionResource). The `client` hint only names
+     * the token; the lifetime is decided server-side from the account's role
+     * (App\Support\SessionLifetime), so claiming `mobile` buys nobody a
+     * longer session — only a foreman on the app gets the 30-day token.
      */
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([
             'identifier' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string'],
+            'client' => ['nullable', 'string', 'in:web,mobile'],
         ]);
 
         $key = 'login:'.sha1(strtolower(trim($credentials['identifier'])).'|'.$request->ip());
@@ -78,18 +86,25 @@ class AuthController extends Controller
 
         RateLimiter::clear($key);
 
-        $token = $employee->createToken('hris-session')->plainTextToken;
+        // Named by granted tier, not by claimed client, so an admin revoke
+        // can pick a lost phone's `mobile` tokens out by name.
+        $client = $credentials['client'] ?? null;
+        $token = $employee->createToken(
+            SessionLifetime::tokenName($employee, $client),
+            ['*'],
+            SessionLifetime::expiresAt($employee, $client),
+        )->plainTextToken;
 
         return response()->json([
             'token' => $token,
-            'user' => new EmployeeResource($employee->load('role', 'site')),
+            'user' => new SessionResource($employee->load('role', 'site')),
         ]);
     }
 
     public function me(Request $request): JsonResponse
     {
         return response()->json([
-            'user' => new EmployeeResource($request->user()->load('role', 'site')),
+            'user' => new SessionResource($request->user()->load('role', 'site')),
         ]);
     }
 

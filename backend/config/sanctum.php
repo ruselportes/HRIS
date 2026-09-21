@@ -54,6 +54,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Session Lifetimes
+    |--------------------------------------------------------------------------
+    |
+    | Per-token lifetimes handed out at login (App\Support\SessionLifetime),
+    | decided server-side from the account's role and the client hint. Plain
+    | values, not env vars — containers here only see variables listed in the
+    | compose x-api-env blocks, and these need no deploy-time override.
+    |
+    | - web_minutes: staff sign-ins on the web, counted from sign-in (12h, so
+    |   an 8h token issued at 07:00 cannot die mid-afternoon or mid-payroll).
+    | - portal_minutes: W3 worker/operator portal sessions on shared phones
+    |   and computers — payslip check and out (~2h).
+    | - mobile_days: the foreman app (30d). The token is only checked when the
+    |   phone reaches the server; offline it opens from the saved sign-in, and
+    |   expiry just means signing in again once there is signal.
+    |
+    */
+
+    'session_lifetimes' => [
+        'web_minutes' => 720,
+        'portal_minutes' => 120,
+        'mobile_days' => 30,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Token Prefix
     |--------------------------------------------------------------------------
     |

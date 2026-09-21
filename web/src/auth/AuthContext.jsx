@@ -45,13 +45,19 @@ export function AuthProvider({ children }) {
     () =>
       configureClient({
         getToken: () => auth?.token ?? null,
-        onUnauthorized: () => setAuth(null),
+        // Tokens expire now (12h staff web): a 401 means the saved copy is
+        // dead too, so clear storage or a reload resurrects it until the
+        // next 401 — every day.
+        onUnauthorized: () => {
+          clearStorage()
+          setAuth(null)
+        },
       }),
     [auth?.token],
   )
 
   const login = useCallback(async (identifier, password, keep) => {
-    const { data } = await http.post('/auth/login', { identifier, password })
+    const { data } = await http.post('/auth/login', { identifier, password, client: 'web' })
     const session = { token: data.token, user: data.user }
     setAuth(session)
     writeStorage(data.token, data.user, keep)

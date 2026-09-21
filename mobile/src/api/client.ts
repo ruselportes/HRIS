@@ -30,6 +30,7 @@ const DEFAULT_BASE_URL = Platform.select({
 });
 
 const TOKEN_STORAGE_KEY = 'hris.auth.token';
+const USER_STORAGE_KEY = 'hris.auth.user';
 const BASE_URL_STORAGE_KEY = 'hris.api.baseUrl';
 
 // The whole Laravel API lives under /api; the quick tunnel and any LAN host
@@ -103,4 +104,29 @@ export async function clearToken(): Promise<void> {
 
 export async function getPersistedToken(): Promise<string | null> {
   return AsyncStorage.getItem(TOKEN_STORAGE_KEY);
+}
+
+/**
+ * The signed-in user as the server returned it. The token alone cannot
+ * rebuild a session: it carries no identity, and asking the server at every
+ * launch is exactly what breaks offline cold starts — so the user is saved
+ * beside the token at sign-in and trusted (for display and draft keys)
+ * whenever the server cannot be reached. Only a 401/403 deletes it.
+ */
+export async function persistUser(user: unknown): Promise<void> {
+  await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+}
+
+export async function getPersistedUser<T>(): Promise<T | null> {
+  try {
+    const raw = await AsyncStorage.getItem(USER_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    // Corrupted entry — treat as no saved user, not a crash.
+    return null;
+  }
+}
+
+export async function clearUser(): Promise<void> {
+  await AsyncStorage.removeItem(USER_STORAGE_KEY);
 }

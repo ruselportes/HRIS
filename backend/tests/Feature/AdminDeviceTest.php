@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\DeviceKey;
 use Database\Factories\DeviceKeyFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Tests\Concerns\SignsAttendanceEvents;
 use Tests\TestCase;
 
@@ -203,6 +204,45 @@ class AdminDeviceTest extends TestCase
             'action_type' => 'DEVICE_REVOKED',
             'description' => 'Device dev-lost-0001 revoked: handset lost on site',
         ]);
+    }
+
+    public function test_admin_revoke_also_deletes_the_owners_mobile_tokens(): void
+    {
+        // Revoke only sets revoked_at, which refuses sync — but the phone's
+        // sign-in token would keep working on every other foreman endpoint
+        // (crew list, leave/overtime filing). The admin revoke cuts those too
+        // by deleting the owner's `mobile` tokens, picked out by the name the
+        // login grants by tier. Other tiers are untouched.
+        $foreman = $this->loginUser('foreman');
+        $device = DeviceKey::factory()->create([
+            'employee_id' => $foreman->employee_id,
+            'device_id' => 'dev-lost-phone-0001',
+        ]);
+        $mobileToken = $foreman->createToken('mobile')->plainTextToken;
+        $foreman->createToken('web');
+        $admin = $this->loginUser('admin');
+
+        $this->actingAs($admin, 'sanctum')
+            ->deleteJson('/api/devices/'.$device->device_key_id, ['reason' => 'handset lost on site'])
+            ->assertOk();
+
+        $this->assertDatabaseMissing('personal_access_tokens', [
+            'tokenable_id' => $foreman->employee_id,
+            'name' => 'mobile',
+        ]);
+        $this->assertDatabaseHas('personal_access_tokens', [
+            'tokenable_id' => $foreman->employee_id,
+            'name' => 'web',
+        ]);
+
+        // Test artifact, same as AuthTest's logout case: the guard instance is
+        // cached between requests in one test, so forget it to force the dead
+        // token to be re-verified against the DB like production does.
+        Auth::forgetGuards();
+
+        $this->withHeader('Authorization', "Bearer {$mobileToken}")
+            ->getJson('/api/me/crew')
+            ->assertUnauthorized();
     }
 
     public function test_revoke_requires_a_reason(): void

@@ -17,3 +17,7 @@ Artisan::command('crews:end-expired-covers', function (ActingForemanService $act
 })->purpose('Return crews to their regular foreman when an acting cover has run out');
 
 Schedule::command('crews:end-expired-covers')->everyFiveMinutes();
+
+// Web sign-ins leave a 12-hour token row behind (portal 2h, foreman app
+// 30d — see App\Support\SessionLifetime), and nothing else deletes them.
+Schedule::command('sanctum:prune-expired --hours=24')->daily();
