@@ -840,6 +840,11 @@ HTTP 401 on login is W1's proof test.
         worker-facing surface is the only enforcement), which is the rehearsal
         answer to "can HR log in as a worker?" (a panelist's phrasing; the
         temp password is handed over in person, not kept secret from HR).
+      - **HR inbox for reset requests (separate item, review 2026-09-21):**
+        `POST /auth/forgot-password` only writes an audit row nobody is
+        prompted to act on — the ForgotPasswordPage now says so outright and
+        sends the worker to HR in person. A real inbox/queue surfacing those
+        requests to HR is still owed.
       - **Blocker found in the data:** no worker in the dev database has a
         `date_of_birth` (only one foreman does), so activation would refuse
         everyone — HR fills it on the existing employee form, and the demo

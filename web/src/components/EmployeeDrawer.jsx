@@ -58,19 +58,41 @@ const Tag = ({ style, children }) => (
 
 export function EmployeeDrawer({ employee, onClose, onEdit, canEdit }) {
   const [tab, setTab] = useState('Profile')
-  const [resetState, setResetState] = useState({ busy: false, error: null, temporaryPassword: null })
+  const [resetState, setResetState] = useState({ stage: 'idle', busy: false, error: null, temporaryPassword: null })
+  const [copied, setCopied] = useState(false)
   const status = STATUS_STYLE[employee.employment_status] ?? STATUS_STYLE.project_based
   const certs = employee.certification ?? []
   const isPortalRole = employee.role?.slug === 'worker' || employee.role?.slug === 'operator'
 
   const resetPortalAccess = async () => {
-    setResetState({ busy: true, error: null, temporaryPassword: null })
+    setResetState({ stage: 'confirm', busy: true, error: null, temporaryPassword: null })
     try {
       const { data } = await http.post(`/employees/${employee.employee_id}/reset-portal-access`)
-      setResetState({ busy: false, error: null, temporaryPassword: data.temporary_password })
+      setResetState({ stage: 'done', busy: false, error: null, temporaryPassword: data.temporary_password })
     } catch (err) {
-      setResetState({ busy: false, error: errorMessage(err, 'Unable to reset portal access.'), temporaryPassword: null })
+      setResetState({
+        stage: 'confirm',
+        busy: false,
+        error: errorMessage(err, 'Unable to reset portal access.'),
+        temporaryPassword: null,
+      })
     }
+  }
+
+  const copyPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(resetState.temporaryPassword)
+      setCopied(true)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  const closeDrawer = () => {
+    // The temporary password is shown once: leaving the drawer forgets it.
+    setResetState({ stage: 'idle', busy: false, error: null, temporaryPassword: null })
+    setCopied(false)
+    onClose()
   }
 
   return (
@@ -98,7 +120,7 @@ export function EmployeeDrawer({ employee, onClose, onEdit, canEdit }) {
                 ) : null}
               </div>
             </div>
-            <button type="button" onClick={onClose} aria-label="Close drawer" className="p-1 text-neutral-600 hover:text-ink">
+            <button type="button" onClick={closeDrawer} aria-label="Close drawer" className="p-1 text-neutral-600 hover:text-ink">
               <Icon.close />
             </button>
           </div>
@@ -121,19 +143,49 @@ export function EmployeeDrawer({ employee, onClose, onEdit, canEdit }) {
           {canEdit && isPortalRole ? (
             <div className="mt-3 border border-neutral-300 bg-canvas p-3">
               <div className="text-[11px] uppercase tracking-[.1em] text-neutral-700">Worker portal access</div>
-              {resetState.temporaryPassword ? (
+              {resetState.stage === 'done' && resetState.temporaryPassword ? (
                 <div className="mt-2 border-l-[3px] border-[#2F7A4D] bg-[#E6F1EA] p-2.5">
                   <div className="text-[11px] text-neutral-700">Temporary password — shown once, hand it over in person:</div>
-                  <div className="font-heading text-lg tabular-nums">{resetState.temporaryPassword}</div>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <div className="font-heading text-lg tabular-nums">{resetState.temporaryPassword}</div>
+                    <button
+                      type="button"
+                      onClick={copyPassword}
+                      className="flex-none border border-[#2F7A4D] px-2.5 py-1.5 text-xs text-[#1F5334]"
+                    >
+                      {copied ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+              ) : resetState.stage === 'confirm' ? (
+                <div className="mt-2 border-l-[3px] border-[#A83A2C] bg-[#F7E8E5] p-2.5 text-[13px] text-[#75261C]">
+                  This signs them out everywhere and replaces their password.
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={resetPortalAccess}
+                      disabled={resetState.busy}
+                      className="border border-[#A83A2C] px-3 py-1.5 text-[13px] font-semibold disabled:opacity-50"
+                    >
+                      {resetState.busy ? 'Resetting…' : 'Confirm reset'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setResetState({ stage: 'idle', busy: false, error: null, temporaryPassword: null })}
+                      disabled={resetState.busy}
+                      className="border border-neutral-400 px-3 py-1.5 text-[13px] disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button
                   type="button"
-                  onClick={resetPortalAccess}
-                  disabled={resetState.busy}
-                  className="mt-2 h-10 w-full border border-[#A83A2C] text-sm font-semibold text-[#75261C] hover:bg-[#F7E8E5] disabled:opacity-50"
+                  onClick={() => setResetState({ stage: 'confirm', busy: false, error: null, temporaryPassword: null })}
+                  className="mt-2 h-10 w-full border border-[#A83A2C] text-sm font-semibold text-[#75261C] hover:bg-[#F7E8E5]"
                 >
-                  {resetState.busy ? 'Resetting…' : 'Reset portal access'}
+                  Reset portal access
                 </button>
               )}
               {resetState.error ? <p className="mt-2 text-[13px] text-[#75261C]">{resetState.error}</p> : null}

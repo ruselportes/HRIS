@@ -25,8 +25,9 @@ export function ForgotPasswordPage() {
         <div className="mb-1 text-[11px] uppercase tracking-[.1em] text-primary-700">Forgot password</div>
         <h1 className="text-[32px]">Reset request</h1>
         <p className="mt-2 text-[13px] leading-relaxed text-neutral-700">
-          Enter your Employee ID. HR receives the reset request — no self-serve reset link, since most field workers
-          have no company email.
+          Enter your Employee ID. This only files a note HR can look up — for a reset today, ask HR directly and
+          they will give you a temporary password in person. There is no self-serve reset link, since most field
+          workers have no company email.
         </p>
 
         {state.error ? (
@@ -37,8 +38,8 @@ export function ForgotPasswordPage() {
 
         {state.stage === 'done' ? (
           <div className="mt-5 border border-[#2F7A4D] bg-[#E6F1EA] p-4 text-[13px] text-[#1F5334]">
-            If that Employee ID exists, HR has received your request. They will reach out with next steps — usually
-            within one working day.
+            Recorded — but nobody is paged by this page, so ask HR directly. They will reset your access and hand you
+            a temporary password in person.
           </div>
         ) : (
           <form onSubmit={submit} className="mt-5 space-y-4" noValidate>
