@@ -3,7 +3,7 @@
 Each phase below is weighted **10%** of total project completion (10 phases = 100%).
 Check off tasks as they're completed; a phase counts as done once every task under it is checked.
 
-**Overall progress: ~90% (Phases 1–9 built: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8, Phase 8 5/5, Phase 9 6/6.)** Two add-ons, the production deployment, and seven web pages that still show "Coming soon" sit outside this count and have their own sections after Phase 10. Verified by 421 backend tests (passing on both SQLite and MySQL 8.0) and 219 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works. The release APK is now built and signed (2026-09-21 — see *Mobile release build* under Operations); what remains on all four asterisks is the run itself on a physical handset.
+**Overall progress: ~90% (Phases 1–9 built: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8, Phase 8 5/5, Phase 9 6/6.)** Two add-ons, the production deployment, and seven web pages that still show "Coming soon" sit outside this count and have their own sections after Phase 10. Verified by 421 backend tests (passing on both SQLite and MySQL 8.0) and 219 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works. The release APK is now built and signed (2026-09-21 — see *Mobile release build* under Operations); what remains on all four asterisks is the run itself on a physical handset — and for the cold-start offline run, first the mobile session-restore fix found 2026-09-21 (see the Phase 4 note).
 
 > **Backend test routine (run before committing backend work):**
 > 1. Day-to-day: `docker compose exec api php artisan test` (in-memory SQLite).
@@ -73,6 +73,21 @@ Check off tasks as they're completed; a phase counts as done once every task und
 > Operations): `app-release.apk` embeds the bundle and the native modules, so
 > the cold-start offline run — WiFi off, close, reopen — is finally testable
 > and still owed, on a handset.
+>
+> **Found 2026-09-21 — that run will fail on the release APK too.**
+> `mobile/src/auth/AuthContext.tsx` restores a session at launch by calling
+> `GET /auth/me`, and on **any** error — including no network — it clears the
+> saved token. A foreman who reopens the app with no signal is signed out, and
+> signing in needs the network, so no roll call can be taken until signal
+> returns: offline attendance (FR-05) fails on every offline cold start. Fix:
+> clear the token only on a 401/403, keep it on a network error, and restore
+> the user from a saved copy (the slim session record — see *Session record*
+> in the web-portal section). A second bug in the same function: `auth/me`
+> returns `{user: {...}}`, but the restore saves the whole body as `user`, so
+> after an online restart `user.first_name`, `user.last_name` and
+> `user.employee_id` are undefined — the home and roll-call screens read
+> "undefined undefined", and `loadDraft(user.employee_id)` looks under
+> `undefined`. Neither is tested: there is no Jest test on the restore path.
 
 ## Phase 5 — Cryptographic Attendance Integrity Engine (supports UC-04) (10%)
 
@@ -362,64 +377,108 @@ called the missing read side a gap in the core system. It is no longer missing.
 **Every role has placeholders in its sidebar (checked 2026-09-21 against the
 `access` matrix in `config/nav.jsx`; the sidebar hides only `none`):**
 
-| Role | "Coming soon" pages in its sidebar | Left after removing Compliance & Announcements |
-|---|---|---|
-| HR | Gov't Remittances, Project Sites, Compliance & Docs, Announcements | Gov't Remittances, Project Sites |
-| Site Foreman | Roll Call, Compliance & Docs, Announcements | Roll Call |
-| Site Engineer | Roll Call, Project Sites, Compliance & Docs, Announcements | Roll Call, Project Sites |
-| Admin | Project Sites, Announcements, Users & Roles, System Settings | Project Sites, Users & Roles, System Settings |
-| Executive | Gov't Remittances, Project Sites, Compliance & Docs, Announcements | Gov't Remittances, Project Sites |
+| Role | "Coming soon" pages in its sidebar |
+|---|---|
+| HR | Gov't Remittances, Project Sites, Compliance & Docs, Announcements |
+| Site Foreman | Roll Call, Compliance & Docs, Announcements |
+| Site Engineer | Roll Call, Project Sites, Compliance & Docs, Announcements |
+| Admin | Project Sites, Announcements, Users & Roles, System Settings |
+| Executive | Gov't Remittances, Project Sites, Compliance & Docs, Announcements |
 
-Announcements is in every sidebar and Compliance & Docs in four of five, so
-removing those two (below) is the cheapest fix for everyone. Project Sites is
-next — four roles see it. The pages only the admin has:
+**Plan to fill them (decided 2026-09-21): six pages built, Announcements
+removed.** None of the six needs a schema change — only new `AuditLog`
+action-type constants. Each is a slice in the Phase 10 pattern: backend and
+tests first, then the screen, then the tick here. Order: C1 → C4 → C2 → C3 →
+C5 → C6.
 
-- [ ] **Users & Roles** (`users`; admin only; "Provisioning, RBAC"). The
-      admin's own section, and the prototype's admin landing page. Login
-      provisioning already lives in the Employee form, so this page would add
-      what only an admin needs: the list of sign-in accounts (the five login
-      roles) with last sign-in, a lockout reset (clears the `login:` rate-limit
-      key — there is no stored "locked" state, the lock expires by time), a
-      token revoke ("sign out everywhere"), and a role-change audit. Add-on B's
-      "Reset portal access" (`POST employees/{employee}/reset-portal-access`,
-      role:hr,admin) can also sit here. Without it the System Administrator
-      has little to do in the portal — a likely panel question.
-- [ ] **System Settings** (`settings`; admin only; "Cut-offs, holidays,
-      integrations"). Nothing is behind it: holidays live in Payroll Runs
-      (above), the cut-offs are the fixed semi-monthly A/B periods in code
-      (`{code}` = `YYYY-MM-A|B`), and no integrations are in scope. The
-      settings that do exist are config and env — `config/attendance.php`
-      (timezone, shift times), `config/payroll.php` (effective-dated rate
-      sets), `HRIS_REQUIRE_HARDWARE_KEYS` — and making them editable needs a
-      settings table, a schema change. **Decide:** a read-only "System
-      configuration" page showing the values in force (the honest version: it
-      would show hardware-backed keys are not enforced yet), or remove the
-      entry. Either way the note is wrong — "holidays" points to the wrong
-      place.
-- [ ] **Project Sites** (`sites`; admin/engineer full, HR/exec view; "11
-      sites, Cebu & Bohol"). Only a read-only `GET /api/sites`; the 11 sites
-      come from `SiteSeeder`, so adding a project site needs code. Needs site
-      CRUD for admin/engineer. The "11 sites" note is fixed prototype copy,
-      correct today only because the seeder has 11.
-- [ ] **Announcements** (`announce`; admin/HR full, others view). No backend
-      and no use case — remove it (below).
+- [ ] **Announcements — removed** (`announce`). Decided 2026-09-21, option
+      (a): no use case, and building it needs a new table, a new UC/FR pair
+      and more SDD/ERD work for Efren near submission, for the lowest defense
+      value of any page. Delete its `nav.jsx` entry with the first slice. If it
+      is ever wanted, it is an add-on with team sign-off, as Redis and Add-on
+      B were, and its ids would follow UC-11/FR-11 (Add-on B's).
+- [ ] **C1 — Compliance & Docs → Certifications** (`compliance`; UC-02
+      *Worker Registry and Skill Certification Management*, and UC-09's
+      scorecard). **Corrects this file's earlier "no backend, no use case"**:
+      certifications are UC-02, already stored in `Employee.certification`
+      (name, issuer, number, `issued_at`, `expires_at`), and the SRS §3.2.3
+      compliance score already counts the expired ones. A read endpoint lists
+      each worker's certifications marked valid / expiring within 30 days /
+      expired / no expiry date. `App\Support\CertificationStatus` (already
+      shared by the scorecard and the crew reads) is extended to mark each
+      certificate, so the page and the scorecard use one rule. Engineer
+      clamped to their home site (the `ReportsController` pattern), foreman to
+      the crews they lead now (`CrewLeadership`), HR and executive everything.
+      Read-only; HR gets a link to the employee record to edit. The nav note
+      "Clearances, DOLE, safety certs" becomes "Worker certifications and
+      expiry" — no clearance or DOLE documents exist. Test: a site's expired
+      count here equals the scorecard's `certifications_expired` for the same
+      date.
+- [ ] **C4 — Roll Call (web)** (`rollcall`; UC-04, FR-03). A read-only
+      "today" monitor: per deployed crew, the records received
+      (present/late/absent) against crew size, crews with nothing received
+      yet, when the foreman's phone last synced (`last_synced_at`), and
+      anything waiting for review. Engineer: own site; foreman: own crews, and
+      the foreman's access drops from `full` to `view`. The page says capture
+      only happens in the mobile app, since records must be signed on the
+      device (FR-10).
+- [ ] **C2 — Project Sites** (`sites`; UC-03). The admin creates, renames
+      and closes sites; the engineer drops from `full` to `view` (an engineer
+      clamped to one site should not create company-wide ones). No delete —
+      sites are referenced by employees, crews and report history — so closing
+      changes `status`, and closing a site that still has deployed crews is
+      refused (422). The page shows location, status, headcount and deployed
+      crews; the fixed "11 sites, Cebu & Bohol" note becomes the real count.
+      **Cache: nothing new to build** — `AppServiceProvider::INVALIDATES`
+      already bumps the `reference`, `employees` and `reports` namespaces on
+      any `Site` save or delete; one test asserts the new controller's writes
+      retire the cached site list.
+- [ ] **C3 — Gov't Remittances** (`gov`; UC-08, FR-08). Monthly totals from
+      the month's **approved** A and B runs: SSS, PhilHealth and Pag-IBIG
+      employee and employer shares, and BIR withholding tax — all already on
+      `payroll_details`. HR sees per-employee rows with SSS, PhilHealth,
+      Pag-IBIG and TIN numbers; the executive sees **totals only** (those
+      numbers are personal data, and the executive's access is view). Flags
+      anyone with contributions but no ID number on file (the company cannot
+      remit for them), and marks a month with only one approved run as
+      partial. The rates keep their `[VERIFY]` flags. Tests: totals equal the
+      payslips, drafts are excluded, and the executive's response carries no
+      ID numbers.
+- [ ] **C5 — Users & Roles** (`users`; UC-01, FR-01; admin only). The
+      sign-in accounts with role, site, employment status, whether a password
+      is set, last used and open sessions; "Sign out everywhere" (deletes the
+      account's tokens, audit-logged); and role-change history — **no role
+      change is audited today**, so the employee update must start recording
+      who changed a role, from what, to what (a new `AuditLog` constant, no
+      schema change). Add-on B's "Reset portal access" can also sit here.
+      **No lockout button** (corrects this entry's earlier wording): the login
+      throttle key is `login:` + sha1(identifier|IP) (`AuthController.php:50`),
+      per account *and* IP and expiring on its own, so there is no single key
+      an admin can clear.
+- [ ] **C6 — System Settings** (`settings`; FR-01 — SRS §2.3 has the admin
+      manage "system-related configurations"). A read-only page of the values
+      in force: attendance timezone, shift times and the late-foreman credit
+      time, the payroll periods (fixed semi-monthly A/B, `{code}` =
+      `YYYY-MM-A|B`), the statutory rate set in effect, whether hardware-backed
+      keys are required and which security levels are accepted, and how long
+      sign-in tokens last. Changes are made in config and a redeploy, and the
+      page says so — making them editable would need a settings table. It will
+      show two honest gaps: hardware keys are not enforced
+      (`HRIS_REQUIRE_HARDWARE_KEYS=false`) and sign-in tokens never expire
+      (`sanctum.expiration = null`); the second is to be fixed (see *Session
+      record* below). The nav note "Cut-offs, holidays, integrations" is
+      corrected — holidays live in Payroll Runs.
 
-**Partially backed — lower priority:**
-
-- [ ] **Roll Call** (`rollcall`, web). Capture is mobile-only by design.
-      Decide: a read-only "today's roll call" view for engineers, or drop it
-      from the web nav (it overlaps Attendance & DTR).
-- [ ] **Gov't Remittances** (`gov`). `payroll_details` already itemises SSS,
-      PhilHealth, Pag-IBIG and withholding tax per payslip, so a monthly
-      per-agency report is aggregation only. No UC covers it; it would sit
-      under UC-08.
-
-**No backend, no use case — hide before the defense:**
-
-- [ ] **Compliance & Docs** (`compliance`) and **Announcements**
-      (`announce`). Prototype nav only, never in scope. Remove both entries
-      from `config/nav.jsx`: a panelist clicking through nine "Coming soon"
-      screens reads as unfinished, even with the system behind them built.
+**Sequencing for these pages:**
+- Each needs routes in the signed-in group of `backend/routes/api.php`, which
+  Add-on B work also edits: start a slice's backend only when that file has no
+  uncommitted Add-on B edits, and stage by explicit path.
+- `App.jsx` and `nav.jsx` are edited by Add-on B W3 too: land these pages (and
+  the identity and dashboard fixes below) before W3, or pause W3 while they land.
+- New routes sit in the signed-in group, so `PortalScopeTest`'s sweep covers
+  them automatically; give it a sample value for any new placeholder pattern.
+- Page guards allow only `full` or `view`, rather than checking `!== 'none'`.
+- Remove each page's fake sidebar badge (`ROLES[...].badges`) as it is built.
 
 **Prototype content still showing on built screens (seen 2026-09-21):** the
 shell and the dashboard still render the prototype's fixed per-role content
@@ -456,6 +515,20 @@ from `ROLES` in `config/nav.jsx`, not the signed-in user or live data.
         Arcenas) match their seeded accounts only by coincidence; any second
         account in those roles shows the wrong name.
       Use the real user from `auth/me` (name, code, role, site).
+- [ ] **Session record.** `auth/login` and `auth/me` return the whole
+      `EmployeeResource` — daily rate, TIN, SSS, PhilHealth, Pag-IBIG, date of
+      birth, address, blood type — and the web keeps it in `localStorage`
+      (`hris.user`) after the tab closes. Return a slim session record (id,
+      code, names, role, site); pages that need more already read the
+      `employees` endpoints. Land it before W3, which puts workers on shared
+      phones and computers, and since it settles the `auth/login` shape W3's
+      worker sign-in builds on. Everyone signed in must sign in again to clear
+      the stored copy. **Token expiry (C6) rides with it for the web only:** a
+      foreman's phone can be offline for days, so the mobile app must not lose
+      its session to an expiring token — fix the mobile session restore first
+      (Phase 4 note), then give web tokens a per-token `expires_at` at login and
+      keep the foreman app's token longer than the longest expected offline
+      stretch.
 - [ ] **Sidebar badges** are fixed per role (`badges` in `ROLES`): Admin
       "Users & Roles 3", "Device & Sync Health 2"; HR "Attendance 12", "Leave
       5", "Overrides 3"; foreman "Roll Call 18", "Leave 2"; engineer "Manpower
@@ -473,11 +546,16 @@ from `ROLES` in `config/nav.jsx`, not the signed-in user or live data.
       W1. Unreachable today (`Shell` rejects an unknown role first); make them
       fail closed anyway.
 
-**Recommended order:** Attendance & DTR, device revocation and the holiday
-calendar are done (2026-09-21). Next the signed-in identity and the dashboard
-(the first thing a panelist sees), then hide Compliance & Docs and
-Announcements, then decide System Settings, then Users & Roles; the rest as
-time allows.
+**Recommended order (2026-09-21):** Attendance & DTR, device revocation and
+the holiday calendar are done.
+
+0. The mobile session-restore fix (Phase 4 note) — it blocks the offline
+   handset run, a core claim.
+1. The session record with web-only token expiry, and the signed-in identity
+   on top of it.
+2. C1 → C4 → C2 → C3 → C5 → C6, deleting Announcements with C1.
+3. The dashboard.
+4. Then Add-on B W3.
 
 ---
 
