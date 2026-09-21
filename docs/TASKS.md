@@ -404,8 +404,10 @@ Built alongside the phases; the files are in the repo root and `deploy/`.
       bind-mounted as in development). Production php.ini plus
       `docker/php-prod.ini`: opcache on with `validate_timestamps=0`, since the
       image never changes under a running container. `docker/php-fpm-prod.conf`
-      (pool, not php.ini) sets `pm.max_children = 4`, so a genuine spike hits a
-      legible PHP memory error under the 1g limit rather than an OOM kill.
+      (pool, not php.ini) sets `pm.max_children = 3` — worst case (3 x 256M
+      per-worker cap + opcache's shared 128M + the master) fits under the 1g
+      cap, so a genuine spike fails with a legible PHP memory error rather
+      than an OOM kill.
 - [x] `backend/bootstrap/app.php` — trusts the Compose bridge CIDR only
       (`172.16.0.0/12`), limited to the `X-Forwarded-For`/`X-Forwarded-Proto`
       headers nginx mirrors. Spoofed client XFF is ignored, so audit logs and
@@ -432,7 +434,9 @@ Built alongside the phases; the files are in the repo root and `deploy/`.
       Laravel cannot be made to trust a client-sent host), falls back to
       `index.html` for BrowserRouter paths, and has a healthcheck on
       `/index.html` — nginx-owned, so the web container's health is not coupled
-      to the API's.
+      to the API's. Gzip covers the tunnel too: `gzip_proxied any` keeps the JS
+      bundle compressed even though Cloudflare adds a `Via` header (which
+      otherwise makes nginx skip gzip).
 - [x] `.env.prod.example` — every secret the stack refuses to start without
       (`DB_PASSWORD`, `DB_ROOT_PASSWORD`, `APP_KEY`, `APP_URL`), with the
       warning that `device_keys.hmac_key` is encrypted with `APP_KEY`, so

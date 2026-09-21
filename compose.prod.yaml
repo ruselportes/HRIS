@@ -41,9 +41,10 @@
 # the real client source IP, so LAN clients (192.168.x / 10.x / Tailscale
 # 100.64.x) are recorded correctly.
 #
-# Memory: mem_limit is set per service for the 7GB box. api = 1g against to a
-# 256M-per-worker cap with pm.max_children = 4 (docker/php-fpm-prod.conf), so a
-# spike fails with a PHP memory error rather than an OOM kill.
+# Memory: mem_limit is set per service for the 7GB box. api = 1g against a
+# 256M-per-worker cap with pm.max_children = 3 (docker/php-fpm-prod.conf):
+# worst case (3 x 256M + opcache's shared 128M + the master) fits under 1g, so
+# a spike fails with a PHP memory error rather than an OOM kill.
 #
 # MySQL and php-fpm publish no ports: only nginx (80) is reachable from outside.
 # Data: mysql-data (database) and api-storage (Laravel storage). Back up with
