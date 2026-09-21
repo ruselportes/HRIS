@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ActingForemanController;
 use App\Http\Controllers\Api\AdminDeviceController;
+use App\Http\Controllers\Api\AdminAccountController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AttendanceSyncController;
 use App\Http\Controllers\Api\AuthController;
@@ -175,6 +176,15 @@ Route::middleware(['auth:sanctum', 'portal.scope', 'acting.expire'])->group(func
             ->whereNumber('device')
             ->middleware('role:admin')
             ->name('devices.revoke');
+    });
+
+    // Users & Roles (C5, UC-01/FR-01) — admin only. The account list, "sign
+    // out everywhere", and the role-change history. {employee} binds by
+    // employee_id; the worker lockout sweep's default 1 never reaches the
+    // database, denied first by portal.scope.
+    Route::prefix('admin')->middleware('role:admin')->group(function () {
+        Route::get('accounts', [AdminAccountController::class, 'index'])->name('admin.accounts');
+        Route::post('accounts/{employee}/sign-out', [AdminAccountController::class, 'signOut'])->name('admin.sign-out');
     });
 
     // Overrides & Audit (Phase 7, UC-05). Viewing per the nav matrix, foremen

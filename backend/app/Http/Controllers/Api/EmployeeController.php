@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateEmployeeRequest;
 use App\Http\Resources\EmployeeResource;
 use App\Models\AuditLog;
 use App\Models\Employee;
+use App\Models\Role;
 use App\Services\EmployeeService;
 use App\Support\ResilientCache;
 use Illuminate\Database\Eloquent\Builder;
@@ -110,7 +111,7 @@ class EmployeeController extends Controller
         return new EmployeeResource($employee->load('role', 'site', 'crewAssignments'));
     }
 
-    public function update(UpdateEmployeeRequest $request, Employee $employee): EmployeeResource
+    public function update(UpdateEmployeeRequest $request, Employee $employee): JsonResponse
     {
         $this->authorize('update', $employee);
 
@@ -120,9 +121,54 @@ class EmployeeController extends Controller
             unset($data['password']);
         }
 
+        $oldRole = Role::query()->find($employee->role_id)?->slug;
+
         $employee->update($data);
 
-        return new EmployeeResource($employee->fresh(['role', 'site']));
+        // A token's lifetime is set at sign-in from the role at the time: a
+        // foreman demoted to worker would otherwise keep a 30-day mobile
+        // token, so a role change signs the person out everywhere.
+        if ($employee->wasChanged('role_id')) {
+            $employee->tokens()->delete();
+
+            AuditLog::create([
+                'actor_id' => $request->user()->employee_id,
+                'action_type' => AuditLog::ROLE_CHANGED,
+                'description' => "Role changed from {$oldRole} to {$employee->fresh()->role?->slug} for {$employee->employee_code} by {$request->user()->employee_code}.",
+                'timestamp' => now(),
+            ]);
+        }
+
+        return response()->json([
+            'data' => new EmployeeResource($employee->fresh(['role', 'site'])),
+            'role_change_history' => $this->roleChangeHistory($employee),
+        ]);
+    }
+
+    /**
+     * Recent ROLE_CHANGED rows for this person, newest first. The subject
+     * lives in the description in a fixed shape ("... for {code} by ..."),
+     * and codes carry no LIKE wildcards, so the match is exact in practice.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function roleChangeHistory(Employee $employee): array
+    {
+        return AuditLog::query()
+            ->with('actor')
+            ->where('action_type', AuditLog::ROLE_CHANGED)
+            ->where('description', 'like', "% for {$employee->employee_code} by %")
+            ->orderByDesc('audit_id')
+            ->take(10)
+            ->get()
+            ->map(fn (AuditLog $log) => [
+                'audit_id' => $log->audit_id,
+                'description' => $log->description,
+                'actor_code' => $log->actor?->employee_code,
+                'timestamp' => $log->timestamp,
+            ])
+            ->values()
+            ->all();
     }
 
     /**

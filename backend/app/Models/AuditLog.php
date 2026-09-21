@@ -70,6 +70,12 @@ class AuditLog extends Model
 
     public const SITE_REOPENED = 'SITE_REOPENED';
 
+    /** An admin signed a person out of every session (C5, UC-01). */
+    public const SESSIONS_REVOKED = 'SESSIONS_REVOKED';
+
+    /** An admin changed someone's role (C5, UC-01): who, from what, to what. */
+    public const ROLE_CHANGED = 'ROLE_CHANGED';
+
     /**
      * Leave & Overtime workflow steps (Phase 9, UC-10). One family for both
      * request kinds: the description carries the type and id, so the list is
