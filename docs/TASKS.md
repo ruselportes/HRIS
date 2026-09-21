@@ -615,12 +615,15 @@ HTTP 401 on login is W1's proof test.
         affected row, `Hash::make` applied explicitly — so a worker and an
         attacker racing to the same code have exactly one winner;
         audit-logged `PORTAL_ACTIVATED` with the IP; no token is issued.
-        **Review fix (2026-09-21):** the *route* is registered in W3, not
+        **Review fixes (2026-09-21):** the *route* is registered in W3, not
         here — activation and sign-in open together, and no dead endpoint sits
         on the tunnel. The controller ships in the review-fix commit (strict
         `date_format:Y-m-d` so a `toISOString()` UTC+8 birthday cannot shift a
         day; rate-limiter keys derived only after validation so array input
-        cannot 500; digit-run birthday check).
+        cannot 500; digit-run birthday check) and, per the follow-up review,
+        the separator-aware run extraction (`/(?<=\d)[-\/. ](?=\d)/`) is in
+        and the whole activation suite lives test-only in
+        `PortalActivationTest` — see the W3 bullet for what moves there.
       - **HR "Reset portal access"** (`POST employees/{employee}/reset-portal-access`,
         `role:hr,admin`, only ever applied to a portal role): sets a random
         14-character temporary password from an unambiguous charset (no 0/O,
@@ -652,18 +655,30 @@ HTTP 401 on login is W1's proof test.
       - Tests: worker A cannot read worker B's records; draft runs never
         appear; a guessed `{run}` that belongs to someone else returns 404.
 - [ ] **W3 — portal sign-in and the web app:**
-      - **Register `POST /auth/activate` here** — it lives with the /portal
-        sign-in surface so activation and login open together (review fix,
-        2026-09-21; the route was removed from W1). The controller fixes from
-        the same review are already in the code (strict `date_format:Y-m-d`,
-        digit-**run** birthday check, post-validation rate keys) and this
-        commit re-adds the full HTTP activation suite — success, the generic
-        failure matrix (unknown code, wrong DOB, `date_format` refusal of an
-        ISO datetime like `1990-05-12T16:00:00.000Z`, short password, password
-        == code, a single contiguous digit run spelling the DOB), per-code 5
-        and per-IP 30 locks, refuse-already-activated, refuse staff/separated,
-        refuse-after-HR-reset, and a positive case proving separated digit
-        groups like `Moon1-Kite4-Lion0-Star7` are accepted.
+      - **Move `POST /auth/activate` into `api.php`** — one line in the public
+        `auth` group, `->name('auth.activate')`, and it lives with the /portal
+        sign-in surface so activation and login open together. Then drop the
+        setUp registration in `PortalActivationTest` (it registers the route
+        per-test until the real one exists). The whole activation suite is
+        already shipped and green in `backend/tests/Feature/PortalActivationTest.php`
+        — success, the generic failure matrix (unknown code, wrong DOB,
+        `date_format` refusal of an ISO datetime like
+        `1990-05-12T16:00:00.000Z` and of impossible dates like `1990-02-30`,
+        short password, password == code, a contiguous digit run spelling the
+        DOB, a **separator-spelled** DOB like `juan05-12-1990` / `juan1990.05.12`),
+        the separated-digit-groups acceptance case (`Moon1-Kite4-Lion0-Star7`),
+        per-code 5 and per-IP 30 locks, refuse-already-activated,
+        refuse staff/separated, refuse-after-HR-reset. The controller ships
+        the fixes (strict `date_format:Y-m-d`, separator-aware digit-**run**
+        birthday check, post-validation rate keys) from earlier commits.
+      - **Not blocking, deferred to W3 (review 2026-09-21):** the three
+        password-only failures — too short, equals the code, spells the
+        submitted birthday — could return a specific message instead of
+        "contact HR" (a worker who is told what is wrong with the password
+        does not lose a try to the generic message), **as long as those checks
+        move before the employee lookup** so the specific message cannot
+        confirm the code and birthday. The birthday check already runs on the
+        submitted date, so a pre-lookup move leaks nothing.
       - `canSignIn()` accepts the portal roles; login proceeds for them from
         now on.
       - A separate `/portal` route tree: mobile-first layout, no admin
@@ -712,9 +727,11 @@ SRS §3.2.5 and SPMP group 10.0 encode all three. **Review fixes, same date:**
 `date_format:Y-m-d`, digit-run birthday check, post-validation rate keys,
 `assertSuccessful` in the sweep's allowlist branch, the sweep covers
 worker *and* operator, the no-role Shell signs the session out, and the
-temp-password rotation is not forced server-side (above). All but the W3
-re-registration and its restored activation suite shipped in the
-`fix(addon-b)` review commit.
+temp-password rotation is not forced server-side (above). **Follow-up review
+(second pass):** the birthday check is separator-aware, and the full activation
+suite ships now in `PortalActivationTest` (route registered in setUp; W3 moves
+one line into api.php and drops that registration). Specific messages for
+password-only failures are a not-blocking W3 item (see the W3 bullet).
 
 **On the working tree:** the mobile server-address/release work landed in
 `8c65eae`; W1 does not touch mobile at all (the refusal is W3). `.opencode/`

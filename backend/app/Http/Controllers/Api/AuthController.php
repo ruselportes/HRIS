@@ -175,12 +175,14 @@ class AuthController extends Controller
             $this->activationFailure();
         }
 
-        // The password's digit runs, not its concatenated digits, must not
-        // spell the date of birth in any common ordering — full and two-digit
-        // years, day-month-year variants, and the bare day-month/month-day
-        // pair. Checking each contiguous run separately keeps a password like
-        // "Moon1-Kite4-Lion0-Star7" (runs 1, 4, 0, 7) from being rejected for
-        // a July 14 birthday.
+        // The password's digit runs must not spell the date of birth in any
+        // common ordering — full and two-digit years, day-month-year variants,
+        // and the bare day-month/month-day pair. A separator (dash, slash,
+        // dot, space) is removed only when it sits between two digits, so
+        // "juan05-12-1990" reads as the single run 05121990 while
+        // "Moon1-Kite4-Lion0-Star7" keeps runs 1, 4, 0, 7 — dashes between a
+        // digit and a letter are the point of the password, not a date.
+        $separatorAware = preg_replace('/(?<=\d)[-\/. ](?=\d)/', '', $data['password']);
         $dob = Carbon::parse($data['date_of_birth']);
         $dobRenderings = [
             $dob->format('Ymd'), $dob->format('dmY'), $dob->format('mdY'),
@@ -188,7 +190,7 @@ class AuthController extends Controller
             $dob->format('dm'), $dob->format('md'),
         ];
 
-        preg_match_all('/\d+/', $data['password'], $matches);
+        preg_match_all('/\d+/', $separatorAware ?? $data['password'], $matches);
 
         foreach ($matches[0] as $digitRun) {
             foreach ($dobRenderings as $rendering) {
