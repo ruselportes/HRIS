@@ -177,12 +177,13 @@ class AuthController extends Controller
 
         // The password's digit runs must not spell the date of birth in any
         // common ordering — full and two-digit years, day-month-year variants,
-        // and the bare day-month/month-day pair. A separator (dash, slash,
-        // dot, space) is removed only when it sits between two digits, so
-        // "juan05-12-1990" reads as the single run 05121990 while
-        // "Moon1-Kite4-Lion0-Star7" keeps runs 1, 4, 0, 7 — dashes between a
-        // digit and a letter are the point of the password, not a date.
-        $separatorAware = preg_replace('/(?<=\d)[-\/. ](?=\d)/', '', $data['password']);
+        // and the bare day-month/month-day pair. A separator run of any
+        // non-letter, non-digit characters (dash, slash, dot, space,
+        // underscore, doubled forms) is removed only when it sits between two
+        // digits, so "juan05_12_1990" reads as the single run 05121990 while
+        // "Moon1-Kite4-Lion0-Star7" keeps runs 1, 4, 0, 7 — the dashes sit
+        // between a digit and a letter, which is punctuation, not a date.
+        $separatorAware = preg_replace('/(?<=\d)[^\p{L}\d]+(?=\d)/u', '', $data['password']);
         $dob = Carbon::parse($data['date_of_birth']);
         $dobRenderings = [
             $dob->format('Ymd'), $dob->format('dmY'), $dob->format('mdY'),

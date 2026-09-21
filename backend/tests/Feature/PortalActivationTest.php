@@ -30,14 +30,17 @@ class PortalActivationTest extends TestCase
     {
         parent::setUp();
 
-        Route::post('api/auth/activate', [AuthController::class, 'activate'])->name('auth.activate');
-
-        // The array cache lives for the whole PHP process, so a test that
-        // trips a limiter must not throttle a later test. Clear every key this
-        // class can touch before each test, regardless of order.
-        RateLimiter::clear('activate:ip:'.sha1('127.0.0.1'));
-        RateLimiter::clear('activate:code:'.sha1('adc-0742'));
-        RateLimiter::clear('activate:code:'.sha1('adc-7777'));
+        // The test route is self-guarding: once W3 registers the real
+        // auth.activate in api.php with that name, Route::has() turns true and
+        // this registration stops, so the production route definition is what
+        // the tests exercise from then on. The api middleware group matches
+        // how WithRouting mounts api.php today; a drift in that group would
+        // make the test route diverge instead of silently passing.
+        if (! Route::has('auth.activate')) {
+            Route::post('api/auth/activate', [AuthController::class, 'activate'])
+                ->middleware('api')
+                ->name('auth.activate');
+        }
     }
 
     private function worker(array $overrides = []): Employee
@@ -101,6 +104,8 @@ class PortalActivationTest extends TestCase
             ['employee_code' => 'ADC-0742', 'date_of_birth' => '1990-05-12', 'password' => 'xv19900512q'], // contiguous run spells the DOB
             ['employee_code' => 'ADC-0742', 'date_of_birth' => '1990-05-12', 'password' => 'juan05-12-1990'], // separator-spelled DOB
             ['employee_code' => 'ADC-0742', 'date_of_birth' => '1990-05-12', 'password' => 'juan1990.05.12'],  // dotted DOB
+            ['employee_code' => 'ADC-0742', 'date_of_birth' => '1990-05-12', 'password' => 'juan05_12_1990'],  // underscored DOB
+            ['employee_code' => 'ADC-0742', 'date_of_birth' => '1990-05-12', 'password' => 'juan05--12--1990'], // doubled separators
         ];
 
         foreach ($cases as $payload) {
