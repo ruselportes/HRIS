@@ -13,7 +13,7 @@
  * @format
  */
 
-import axios from 'axios';
+import axios, {InternalAxiosRequestConfig} from 'axios';
 import {Platform} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -86,13 +86,25 @@ export async function loadApiBaseUrl(): Promise<string> {
 
 export {DEFAULT_BASE_URL};
 
-apiClient.interceptors.request.use(async config => {
+/**
+ * Attach the stored bearer token — but never overwrite an explicit
+ * Authorization header. The foreman-only refusal in AuthContext revokes its
+ * just-issued token by passing it explicitly; without this guard the
+ * interceptor would replace it with the previous user's stored token and sign
+ * THEM out instead. Exported so the test can prove the precedence directly
+ * against the real function, not against mocked post() arguments.
+ */
+export async function attachStoredToken(
+  config: InternalAxiosRequestConfig,
+): Promise<InternalAxiosRequestConfig> {
   const token = await AsyncStorage.getItem(TOKEN_STORAGE_KEY);
-  if (token) {
+  if (token && !config.headers?.Authorization) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
-});
+}
+
+apiClient.interceptors.request.use(attachStoredToken);
 
 export async function persistToken(token: string): Promise<void> {
   await AsyncStorage.setItem(TOKEN_STORAGE_KEY, token);

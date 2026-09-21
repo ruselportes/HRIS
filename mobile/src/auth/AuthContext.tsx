@@ -46,6 +46,10 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
 }
 
+/** Shown when anyone but a foreman reaches the foreman app. */
+export const FOREMAN_ONLY_REFUSAL =
+  'This app is for site foremen. Please use the HRIS website.';
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 /** Only the server rejecting the token ends the session (401/403). */
@@ -64,6 +68,15 @@ function looksLikeUser(value: unknown): value is EmployeeUser {
   );
 }
 
+/**
+ * Foreman-only (W3): acting foremen always carry the foreman role, so no
+ * legitimate user is locked out — and every other role gets nothing but 403s
+ * from this app's endpoints.
+ */
+function isForeman(user: EmployeeUser): boolean {
+  return user?.role?.slug === 'foreman';
+}
+
 export function AuthProvider({children}: {children: React.ReactNode}) {
   const [auth, setAuth] = useState<AuthState | null>(null);
   const [ready, setReady] = useState(false);
@@ -79,8 +92,15 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
           // online restart and keyed drafts under `undefined`.
           const user = (data as {user?: unknown} | null)?.user;
           if (looksLikeUser(user)) {
-            await persistUser(user);
-            setAuth({token, user});
+            if (!isForeman(user)) {
+              // A session saved before the foreman-only rule (or on a shared
+              // phone) must not linger: drop it the same way a 401 does.
+              await clearToken();
+              await clearUser();
+            } else {
+              await persistUser(user);
+              setAuth({token, user});
+            }
           } else {
             await restoreSaved(token);
           }
@@ -101,9 +121,15 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
 
     async function restoreSaved(token: string): Promise<void> {
       const user = await getPersistedUser<unknown>();
-      if (looksLikeUser(user)) {
-        setAuth({token, user});
+      if (!looksLikeUser(user)) {
+        return;
       }
+      if (!isForeman(user)) {
+        await clearToken();
+        await clearUser();
+        return;
+      }
+      setAuth({token, user});
     }
   }, []);
 
@@ -116,10 +142,22 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       password,
       client: 'mobile',
     });
+    const user = data.user as EmployeeUser;
+    if (!isForeman(user)) {
+      // Refuse before persisting anything, but revoke the just-issued token
+      // first — passed explicitly as the bearer, and the interceptor leaves
+      // explicit headers alone, so the previous user's stored token can never
+      // be signed out instead. A live token on a shared phone is exactly what
+      // must not linger.
+      await apiClient.post('/auth/logout', undefined, {
+        headers: {Authorization: `Bearer ${data.token}`},
+      });
+      throw new Error(FOREMAN_ONLY_REFUSAL);
+    }
     await persistToken(data.token);
-    await persistUser(data.user);
-    setAuth({token: data.token, user: data.user});
-    return data.user as EmployeeUser;
+    await persistUser(user);
+    setAuth({token: data.token, user});
+    return user;
   }, []);
 
   const signOut = useCallback(async () => {

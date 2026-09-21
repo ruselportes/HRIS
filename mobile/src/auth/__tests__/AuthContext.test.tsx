@@ -20,7 +20,7 @@ import {
   persistToken,
   persistUser,
 } from '../../api/client';
-import {AuthProvider, useAuth} from '../AuthContext';
+import {AuthProvider, useAuth, FOREMAN_ONLY_REFUSAL} from '../AuthContext';
 
 jest.mock('../../api/client', () => ({
   apiClient: {get: jest.fn(), post: jest.fn()},
@@ -132,6 +132,37 @@ describe('launch restore', () => {
     expect(seen()?.user).toBeNull();
     expect(clearToken).not.toHaveBeenCalled();
   });
+
+  it.each(['worker', 'operator'])(
+    'drops a saved %s session on restore instead of opening from it',
+    async slug => {
+      const saved = {...USER, role: {slug, role_name: 'Field'}};
+      mockGetToken.mockResolvedValue('tok-1');
+      get.mockResolvedValue({data: {user: saved}});
+
+      const seen = await renderAuth();
+
+      expect(seen()?.user).toBeNull();
+      expect(clearToken).toHaveBeenCalledTimes(1);
+      expect(clearUser).toHaveBeenCalledTimes(1);
+      expect(persistUser).not.toHaveBeenCalled();
+    },
+  );
+
+  it('drops a saved non-foreman session even when the server is unreachable', async () => {
+    mockGetToken.mockResolvedValue('tok-1');
+    mockGetUser.mockResolvedValue({
+      ...USER,
+      role: {slug: 'worker', role_name: 'Field'},
+    });
+    get.mockRejectedValue(new Error('Network Error'));
+
+    const seen = await renderAuth();
+
+    expect(seen()?.user).toBeNull();
+    expect(clearToken).toHaveBeenCalledTimes(1);
+    expect(clearUser).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('signIn / signOut', () => {
@@ -171,4 +202,36 @@ describe('signIn / signOut', () => {
     expect(clearUser).toHaveBeenCalled();
     expect(seen()?.user).toBeNull();
   });
+
+it.each(['worker', 'operator', 'hr', 'admin', 'executive'])(
+    'refuses a %s sign-in, revoking the just-issued token first',
+    async slug => {
+      const portalUser = {...USER, role: {slug, role_name: 'Field'}};
+      post.mockImplementation((url: string, _body?: unknown, config?: {headers?: object}) => {
+        if (url === '/auth/login') {
+          return Promise.resolve({data: {token: 'tok-portal', user: portalUser}});
+        }
+        return Promise.resolve({data: {message: 'Signed out.'}});
+      });
+      mockGetToken.mockResolvedValue(null);
+
+      const seen = await renderAuth();
+      await act(async () => {
+        await expect(seen()?.signIn('ADC-9999', 'password')).rejects.toThrow(FOREMAN_ONLY_REFUSAL);
+      });
+
+      // Revoked explicitly as the bearer: the token was never persisted, so
+      // the interceptor had nothing to attach — and no live token may linger
+      // on the phone. (That the explicit header actually survives the real
+      // interceptor is proven in client.test.ts, not here: asserting on these
+      // mocked post() arguments alone would pass while the real request went
+      // out with the wrong token.)
+      expect(post).toHaveBeenCalledWith('/auth/logout', undefined, {
+        headers: {Authorization: 'Bearer tok-portal'},
+      });
+      expect(persistToken).not.toHaveBeenCalled();
+      expect(persistUser).not.toHaveBeenCalled();
+      expect(seen()?.user).toBeNull();
+    },
+  );
 });

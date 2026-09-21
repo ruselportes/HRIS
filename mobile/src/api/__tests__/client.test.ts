@@ -5,7 +5,17 @@
  * @format
  */
 
-import {normalizeBaseUrl, isValidBaseUrl} from '../client';
+import {InternalAxiosRequestConfig} from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {normalizeBaseUrl, isValidBaseUrl, attachStoredToken} from '../client';
+
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+}));
+
+const getItem = AsyncStorage.getItem as jest.Mock;
 
 describe('normalizeBaseUrl', () => {
   it('keeps a fully-formed address and ensures the /api suffix', () => {
@@ -45,5 +55,44 @@ describe('isValidBaseUrl', () => {
   it('rejects whitespace, garbage and scheme-less absolute paths', () => {
     expect(isValidBaseUrl('   ')).toBe(false);
     expect(isValidBaseUrl('not a url')).toBe(false);
+  });
+});
+
+describe('attachStoredToken', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  // Proven against the real interceptor function: the foreman-only refusal
+  // passes its just-issued token explicitly, and only this guard keeps the
+  // stored previous-user token from replacing it on the wire.
+  it('attaches the stored token when the request carries none', async () => {
+    getItem.mockResolvedValue('tok-old');
+
+    const out = await attachStoredToken({
+      headers: {},
+    } as InternalAxiosRequestConfig);
+
+    expect(out.headers.Authorization).toBe('Bearer tok-old');
+  });
+
+  it('leaves an explicit Authorization header alone even when a different token is stored', async () => {
+    getItem.mockResolvedValue('tok-old');
+
+    const out = await attachStoredToken({
+      headers: {Authorization: 'Bearer tok-new'},
+    } as InternalAxiosRequestConfig);
+
+    expect(out.headers.Authorization).toBe('Bearer tok-new');
+  });
+
+  it('leaves the request alone when nothing is stored', async () => {
+    getItem.mockResolvedValue(null);
+
+    const out = await attachStoredToken({
+      headers: {},
+    } as InternalAxiosRequestConfig);
+
+    expect(out.headers.Authorization).toBeUndefined();
   });
 });
