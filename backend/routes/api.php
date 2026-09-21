@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\PayrollController;
 use App\Http\Controllers\Api\PortalController;
 use App\Http\Controllers\Api\RecoveryController;
 use App\Http\Controllers\Api\ReferenceController;
+use App\Http\Controllers\Api\RemittanceController;
 use App\Http\Controllers\Api\ReportsController;
 use App\Http\Controllers\Api\RollCallMonitorController;
 use App\Http\Controllers\Api\SiteController;
@@ -204,6 +205,14 @@ Route::middleware(['auth:sanctum', 'portal.scope', 'acting.expire'])->group(func
         Route::get('{code}/employees/{employee}', [PayrollController::class, 'payslip'])->where('code', $code);
         Route::post('{code}/compute', [PayrollController::class, 'compute'])->where('code', $code)->middleware('role:hr');
         Route::post('{code}/approve', [PayrollController::class, 'approve'])->where('code', $code)->middleware('role:hr');
+    });
+
+    // Gov't Remittances (C3, UC-08/FR-08) — the month's approved A+B runs
+    // aggregated per agency. Separate from the runs group so the static path
+    // never risks matching the {code} pattern. Query-only filters, so the
+    // worker lockout sweep needs no new sample value.
+    Route::prefix('payroll')->middleware('role:hr,executive')->group(function () {
+        Route::get('remittances', [RemittanceController::class, 'index'])->name('payroll.remittances');
     });
 
     // Holiday calendar (Phase 8). HR keeps it; others who deal with pay or
