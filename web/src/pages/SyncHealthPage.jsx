@@ -102,7 +102,7 @@ function SyncCell({ device, now }) {
   if (!device.last_synced_at) {
     return (
       <div>
-        <div className="text-[#75261C]">No sync record</div>
+        <div className="text-neutral-500">No sync record</div>
         <div className="text-[11px] text-neutral-700">no sync recorded yet</div>
       </div>
     )
