@@ -82,7 +82,9 @@ Holds: `employee_id` FK, unique `device_id`, `public_key` (PEM, P-256),
 `hmac_key` (encrypted at rest via APP_KEY — rotating APP_KEY orphans every
 device), `security_level` (Android KeyInfo: STRONGBOX / TRUSTED_ENVIRONMENT /
 SOFTWARE), `last_chain_hash` (enforces chain continuity *across* sync batches,
-not just within one), `bound_at`, `revoked_at`.
+not just within one), `last_synced_at` (bumped on every sync ingest — the
+online/offline signal for the Device & Sync Health page; a device bound before
+this column existed has it null until its next sync), `bound_at`, `revoked_at`.
 
 > ⚠️ **Still owed:** this table needs adding to the SDD §3.1 data dictionary and
 > `HRIS_ERD.drawio` before submission — Efren's ownership. The table count in

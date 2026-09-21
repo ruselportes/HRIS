@@ -165,13 +165,19 @@ class AttendanceController extends Controller
     /** One DTR row. Nothing secret leaves the server: no hashes, no signatures. */
     private function map(Attendance $attendance): array
     {
+        // Stored times are instants kept in app.timezone (UTC); the site clock
+        // they describe is attendance.timezone (Asia/Manila, +08:00 — the same
+        // conversion RecoveryService does on its reconstructed rows). Without
+        // it a 7:00 AM tap reads as 23:00 on the DTR.
+        $tz = config('attendance.timezone', 'Asia/Manila');
+
         return [
             'attendance_id' => $attendance->attendance_id,
             'date' => $attendance->date,
             'status' => $attendance->status,
-            'time_in' => $attendance->time_in?->format('H:i'),
-            'captured_at' => $attendance->captured_at?->format('H:i'),
-            'time_out' => $attendance->time_out?->format('H:i'),
+            'time_in' => $attendance->time_in?->copy()->setTimezone($tz)->format('H:i'),
+            'captured_at' => $attendance->captured_at?->copy()->setTimezone($tz)->format('H:i'),
+            'time_out' => $attendance->time_out?->copy()->setTimezone($tz)->format('H:i'),
             'time_out_type' => $attendance->time_out_type,
             'sync_status' => $attendance->sync_status,
             'override_flag' => $attendance->override_flag,

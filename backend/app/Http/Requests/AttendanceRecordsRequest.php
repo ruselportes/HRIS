@@ -12,9 +12,8 @@ use Illuminate\Validation\Validator;
  *
  * Every bound is validated so the endpoint can never 500 on bad input and can
  * never blow the response up: the from/to pair is required and travels
- * together, the window is capped at 62 days (two semi-monthly payroll periods
- * — the same bound the CSV export relies on), ids must be real rows, and
- * per_page is capped.
+ * together, the window is capped at 62 days (two semi-monthly payroll periods),
+ * ids must be real rows, and per_page is capped.
  */
 class AttendanceRecordsRequest extends FormRequest
 {

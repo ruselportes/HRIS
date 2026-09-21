@@ -311,7 +311,15 @@ called the missing read side a gap in the core system. It is no longer missing.
       per record — one-day cover sees exactly that one day). It maps each row's
       credited time-in beside the real tap, the time-out with how it was
       recorded (`time_out_type`: tapped / Close shift / manual), sync and
-      recovery state, and pending override/time-out reviews. Frontend:
+      recovery state, and pending override/time-out reviews. Times are converted
+      from the stored UTC instants to the site timezone before display
+      (attendance.timezone, Asia/Manila — a 07:00 tap must read 07:00, not the
+      UTC 23:00 it is stored as). One documented limitation: reconstructed
+      (recovery) rows have no `captured_at`, so they fall to the "crew's current
+      foreman" branch of the DTR scope and are seen by whoever leads the crew
+      now, not necessarily whoever led it on that date — accepted because
+      foremen never create recovery rows (HR does) and the recovered day still
+      shows on HR's and the current foreman's view. Frontend:
       `web/src/pages/AttendancePage.jsx` — period presets and custom window,
       site/crew/employee filters (employee picker hidden for foremen, who
       cannot list the registry), summary cards from a totals summary, and a
@@ -335,25 +343,69 @@ called the missing read side a gap in the core system. It is no longer missing.
       cards (registered/online/hardware-backed/incident owners), live "synced
       x ago" times with an offline marker past 4 h, and an admin revoke confirm
       that warns the phone's unsynced records never reach the server and the
-      device must be re-bound. HR sees the registry read-only ("admin only" on
-      the action). The `last_synced_at` column is another SDD §3.1 / `drawio`
-      addition owed to Efren.
+      device must be re-bound. A device with no sync yet reads "no sync record",
+      never "never synced" — `last_synced_at` only exists from migration 0009
+      on, so older bound phones legitimately show it until their next sync
+      (review follow-up, 2026-09-21). HR sees the registry read-only ("admin
+      only" on the action). The `last_synced_at` column is another SDD §3.1 /
+      `drawio` addition owed to Efren.
 
 **Should be built — promised in the documents, or needed to operate:**
 
-- [ ] **Holiday calendar** (inside `settings` today). `HolidayController`
-      already has index/store/destroy with HR as the writer, but there is no
-      screen, so next year's proclaimed holidays need a seeder edit.
-      **Access mismatch:** `settings` is admin-only (HR `none`), while the API
-      makes HR the owner. Build it where HR can reach it — under Payroll Runs,
-      or as an HR-visible Holidays page — not inside admin-only System
-      Settings.
+- [x] **Holiday calendar** — already built, and in the right place: Payroll
+      Runs → *Holiday calendar* tab (`PayrollPage.jsx`, `HolidayCalendar`),
+      HR edits and the executive reads, backed by `HolidayController`
+      (index/store/destroy, HR the writer). It is deliberately **not** in
+      System Settings, which is admin-only while HR owns holidays. (This entry
+      said "no screen" until 2026-09-21; that was stale.)
+
+**Every role has placeholders in its sidebar (checked 2026-09-21 against the
+`access` matrix in `config/nav.jsx`; the sidebar hides only `none`):**
+
+| Role | "Coming soon" pages in its sidebar | Left after removing Compliance & Announcements |
+|---|---|---|
+| HR | Gov't Remittances, Project Sites, Compliance & Docs, Announcements | Gov't Remittances, Project Sites |
+| Site Foreman | Roll Call, Compliance & Docs, Announcements | Roll Call |
+| Site Engineer | Roll Call, Project Sites, Compliance & Docs, Announcements | Roll Call, Project Sites |
+| Admin | Project Sites, Announcements, Users & Roles, System Settings | Project Sites, Users & Roles, System Settings |
+| Executive | Gov't Remittances, Project Sites, Compliance & Docs, Announcements | Gov't Remittances, Project Sites |
+
+Announcements is in every sidebar and Compliance & Docs in four of five, so
+removing those two (below) is the cheapest fix for everyone. Project Sites is
+next — four roles see it. The pages only the admin has:
+
+- [ ] **Users & Roles** (`users`; admin only; "Provisioning, RBAC"). The
+      admin's own section, and the prototype's admin landing page. Login
+      provisioning already lives in the Employee form, so this page would add
+      what only an admin needs: the list of sign-in accounts (the five login
+      roles) with last sign-in, a lockout reset (clears the `login:` rate-limit
+      key — there is no stored "locked" state, the lock expires by time), a
+      token revoke ("sign out everywhere"), and a role-change audit. Add-on B's
+      "Reset portal access" (`POST employees/{employee}/reset-portal-access`,
+      role:hr,admin) can also sit here. Without it the System Administrator
+      has little to do in the portal — a likely panel question.
+- [ ] **System Settings** (`settings`; admin only; "Cut-offs, holidays,
+      integrations"). Nothing is behind it: holidays live in Payroll Runs
+      (above), the cut-offs are the fixed semi-monthly A/B periods in code
+      (`{code}` = `YYYY-MM-A|B`), and no integrations are in scope. The
+      settings that do exist are config and env — `config/attendance.php`
+      (timezone, shift times), `config/payroll.php` (effective-dated rate
+      sets), `HRIS_REQUIRE_HARDWARE_KEYS` — and making them editable needs a
+      settings table, a schema change. **Decide:** a read-only "System
+      configuration" page showing the values in force (the honest version: it
+      would show hardware-backed keys are not enforced yet), or remove the
+      entry. Either way the note is wrong — "holidays" points to the wrong
+      place.
+- [ ] **Project Sites** (`sites`; admin/engineer full, HR/exec view; "11
+      sites, Cebu & Bohol"). Only a read-only `GET /api/sites`; the 11 sites
+      come from `SiteSeeder`, so adding a project site needs code. Needs site
+      CRUD for admin/engineer. The "11 sites" note is fixed prototype copy,
+      correct today only because the seeder has 11.
+- [ ] **Announcements** (`announce`; admin/HR full, others view). No backend
+      and no use case — remove it (below).
 
 **Partially backed — lower priority:**
 
-- [ ] **Project Sites** (`sites`). Only a read-only `GET /api/sites`; the 11
-      sites come from `SiteSeeder`, so adding a project site needs code.
-      Needs site CRUD for admin/engineer.
 - [ ] **Roll Call** (`rollcall`, web). Capture is mobile-only by design.
       Decide: a read-only "today's roll call" view for engineers, or drop it
       from the web nav (it overlaps Attendance & DTR).
@@ -361,10 +413,6 @@ called the missing read side a gap in the core system. It is no longer missing.
       PhilHealth, Pag-IBIG and withholding tax per payslip, so a monthly
       per-agency report is aggregation only. No UC covers it; it would sit
       under UC-08.
-- [ ] **Users & Roles** (`users`). Login provisioning already lives in the
-      Employee form. This page would add lockout reset, token revoke and a
-      role audit. Without it the System Administrator role has little to do
-      in the portal.
 
 **No backend, no use case — hide before the defense:**
 
@@ -373,9 +421,63 @@ called the missing read side a gap in the core system. It is no longer missing.
       from `config/nav.jsx`: a panelist clicking through nine "Coming soon"
       screens reads as unfinished, even with the system behind them built.
 
-**Recommended order:** Attendance & DTR and device revocation are done
-(2026-09-21); next the Holiday calendar, then hide the two out-of-scope pages;
-the rest as time allows.
+**Prototype content still showing on built screens (seen 2026-09-21):** the
+shell and the dashboard still render the prototype's fixed per-role content
+from `ROLES` in `config/nav.jsx`, not the signed-in user or live data.
+
+- [ ] **Dashboard** (`DashboardPage.jsx`) is the prototype's static stats,
+      table and buttons for **every** role — it is counted as built above, and
+      it is the first screen a panelist sees:
+      - HR: "201 active employees", "184 present", fixed names, cut-off
+        "21 Aug – 05 Sep 2026", an "Approve DTR batch" button.
+      - Foreman: a fake Roll Call for "Crew B, Site 07" with a "Submit roll
+        call" button — on the web, where roll call cannot be taken at all
+        (capture is mobile-only).
+      - Engineer: "117 on site, 124 required" for "Sites 04, 07, 11" — while
+        the real engineer is clamped to one home site everywhere else.
+      - Admin: "47 accounts", "3 pending provisioning", "1 locked out", and an
+        access-request queue ("no self-registration — every account starts
+        here") for a workflow that does not exist.
+      - Executive: fixed "August 2026" company figures, beside the real
+        Reports & Analytics page whose numbers will not match them.
+      Wire each to real figures (the reports, attendance, deployment and device
+      endpoints exist) or replace the fake rows with links into the real pages.
+- [ ] **Signed-in identity.** The sidebar's "Signed in as" block and the top
+      bar's name and initials come from `ROLES[role].user`, one fixed person
+      per role, not the account that signed in. Checked against
+      `EmployeeSeeder`:
+      - **Engineer — wrong on every login, demo included:** it reads
+        "Tabotabo, Grace M. · Sites 04, 07, 11", but the only seeded engineer
+        is Jomar Abainza.
+      - **Foreman — wrong for two of three seeded foremen:** it always reads
+        "Dela Cruz, Ronel B. · Site 07 · Structural crew B", so Elmer Bacus
+        and Dante Enriquez see Ronel's name.
+      - HR (Marilou Reyes), Admin (Francis Uy) and Executive (Ma. Teresa
+        Arcenas) match their seeded accounts only by coincidence; any second
+        account in those roles shows the wrong name.
+      Use the real user from `auth/me` (name, code, role, site).
+- [ ] **Sidebar badges** are fixed per role (`badges` in `ROLES`): Admin
+      "Users & Roles 3", "Device & Sync Health 2"; HR "Attendance 12", "Leave
+      5", "Overrides 3"; foreman "Roll Call 18", "Leave 2"; engineer "Manpower
+      6", "Compliance 4", "Attendance 12"; the executive has none. Most now sit
+      on real pages and disagree with them, and two sit on "Coming soon" pages
+      (foreman "Roll Call 18", engineer "Compliance 4") — a count of work on a
+      page with nothing on it. Drive them from real counts or remove them.
+- [ ] **Top bar:** the "Online" pill is always green, the bell does nothing,
+      and the search box is a label, not an input. Hide them or wire them.
+- [ ] **Coming-soon copy:** `ComingSoonPage` says "The dashboard shows its
+      role-specific preview above" — nothing is above it. Reword for any page
+      that stays.
+- [ ] `DashboardPage.jsx` and `TopBar.jsx` still fall back with
+      `ROLES[...] ?? ROLES.hr`, the pattern fixed in `App.jsx` for Add-on B
+      W1. Unreachable today (`Shell` rejects an unknown role first); make them
+      fail closed anyway.
+
+**Recommended order:** Attendance & DTR, device revocation and the holiday
+calendar are done (2026-09-21). Next the signed-in identity and the dashboard
+(the first thing a panelist sees), then hide Compliance & Docs and
+Announcements, then decide System Settings, then Users & Roles; the rest as
+time allows.
 
 ---
 

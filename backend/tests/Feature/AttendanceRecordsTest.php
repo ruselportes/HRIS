@@ -269,6 +269,38 @@ class AttendanceRecordsTest extends TestCase
             ->assertStatus(422);
     }
 
+    public function test_times_are_shown_in_site_time_not_utc(): void
+    {
+        $hr = $this->loginUser('hr');
+        $foreman = $this->loginUser('foreman');
+        $crew = $this->crewFor($foreman);
+        $worker = Employee::factory()->create(['role_id' => $this->role('worker')->role_id, 'site_id' => $hr->site_id]);
+
+        // A tap it stores at 2026-09-01 23:00:00 UTC is 07:00 in the site's
+        // timezone (Asia/Manila) on 2026-09-02. app.timezone is UTC, so the
+        // row below is exactly what the sync engine would write for that tap.
+        Attendance::query()->create([
+            'employee_id' => $worker->employee_id,
+            'crew_id' => $crew->crew_id,
+            'date' => '2026-09-02',
+            'status' => 'present',
+            'sync_status' => 'synced',
+            'captured_at' => '2026-09-01 23:00:00',
+            'time_in' => '2026-09-01 23:00:00',
+            'time_out' => '2026-09-02 00:30:00',
+            'time_out_type' => Attendance::TIME_OUT_SHIFT_END,
+        ]);
+
+        $response = $this->actingAs($hr, 'sanctum')
+            ->getJson('/api/attendance/records?from=2026-09-01&to=2026-09-30')
+            ->assertOk();
+
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonPath('data.0.time_in', '07:00');
+        $response->assertJsonPath('data.0.captured_at', '07:00');
+        $response->assertJsonPath('data.0.time_out', '08:30');
+    }
+
     public function test_other_roles_are_denied(): void
     {
         $worker = Employee::factory()->create([
