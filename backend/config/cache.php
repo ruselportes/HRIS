@@ -84,6 +84,18 @@ return [
             'lock_connection' => env('REDIS_CACHE_LOCK_CONNECTION', 'default'),
         ],
 
+        /*
+         | Redis, and the database when Redis cannot answer (Redis Cluster
+         | add-on). Everything that touches the cache gets the fallback, not
+         | only the reads that go through App\Support\ResilientCache: the
+         | login throttle is a cache consumer too, and a cache hiccup must
+         | never be the reason somebody cannot sign in.
+         */
+        'failover' => [
+            'driver' => 'failover',
+            'stores' => ['redis', 'database'],
+        ],
+
         'dynamodb' => [
             'driver' => 'dynamodb',
             'key' => env('AWS_ACCESS_KEY_ID'),

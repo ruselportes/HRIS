@@ -200,7 +200,10 @@ return [
              */
             'options' => [
                 'timeout' => (float) env('REDIS_CLUSTER_TIMEOUT', 0.5),
-                'read_timeout' => (float) env('REDIS_CLUSTER_READ_TIMEOUT', 0.5),
+                // Connecting is capped tightly, but reading is not: 0.5s here
+                // tripped "Timed out attempting to find data in the correct
+                // node" on ordinary sign-ins while the cluster was healthy.
+                'read_timeout' => (float) env('REDIS_CLUSTER_READ_TIMEOUT', 2.0),
             ],
 
             'cluster' => collect(explode(',', (string) env('REDIS_CLUSTER_NODES', '')))

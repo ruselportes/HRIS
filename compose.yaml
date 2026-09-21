@@ -50,9 +50,13 @@ x-api: &api
     APP_URL: http://localhost:8090
     # Cache on the Redis cluster. The seed list is only a starting point:
     # phpredis learns the topology from whichever node answers first, so the
-    # API follows a failover without being restarted. If every node is down,
-    # cached reads fall back to MySQL (App\Support\ResilientCache).
-    CACHE_STORE: redis
+    # API follows a failover without being restarted.
+    #
+    # The store is `failover` (config/cache.php), not `redis`: Redis first,
+    # then the database store whenever Redis cannot answer. That covers every
+    # cache user, not only the reads that go through ResilientCache — the
+    # login throttle is one, and a cache hiccup must never stop a sign-in.
+    CACHE_STORE: failover
     REDIS_CLIENT: phpredis
     REDIS_CACHE_CONNECTION: cluster
     # Three seeds, not six: one reachable node is enough to learn the whole

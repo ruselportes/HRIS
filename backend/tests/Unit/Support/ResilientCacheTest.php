@@ -89,6 +89,24 @@ class ResilientCacheTest extends TestCase
         $this->assertSame($reports, $this->cache->key('reports', 'overview'));
     }
 
+    /**
+     * Stores disagree about incrementing a key that does not exist: the array
+     * store creates it at 1, the failover store (which the containers use)
+     * refuses and answers false. A bump has to retire keys either way — this
+     * went unnoticed once because the tests ran on the forgiving store.
+     */
+    public function test_a_store_that_will_not_create_a_counter_still_retires_its_keys(): void
+    {
+        Cache::shouldReceive('get')->andReturn(null, 2);
+        Cache::shouldReceive('increment')->once()->andReturn(false);
+        Cache::shouldReceive('forever')->once()->with('hris:employees:version', 2);
+
+        $before = $this->cache->key('employees', 'index');
+        $this->cache->bump('employees');
+
+        $this->assertNotSame($before, $this->cache->key('employees', 'index'));
+    }
+
     public function test_a_bumped_namespace_recomputes_instead_of_serving_the_old_entry(): void
     {
         $this->cache->remember('employees', 'index', 60, fn () => 'before');

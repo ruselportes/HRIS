@@ -319,6 +319,24 @@ speed, never correctness. Two separate properties were built:
       counter, bumped on write (`AppServiceProvider::INVALIDATES`), because tag
       flushes and pattern deletes need multi-key operations a cluster spreads
       across slots; each entry's ttl bounds what a missed bump could serve.
+- [x] **R2a — the cache cannot break sign-in** (`CACHE_STORE=failover`): the
+      login throttle is a cache consumer, and a Redis hiccup was surfacing as
+      a 500 on the sign-in page ("Timed out attempting to find data in the
+      correct node"), with the raw message shown to the user. The store is now
+      Laravel's `failover` driver — Redis first, the database store when Redis
+      cannot answer — so every cache user is covered, not only the reads that
+      go through `ResilientCache`. The cluster read timeout went from 0.5s to
+      2s, which is what tripped on ordinary sign-ins while the cluster was
+      healthy. Verified: sign-in works with the whole cluster stopped (about
+      1.5–4.5s, from the database), and no 500s in 10 consecutive attempts
+      with it healthy.
+- [x] **R2b — invalidation actually worked in the containers**: the failover
+      store answers `false` to incrementing a key that does not exist, while
+      the array store the tests use creates it at 1. Version counters
+      therefore never advanced outside the test suite, so a cached list could
+      have outlived the edit that changed it. `bump()` now sets the counter
+      explicitly when a store will not create it, with a unit test that does
+      not rely on the forgiving store. Verified live: v1 → v2 → v3.
 - [ ] **R3 — documents and runbook:** the stack change in CLAUDE.md §2, the
       SPMP, SRS §2 and SDD; a failover runbook (kill a primary, watch the
       replica take over, kill the cluster, watch the fallback); and the

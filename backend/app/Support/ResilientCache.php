@@ -82,10 +82,17 @@ class ResilientCache
         }
 
         try {
-            // A missing counter increments to 1, which is the version reads
-            // already assume, so the bump would retire nothing. Move it past.
-            if (Cache::increment($this->versionKey($namespace)) === 1) {
-                Cache::increment($this->versionKey($namespace));
+            $bumped = Cache::increment($this->versionKey($namespace));
+
+            /*
+             * Stores disagree about incrementing a key that does not exist
+             * yet: the array and redis stores create it at 1, the failover
+             * store refuses and answers false. Either way the version is
+             * still the 1 that reads assume, and the bump would retire
+             * nothing — so set it past that explicitly.
+             */
+            if ($bumped === false || $bumped === 1) {
+                Cache::forever($this->versionKey($namespace), 2);
             }
         } catch (\Throwable $e) {
             $this->degrade($e);
