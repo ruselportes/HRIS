@@ -52,8 +52,11 @@ export async function getDatabase(): Promise<DB> {
  * Bumped whenever the local schema changes. v2 (Phase 5) replaced the
  * in-place `attendance` table with the append-only `attendance_events` log —
  * see the migration below for why that was forced rather than chosen.
+ *
+ * Exported so OTA tooling and tests can read the running bundle's version
+ * without parsing this file.
  */
-const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 5;
 
 async function currentSchemaVersion(db: DB): Promise<number> {
   await db.execute(`
@@ -90,6 +93,19 @@ async function setSchemaVersion(db: DB, version: number): Promise<void> {
 
 async function initSchema(db: DB): Promise<void> {
   const from = await currentSchemaVersion(db);
+
+  /*
+   * OTA rollback guard (Add-on C, O1). A bundle older than the database must
+   * never lower the stored marker: lowering it makes the next upgrade re-run
+   * a migration that already ran, hit "duplicate column", and stop opening the
+   * app — with the unsynced attendance still on the phone but unreachable.
+   * When the running bundle is older than the data, there is nothing to
+   * migrate (every step is keyed to a version the bundle does not know), so
+   * the only correct action is to touch nothing at all.
+   */
+  if (from > SCHEMA_VERSION) {
+    return;
+  }
 
   /*
    * v1 -> v2: the `attendance` table was updated in place, keyed
