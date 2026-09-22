@@ -3,7 +3,7 @@
 Each phase below is weighted **10%** of total project completion (10 phases = 100%).
 Check off tasks as they're completed; a phase counts as done once every task under it is checked.
 
-**Overall progress: ~90% (Phases 1–9 built: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8, Phase 8 5/5, Phase 9 6/6.)** Two add-ons, the production deployment, and seven web pages that still show "Coming soon" sit outside this count and have their own sections after Phase 10. Verified by 421 backend tests (passing on both SQLite and MySQL 8.0) and 219 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works. The release APK is now built and signed (2026-09-21 — see *Mobile release build* under Operations); what remains on all four asterisks is the run itself on a physical handset — and for the cold-start offline run, first the mobile session-restore fix found 2026-09-21 (see the Phase 4 note).
+**Overall progress: ~90% (Phases 1–9 built: Phase 1 14/14, Phase 2 7/7, Phase 3 3/3, Phase 4 5/5, Phase 5 6/6, Phase 6 5/5, Phase 7 8/8, Phase 8 5/5, Phase 9 6/6.)** Three add-ons, the production deployment, and seven web pages that still show "Coming soon" sit outside this count and have their own sections after Phase 10. Verified by 421 backend tests (passing on both SQLite and MySQL 8.0) and 219 mobile tests, `tsc`/ESLint/Pint clean, and both native TurboModules compiling on-device. Claims that still carry asterisks, each spelled out under its phase: hardware-backed keys need a physical handset (the emulator reports `SOFTWARE`); sync runs while the app is alive but not after Android kills it (Phase 6); the < 5 s latency figure needs a real network to measure; and Phase 4's cold-start offline run needs a **release** APK — a debug build fetches its JS bundle from Metro at every launch, so "WiFi off, reopen" always fails regardless of how well the offline code works. The release APK is now built and signed (2026-09-21 — see *Mobile release build* under Operations); what remains on all four asterisks is the run itself on a physical handset — and for the cold-start offline run, first the mobile session-restore fix found 2026-09-21 (see the Phase 4 note).
 
 > **Backend test routine (run before committing backend work):**
 > 1. Day-to-day: `docker compose exec api php artisan test` (in-memory SQLite).
@@ -968,6 +968,132 @@ password-only failures are a not-blocking W3 item (see the W3 bullet).
 `8c65eae`; W1 does not touch mobile at all (the refusal is W3). `.opencode/`
 is git-excluded. If `docs/HRIS_Defense_Reviewer_Bisaya.docx` is still modified
 when Commit B is made, leave it out of the staging set.
+
+## Add-on C — Over-the-air (OTA) updates for the mobile app
+
+**Owner: Rusel R. Portes — building this personally.** Claude sessions should
+review and answer questions on it, not implement it unless asked.
+
+**Asked for (2026-09-22):** stop reinstalling the APK for every JavaScript
+change. **Decisions:** option A, **self-hosted on the existing Laravel
+backend** (not Hot Updater, not Expo/EAS; CodePush is gone with App Center's
+2025 retirement); **Rusel holds the OTA signing key**; updates **apply
+automatically** on the next cold start, never mid-session. **No new library:**
+Kotlin, Laravel, Node's built-in `crypto` and the Hermes compiler already in
+`node_modules/hermes-compiler`. It maps to no UC/FR — like Add-on A, it is
+outside the SRS/SPMP and the team must be told (see O6).
+
+**What OTA can and cannot ship.** Only the JS bundle: screens, logic, copy.
+Anything native still needs an APK — Kotlin modules, a new native library,
+permissions, `res/` (the launcher icon), and `versionCode`. For day-to-day
+development none of this is needed: a debug build with Metro
+(`adb reverse tcp:8081 tcp:8081`) reloads without reinstalling. OTA is for
+release APKs on team phones, site tests and the demo.
+
+**Why every bundle must be signed — the non-negotiable part.** The JS builds
+the attendance payload and the TEE signs whatever it is handed. Whoever can
+push a bundle can therefore make a phone sign forged times, and the
+tamper-evidence claim falls. The LAN is still plain HTTP (see *Owed before
+anyone outside the team uses it* under Operations), so transport security
+cannot be relied on. Each release is signed **offline** with an ECDSA P-256
+key (the same algorithm as attendance signing); the public key is compiled
+into the APK; the phone refuses anything that does not verify. A compromised
+server or a man-in-the-middle can withhold updates but cannot inject one.
+
+**Found while planning — must land with O1, before any bundle ships.**
+`initSchema` in `mobile/src/db/database.ts` always writes `SCHEMA_VERSION`
+back, even when the database is *newer* than the running bundle. After a
+rollback to an older bundle, the marker is lowered; the next upgrade re-runs
+its migration, hits "duplicate column", and the app no longer opens — the
+unsynced attendance is still on the phone but unreachable. Not a bug today
+(there are no older bundles to roll back to); it becomes one with OTA.
+
+- [ ] **O1 — native loader and rollback** (`HrisOtaModule`, a TurboModule
+      alongside `HrisTeeSigner`)
+      - [ ] `MainApplication.kt`: pass `jsBundleFilePath` to
+            `getDefaultReactHost` (supported in RN 0.87.1, `DefaultReactHost.kt`)
+            when a verified bundle is installed; otherwise fall back to the
+            embedded `assets://index.android.bundle`. The host is `by lazy`, so
+            the choice is made once per cold start.
+      - [ ] On-device layout: `filesDir/ota/{current,pending,previous}/` plus a
+            small state file (current id, pending id, highest bundle version
+            ever installed, a `verifying` flag, refused ids).
+      - [ ] Download, then verify **SHA-256 of the bundle** and the **ECDSA
+            signature over the manifest** (`SHA256withECDSA`, public key from
+            the APK) before staging. A failure deletes the download and keeps
+            the running bundle.
+      - [ ] Apply only at cold start: staged → current, set `verifying`.
+      - [ ] **Crash rollback:** JS calls `markHealthy()` once the first screen
+            renders. A cold start that finds `verifying` still set reverts to
+            the previous bundle (or the embedded one) and refuses that id from
+            then on.
+      - [ ] **Anti-downgrade:** refuse any bundle version at or below the
+            highest ever installed.
+      - [ ] **APK upgrade discards stale bundles:** a stored bundle whose
+            `nativeVersion` is not the running `versionCode` is deleted, and the
+            new APK's embedded bundle runs.
+      - [ ] **Schema guard** (the finding above): `initSchema` never writes a
+            lower version than the one already stored.
+- [ ] **O2 — signing key and publish script**
+      - [ ] Generate the OTA key pair (P-256), separate from the release
+            keystore and from device keys. Private key outside the repo, in a
+            password manager plus an offline backup; add a `.gitignore` rule for
+            it. Public key embedded in the APK (a rotation needs an APK).
+      - [ ] `mobile/scripts/ota-publish.mjs`: bundle as the release Gradle task
+            does (mirror `createBundleReleaseJsAndAssets`), compile with the
+            `hermesc` in `node_modules/hermes-compiler` (bytecode must match the
+            APK's Hermes), hash, sign the manifest with Node's `crypto.sign`
+            (DER, which Java verifies as-is), write the release zip.
+      - [ ] Manifest fields: `id`, `bundleVersion` (integer, strictly
+            increasing), `nativeVersion` (= `versionCode`), `sha256`,
+            `createdAt`, `notes`, `signature`.
+      - [ ] The script **refuses to publish** when `SCHEMA_VERSION` differs from
+            the value recorded for that `nativeVersion` — schema changes ship as
+            an APK, never OTA. Same rule, by hand, for a new signed-payload
+            version: the backend must accept it before any bundle uses it.
+      - [ ] Rule: a bundle may not add `require()`d images (the app has none
+            today); those ship as an APK until asset delivery exists.
+- [ ] **O3 — Laravel endpoints** (no new table: manifests are files under
+      `storage/app/ota/`, so the ERD stays at 15)
+      - [ ] `GET /api/mobile/updates/latest?native=N&current=M` — public and
+            throttled (the bundle holds no secrets; the signature is the
+            protection); returns the newest manifest for that native version,
+            or nothing.
+      - [ ] `GET /api/mobile/updates/{id}/bundle` — streams the file.
+      - [ ] `php artisan ota:publish {zip}` — verifies the signature against the
+            public key **again**, checks the version increases, then files it.
+      - [ ] Feature tests: newest per native version, nothing for an unknown
+            native version, 404 for a missing id, bad signature refused,
+            non-increasing version refused.
+- [ ] **O4 — JS client** (`mobile/src/ota/`)
+      - [ ] Check at launch, on reconnect and on foreground — the same edges
+            `useSyncTriggers` uses. Download in the background; never blocks
+            roll call, sign-in or an offline launch.
+      - [ ] Notice when a bundle is staged: "Update ready — applies the next
+            time you open the app."
+      - [ ] Show the running version (APK `versionName` + bundle version) on
+            the Sync screen, so it is clear which code a phone is running.
+      - [ ] `markHealthy()` after the first screen renders. Jest tests with the
+            native module mocked.
+- [ ] **O5 — handset drills** (release APK, physical phone)
+      - [ ] Publish → next open runs the new bundle.
+      - [ ] One byte changed in the bundle → refused; the app keeps running.
+      - [ ] Signed with the wrong key → refused.
+      - [ ] An older bundle version → refused.
+      - [ ] A bundle that throws at startup → reverted on the next launch.
+      - [ ] Staged update, then an offline launch → opens normally.
+      - [ ] APK upgrade → the stale OTA bundle is discarded.
+      - [ ] Unsynced attendance survives an OTA update and syncs afterwards,
+            with the chain intact.
+- [ ] **O6 — documents and the team**
+      - [ ] Tell the team it is an add-on outside the SPMP scope; record it as
+            an amendment the way Add-on A was.
+      - [ ] SDD: the update channel and its trust root. `CRYPTOGRAPHY_EXPLAINED.md`:
+            the OTA key is a new root of trust and what losing or leaking it
+            means (lost → ship an APK with a new public key, no data loss;
+            leaked → same, urgently).
+      - [ ] Defense Q&A in `HRIS_Defense_Reviewer_Bisaya.docx`: "What if
+            someone pushes a malicious update?"
 
 ## Operations — production deployment (the old-PC Ubuntu server)
 
