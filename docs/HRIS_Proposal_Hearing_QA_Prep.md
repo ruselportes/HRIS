@@ -73,10 +73,7 @@ so the record is unverifiable *by construction*. The system removes the possibil
 responding to a specific proven case.
 
 **Q3. You list seven roles but only five can log in. Why can't a worker see their own attendance?**
-Worker and Operator are record-only classifications in the client's current structure — they
-appear on rosters and payroll but have no account. Note that question A-09 of the discovery
-interview asks the company directly whether that is deliberate policy or just the absence of a
-system. Worker self-service is out of scope for this capstone.
+They can now — that question is from the proposal hearing, before the Worker Self-Service Portal (UC-11/FR-11, SRS §3.2.5) existed. Worker and Operator were record-only classifications in the client's then-current structure, and question A-09 of the discovery interview asks the company directly whether that is deliberate policy or just the absence of a system. The portal answers it: a worker activates with employee code plus birthday, signs into the web portal only (never staff endpoints, never the foreman app), and sees their own attendance and approved payslips with nothing else reachable.
 
 **Q4. How many sites actually have no signal?**
 Give the honest count if you have it and say "several of the eleven active sites" only if that is
@@ -84,8 +81,8 @@ what the client told you. If you do not have the number, say so and say it is be
 an invented figure is the easiest thing for a panel to catch.
 
 **Q5. What is explicitly *out* of scope?**
-Recruitment and applicant tracking, training records, procurement and equipment, government
-e-filing submission, and worker self-service. The system covers UC-01 to UC-10 only.
+Recruitment and applicant tracking, training records, procurement and equipment, and government
+e-filing submission. The system covers UC-01 to UC-10 plus the UC-11 worker-portal add-on (SRS §3.2.5).
 
 **Q6. Why exactly ten use cases? Why was UC-10 added late?**
 The leave and overtime module already existed in the SDD (§2.1.7, §3.1.11–12, §4.6) and in the

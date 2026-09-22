@@ -118,16 +118,17 @@ table. Same "still owed" for the SDD data dictionary and ERD.
 ## 5. User roles
 
 As finalized in Phase 2 (`backend/database/seeders/RoleSeeder.php`), `Role` has
-7 rows; only 5 are login-capable (`Employee.password` set), Worker/Operator are
-record-only classifications with no HRIS access:
+7 rows. The first 5 sign into the staff surfaces; Worker/Operator sign into
+the web worker portal only (Add-on B, FR-11 — SRS §3.2.5), never staff
+endpoints and never the foreman app (foreman-only since W3):
 
 - **HR Personnel** — employee records, attendance, leave, payroll
 - **Site Foreman** — mobile attendance logging (primary offline users)
 - **Site Engineer / Construction Manager** — crew assignment, site monitoring
 - **System Administrator** — accounts, permissions, config
 - **Executive** — analytics dashboards, audit review (read-only)
-- **Worker** — field worker on a crew; record-only, no HRIS login
-- **Operator** — heavy equipment operator; record-only, no HRIS login
+- **Worker** — field worker on a crew; portal-only sign-in (own attendance + approved payslips)
+- **Operator** — heavy equipment operator; same portal-only sign-in as Worker
 
 ## 6. Where the docs live
 

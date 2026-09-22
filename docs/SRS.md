@@ -122,15 +122,15 @@ This subsection provides a summary of the major functions that the HRIS for Arce
 
 ### 2.3. User Characteristics
 
-The potential users of the system are identified, classified, and described as follows. Per `backend/database/seeders/RoleSeeder.php`, `Role` has 7 rows; only the first 5 below are login-capable (`Employee.password` set) — Worker and Operator are record-only classifications with no HRIS login:
+The potential users of the system are identified, classified, and described as follows. Per `backend/database/seeders/RoleSeeder.php`, `Role` has 7 rows; the first 5 below sign into the staff surfaces (web and mobile), while Worker and Operator sign into the web worker portal only (§3.2.5) — every role is login-capable on its own surface once `Employee.password` is set:
 
 - **HR Personnel** – Responsible for managing employee records, attendance, leave, payroll, and other human resource processes.
 - **Site Foremen** – Responsible for recording and monitoring employee attendance at construction sites using the mobile attendance application.
 - **Site Engineers / Construction Managers** – May access attendance information and reports for monitoring employees and workforce activities at construction sites.
 - **System Administrator** – Responsible for managing user accounts, access permissions, and system-related configurations.
 - **Executive** – Views analytics dashboards and reviews audit logs for compliance oversight; read-only access.
-- **Worker** – A field worker on a crew; a record-only classification with no HRIS login of their own.
-- **Operator** – A heavy equipment operator; a record-only classification with no HRIS login of their own.
+- **Worker** – A field worker on a crew; signs into the web worker portal (§3.2.5) to view their own attendance and payslips. No staff login.
+- **Operator** – A heavy equipment operator; same portal-only sign-in as Worker.
 
 ### 2.4. Constraints
 
@@ -368,9 +368,15 @@ birth, and a new password (`POST /auth/activate`):
 
 - Refused once a password is already set, for a staff role, or for a separated
   employee.
-- Every failure returns the same generic message ("Can't activate — contact
-  HR"), so the endpoint cannot be used to probe which employee codes exist or
-  whether a date of birth is right; only a successful activation differs.
+- A failure that could reveal whether an employee code or a date of birth is
+  valid returns the same generic message ("Can't activate — contact HR"), so
+  the endpoint cannot be used to probe either; only a successful activation
+  differs. The password-policy failures are the exception: too short, equal to
+  the employee code, unreadable, or spelling the submitted birthday are each
+  answered in their own words, because they hinge on nothing but the submitted
+  values — and they bump only the per-IP counter, never the per-code one, so a
+  worker fumbling their password cannot burn the attempts that stop
+  date-of-birth guessing.
 - Attempts are rate-limited per employee code (tight) and per IP (looser, an
   anti-spray backstop for shared connections). The per-code limit is what stops
   guessing a date of birth, since an attacker controls their own IP.
@@ -384,26 +390,37 @@ birth, and a new password (`POST /auth/activate`):
   range.
 
 **Sign-in.** A portal account signs in through the same login endpoint as
-staff. Sign-in for portal roles is enabled only together with the web portal
-itself, so a worker is never logged in with nowhere else to go.
+staff. The backend opened portal sign-in one commit before the web portal and
+the mobile refusal landed, so for that window a worker could hold a token with
+no surface to use it on; since W3 closed that gap, sign-in and the portal move
+together and a worker is never logged in with nowhere to go. Portal sessions
+live in the tab only (never persisted for shared phones), and portal tokens
+expire after about 2 hours — unlike the original "tokens never expire" design,
+which now holds for no role (staff web 12 hours, foreman mobile 30 days,
+decided server-side from role).
 
 **Deny by default.** A Worker or Operator may reach only `auth/me`,
-`auth/logout`, `me/attendance*`, and `me/payslips*`. Every other authenticated
-API route returns 403 for a portal role. One middleware on the authenticated
-route group enforces the allowlist by **route name** — a path prefix has no
-reliable segment boundary, so only exact route names can identify an endpoint —
-and routes added later are covered automatically, as proven by a route-sweep
-test. A separated employee of any role is refused by the same middleware on
-every request (only `auth/logout` stays open), so a live token cannot outlive
-the separation.
+`auth/logout`, `auth/password` (their own password change), `me/attendance*`,
+and `me/payslips*`. Every other authenticated API route returns 403 for a
+portal role. One middleware on the authenticated route group enforces the
+allowlist by **route name** — a path prefix has no reliable segment boundary,
+so only exact route names can identify an endpoint — and routes added later
+are covered automatically, as proven by a route-sweep test. A separated
+employee of any role is refused by the same middleware on every request (only
+`auth/logout` stays open), so a live token cannot outlive the separation.
 
 **View-only, their own data only.** The portal shows, for the signed-in
 employee alone:
 
-- **My attendance** (`GET /me/attendance?from=&to=`): date, status, time in and
-  out, how the time-out was recorded (tapped, shift end, or stated by the
-  foreman), and any review state in plain words (e.g. "Under HR review"). No
-  hashes, signatures, device ids or reviewer notes.
+- **My attendance** (`GET /me/attendance`, `from`/`to` optional): date, status,
+  time in and out, how the time-out was recorded (tapped, shift end, or stated
+  by the foreman — nothing when there is no time-out yet), and any review
+  state in plain words (e.g. "Under HR review"). With no window the read
+  defaults to the current pay period, and every response carries the period
+  block (`code`, `label`, `start`/`end`, previous/next windows, next null once
+  it starts after today) so the page steps through cutoffs without ever
+  copying the cutoff rule. No hashes, signatures, device ids or reviewer
+  notes.
 - **My payslips** (`GET /me/payslips` and `/me/payslips/{run}`): approved
   payroll runs only (`Payroll::APPROVED`, never `draft`), with SSS, PhilHealth,
   Pag-IBIG and withholding tax itemised. A payslip becomes visible when HR
@@ -412,16 +429,32 @@ employee alone:
   signed-in employee, and another worker's records cannot be reached by guessing
   an id.
 
-**Account recovery (reset).** When a worker's portal access has been hijacked
-or must be withdrawn, HR "Reset portal access" sets a random temporary password
-and revokes the worker's tokens; the password is shown once to HR and handed
-over in person. Because a password is already set, self-activation stays
-refused, so the hijacker cannot simply re-activate. The worker then changes the
-temporary password to one of their own from within the portal.
+**Account recovery (reset) and password change.** When a worker's portal access
+has been hijacked or must be withdrawn, HR "Reset portal access" sets a random
+temporary password and revokes the worker's tokens; the password is shown once
+to HR and handed over in person. Because a password is already set,
+self-activation stays refused, so the hijacker cannot simply re-activate. The
+worker then changes the temporary password to one of their own from within the
+portal (`POST /auth/password`: current password plus a confirmed new one, same
+policy as activation; wrong-current guesses are throttled per account, and the
+change signs every other session out while the session making it survives).
+There is deliberately no forced rotation at first sign-in — the temporary
+password IS the credential until the worker changes it.
 
-**Mobile.** The mobile attendance app refuses portal roles at sign-in
-("Workers use the web portal"); the issued token is revoked before the refusal
-is returned, since tokens otherwise never expire.
+**How credentials are issued in practice.** A worker's first credential is
+self-set at activation (code + birthday + chosen password); every later
+credential comes from HR's reset, handed over in person, never by message. HR
+can therefore always produce a working password for any worker — that is the
+rehearsed answer to "can HR log in as a worker?": yes, transiently and
+visibly, through the reset flow with its audit row, not by knowing a secret.
+No self-serve reset exists (`POST /auth/forgot-password` only files a note HR
+can look up; the page says plainly that nobody is paged by it), because most
+field workers have no company email.
+
+**Mobile.** The mobile attendance app is foreman-only: anyone whose role is not
+foreman is refused at sign-in ("This app is for site foremen. Please use the
+HRIS website.") after the just-issued token is revoked. Acting foremen always
+carry the foreman role, so no legitimate user is locked out.
 
 ### 3.3. Performance Requirements
 
