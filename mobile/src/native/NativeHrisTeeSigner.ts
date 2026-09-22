@@ -59,6 +59,27 @@ export interface Spec extends TurboModule {
 
   /** Remove the keypair. Used when a device is revoked or rebound. */
   deleteKey(alias: string): boolean;
+
+  /**
+   * Generate a fresh 32-byte database key with SecureRandom and return it
+   * wrapped by the Keystore AES key for `alias`, as one string
+   * `ivHex.cipherHex`. The raw key never crosses the bridge: only the
+   * AES-GCM ciphertext does, and only the TEE-held wrap key can open it.
+   *
+   * Primitives only, per this spec's rule. The wrap key is created on first
+   * use and never deleted by app code — unlike a signing keypair, the
+   * database outlives bindings, revocations and second-foreman sign-ins, and
+   * deleting the wrap key would orphan the encrypted database.
+   */
+  generateWrappedDbKey(alias: string): Promise<string>;
+
+  /**
+   * Unwrap a value from generateWrappedDbKey and return the raw database key
+   * as 64 lowercase hex characters. The caller formats it as `x'<hex>'` for
+   * open(): that exact shape is what SQLCipher treats as a raw key (no KDF),
+   * and it is what a tester pastes into a SQLCipher client's raw-key field.
+   */
+  unwrapDbKey(alias: string, wrapped: string): Promise<string>;
 }
 
 export default TurboModuleRegistry.getEnforcing<Spec>('HrisTeeSigner');

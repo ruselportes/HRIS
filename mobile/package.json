@@ -59,5 +59,8 @@
     "android": {
       "javaPackageName": "com.hrismobile.spec"
     }
+  },
+  "op-sqlite": {
+    "sqlcipher": true
   }
 }

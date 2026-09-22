@@ -16,7 +16,7 @@ See [`CLAUDE.md`](CLAUDE.md) for full project context, and [`docs/TASKS.md`](doc
 | Web frontend | React.js + TailwindCSS v4 (Vite) |
 | Mobile app | React Native (Android primary, iOS secondary) |
 | Central DB | MySQL 8.0 (local dev in Docker) |
-| Mobile local DB | SQLite (SQLCipher/AES-256 planned for Phase 5) |
+| Mobile local DB | SQLite + SQLCipher (AES-256, TEE-wrapped key) |
 | Crypto | HMAC-SHA256 hash chaining, ECDSA P-256 signing |
 | Hardware security | Android Keystore TEE / iOS Secure Enclave |
 

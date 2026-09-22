@@ -23,15 +23,22 @@
  *    row is created for every local attendance write; Phase 6 builds the
  *    engine that actually drains this queue to the server.
  *
- * Phase 5 hook point: op-sqlite supports SQLCipher via the
- * `OP_SQLITE_USE_SQLCIPHER` native build flag (package.json config) plus an
- * `encryptionKey` passed to open() — neither is enabled here, per the
- * Phase 1 decision to defer SQLCipher until the crypto engine phase.
+ * Encryption at rest (STD TC-02): the database is SQLCipher-encrypted. The
+ * `op-sqlite` package.json flag builds the SQLCipher backend, and open()
+ * receives the TEE-wrapped key from crypto/dbKey as `x'<hex>'` — the exact
+ * shape SQLCipher treats as a raw key with no KDF, and the exact string a
+ * tester pastes into a SQLCipher client's raw-key field. A database file
+ * from before encryption cannot be upgraded in place and fails loudly with
+ * a reinstall message instead of opening unencrypted; that cutover is safe
+ * only because it lands before release. getDatabase() also refuses to open
+ * at all when the build is not the SQLCipher one: without the flag the key
+ * would be silently ignored and the database written in plaintext.
  *
  * @format
  */
 
-import {open, type DB} from '@op-engineering/op-sqlite';
+import {isSQLCipher, open, type DB} from '@op-engineering/op-sqlite';
+import {getDbEncryptionKey} from '../crypto/dbKey';
 
 const DB_NAME = 'hris_offline.db';
 
@@ -42,10 +49,44 @@ export async function getDatabase(): Promise<DB> {
     return dbInstance;
   }
 
-  dbInstance = open({name: DB_NAME});
-  await initSchema(dbInstance);
+  // Without the SQLCipher backend the encryption key below would be silently
+  // ignored and the database written in plaintext — so refuse instead. This
+  // is what makes a misbuilt APK fail loudly on first launch rather than
+  // record a day of unencrypted attendance.
+  if (!isSQLCipher()) {
+    throw new Error(
+      'db_not_encrypted: this build lacks the SQLCipher backend (op-sqlite sqlcipher flag).',
+    );
+  }
+
+  const db = await openEncrypted();
+  await initSchema(db);
+  dbInstance = db;
 
   return dbInstance;
+}
+
+/**
+ * Open with the TEE-wrapped key. A database file from before encryption
+ * cannot be upgraded in place — SQLCipher reports "file is not a database"
+ * — and must not be mistaken for corruption to retry past: the only fix is
+ * a fresh install, which predates release tooling and is stated outright.
+ * Any other open failure is rethrown unchanged so real defects keep their
+ * own messages.
+ */
+async function openEncrypted(): Promise<DB> {
+  const encryptionKey = await getDbEncryptionKey();
+  try {
+    return open({name: DB_NAME, encryptionKey});
+  } catch (e) {
+    if (e instanceof Error && /not a database/i.test(e.message)) {
+      throw new Error(
+        'db_predates_encryption: this install has a database from before encryption was ' +
+          'enabled, which cannot be upgraded in place. Reinstall the app.',
+      );
+    }
+    throw e;
+  }
 }
 
 /**

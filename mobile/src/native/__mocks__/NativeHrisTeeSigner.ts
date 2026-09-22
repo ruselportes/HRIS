@@ -24,6 +24,9 @@ let keys: Record<string, boolean> = {};
 let securityLevel = 'TRUSTED_ENVIRONMENT';
 let failNextSign = false;
 
+/** Deterministic stand-in database key (64 hex chars) for wrap/unwrap. */
+export const TEST_DB_HEX = 'ab'.repeat(32);
+
 /** Payloads passed to sign(), in order — the contract under test. */
 export const __signedPayloads: string[] = [];
 
@@ -76,4 +79,9 @@ export default {
     delete keys[alias];
     return true;
   },
+  // Deterministic stand-ins, not real wrapping: generate hands back a fixed
+  // shape, unwrap hands back the fixed test hex. The roundtrip the wrapper
+  // tests assert is store-once/unwrap-format, not cryptography.
+  generateWrappedDbKey: async (): Promise<string> => `aa.${TEST_DB_HEX}`,
+  unwrapDbKey: async (): Promise<string> => TEST_DB_HEX,
 };

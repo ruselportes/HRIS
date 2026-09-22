@@ -21,6 +21,7 @@ import { PortalLayout } from './pages/portal/PortalLayout'
 import { PortalAttendancePage } from './pages/portal/PortalAttendancePage'
 import { PortalPayslipsPage } from './pages/portal/PortalPayslipsPage'
 import { PortalPayslipDetailPage } from './pages/portal/PortalPayslipDetailPage'
+import { TestRunPage } from './pages/TestRunPage'
 import { PortalAccountPage } from './pages/portal/PortalAccountPage'
 import { NAV, ROLES, isPortalSlug } from './config/nav'
 
@@ -184,6 +185,7 @@ function App() {
           <Route path="/activate" element={<ActivatePage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route element={<RequireAuth />}>
+            <Route path="/test-run" element={<TestRunPage />} />
             <Route element={<PortalGate />}>
               <Route path="portal" element={<PortalLayout />}>
                 <Route index element={<PortalAttendancePage />} />

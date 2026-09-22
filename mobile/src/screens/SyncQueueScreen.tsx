@@ -32,6 +32,7 @@ import {
 } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import {chainEpoch, clearCredentials, loadCredentials} from '../crypto/deviceCredentials';
+import {DbKeyDebugPanel} from './DbKeyDebugPanel';
 import {SyncQueueRow, SyncSummary, getSyncSummary} from '../db/attendanceRepository';
 import {SchedulerState, syncScheduler} from '../sync/syncScheduler';
 import {isReachable} from '../sync/useSyncTriggers';
@@ -168,12 +169,15 @@ export function SyncQueueScreen() {
           </Text>
         }
         ListFooterComponent={
-          <Footer
-            online={online}
-            running={scheduler.running}
-            halted={halted !== null}
-            waiting={waiting}
-          />
+          <>
+            <Footer
+              online={online}
+              running={scheduler.running}
+              halted={halted !== null}
+              waiting={waiting}
+            />
+            <DbKeyDebugPanel />
+          </>
         }
       />
     </View>

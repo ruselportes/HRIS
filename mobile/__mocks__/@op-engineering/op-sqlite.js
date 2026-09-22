@@ -27,7 +27,10 @@ function makeFakeDb() {
 module.exports = {
   open: jest.fn(() => makeFakeDb()),
   openAsync: jest.fn(async () => makeFakeDb()),
-  isSQLCipher: jest.fn(() => false),
+  // True: the app refuses to open a database without the SQLCipher backend,
+  // so the mock matches the build the tests assume. Tests for the refusal
+  // itself override per-test with mockReturnValueOnce(false).
+  isSQLCipher: jest.fn(() => true),
   isLibsql: jest.fn(() => false),
   isTurso: jest.fn(() => false),
   isIOSEmbedded: jest.fn(() => false),

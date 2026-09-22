@@ -106,9 +106,12 @@ with `Audit Log` cross-cutting. Note RBAC runs off `Employee.role_id` with no se
 table — that is a deliberate design decision, not an omission.
 
 **Q2. Where is attendance stored on the phone, and how is it protected at rest?**
-The design is SQLite encrypted with SQLCipher (AES-256). **Be accurate about status:** local
-SQLite storage is working; the SQLCipher encryption layer is scheduled for Phase 5 and is not
-yet in place. Say "designed and scheduled", not "implemented".
+The local database is SQLite encrypted with SQLCipher (AES-256): the build flag is on, the
+32-byte key is generated and AES-wrapped inside the Keystore TEE, and the app refuses to open
+any database without the SQLCipher backend. Say "implemented" now — the old "scheduled for
+Phase 5" answer expired with decision A. One honest boundary remains: the HMAC secret itself
+still sits in AsyncStorage (app-private, not encrypted), so the documented threat model stands —
+layer 2 degrades under root, layer 3 (non-exportable ECDSA) holds.
 
 **Q3. Your audit log lives in the same MySQL database. What stops a database administrator from editing it?**
 The strongest honest answer: the audit log is append-only at the application layer, but a
@@ -308,7 +311,7 @@ damaging if you are caught claiming otherwise.
 | # | The temptation | The accurate statement |
 |---|---|---|
 | 1 | "Requirements are confirmed with the client." | The discovery interview was issued on 08 Sep 2026; the completed form has not been returned. Requirements are scoped, not yet client-validated. |
-| 2 | "Local storage is encrypted with SQLCipher." | SQLite storage works; SQLCipher/AES-256 is designed and scheduled for Phase 5, not yet implemented. |
+| 2 | "Local storage is encrypted with SQLCipher." | True since decision A — but say the boundary with it: the database is encrypted, the HMAC secret in AsyncStorage is not. |
 | 3 | "Offline capture is proven." | Verified by unit tests and code path review, not yet by an on-device airplane-mode run — no Android emulator has been available. |
 | 4 | "The system proves the foreman was at the site." | It proves *when* and *which device*. Physical presence is not established; location capture is out of scope. |
 | 5 | "The audit log cannot be altered." | It is append-only at the application layer. Integrity against a database-level actor rests on the hash chain and signature ledger, which verify independently. |

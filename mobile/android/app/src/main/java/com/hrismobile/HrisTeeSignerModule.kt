@@ -14,8 +14,13 @@ import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.PrivateKey
+import java.security.SecureRandom
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
 
 /**
  * TEESigner (Phase 5, layer 3 — named in STD TC-03).
@@ -36,6 +41,15 @@ class HrisTeeSignerModule(reactContext: ReactApplicationContext) :
     private const val KEYSTORE = "AndroidKeyStore"
     private const val CURVE = "secp256r1" // NIST P-256, per the SPMP fixed stack
     private const val SIGNATURE_ALGORITHM = "SHA256withECDSA"
+
+    // Database-key wrapping (SQLCipher at rest, STD TC-02). AES-256-GCM via
+    // the Keystore, so the wrap key itself is non-exportable like the
+    // signing key. 12-byte IV, 32-byte database key.
+    private const val WRAP_TRANSFORMATION = "AES/GCM/NoPadding"
+    private const val WRAP_KEY_SIZE = 256
+    private const val GCM_IV_BYTES = 12
+    private const val GCM_TAG_BITS = 128
+    private const val DB_KEY_BYTES = 32
 
     const val LEVEL_STRONGBOX = "STRONGBOX"
     const val LEVEL_TEE = "TRUSTED_ENVIRONMENT"
@@ -166,6 +180,112 @@ class HrisTeeSignerModule(reactContext: ReactApplicationContext) :
     } catch (e: Exception) {
       false
     }
+
+  /**
+   * Database-key wrapping for SQLCipher at rest (STD TC-02).
+   *
+   * The 32 random bytes come from SecureRandom inside this method and are
+   * returned only as AES-GCM ciphertext under a Keystore-held wrap key, as
+   * `ivHex.cipherHex`. The raw key never crosses the bridge in either
+   * direction — generate returns ciphertext, unwrap returns hex for open()
+   * to consume immediately — so a memory dump of the JS side never yields
+   * key material that outlives the call.
+   *
+   * The wrap key is created once per alias and never deleted by app code:
+   * the database outlives bindings and revocations, and deleting the wrap
+   * key would orphan the encrypted database. Uninstalling the app wipes both
+   * the Keystore entry and the database file.
+   */
+  override fun generateWrappedDbKey(alias: String, promise: Promise) {
+    try {
+      val wrapKey = wrapKey(alias)
+      val raw = ByteArray(DB_KEY_BYTES).also { SecureRandom().nextBytes(it) }
+      try {
+        val cipher = Cipher.getInstance(WRAP_TRANSFORMATION).apply {
+          init(Cipher.ENCRYPT_MODE, wrapKey)
+        }
+        val cipherText = cipher.doFinal(raw)
+        promise.resolve("${cipher.iv.toHex()}.${cipherText.toHex()}")
+      } finally {
+        raw.fill(0)
+      }
+    } catch (e: Exception) {
+      promise.reject("dbkey_failed", "Could not generate a database key: ${e.message}", e)
+    }
+  }
+
+  override fun unwrapDbKey(alias: String, wrapped: String, promise: Promise) {
+    try {
+      val wrapKey =
+        keyStore().getKey(alias, null) as? SecretKey
+          ?: throw IllegalStateException("No database wrap key exists for alias [$alias].")
+
+      val parts = wrapped.split(".")
+      if (parts.size != 2) {
+        throw IllegalArgumentException("Wrapped database key has the wrong shape.")
+      }
+      val iv = parts[0].hexToBytes()
+      val cipherText = parts[1].hexToBytes()
+      if (iv.size != GCM_IV_BYTES || cipherText.isEmpty()) {
+        throw IllegalArgumentException("Wrapped database key has the wrong shape.")
+      }
+
+      val plain =
+        Cipher.getInstance(WRAP_TRANSFORMATION).apply {
+          init(Cipher.DECRYPT_MODE, wrapKey, GCMParameterSpec(GCM_TAG_BITS, iv))
+        }.doFinal(cipherText)
+      try {
+        promise.resolve(plain.toHex())
+      } finally {
+        plain.fill(0)
+      }
+    } catch (e: Exception) {
+      promise.reject("dbkey_failed", "Could not unwrap the database key: ${e.message}", e)
+    }
+  }
+
+  private fun wrapKey(alias: String): SecretKey {
+    (keyStore().getKey(alias, null) as? SecretKey)?.let { return it }
+
+    return try {
+      generateWrapKey(alias, strongBox = true)
+    } catch (e: StrongBoxUnavailableException) {
+      // Same fallback as the signing key: TEE instead of StrongBox.
+      generateWrapKey(alias, strongBox = false)
+    }
+  }
+
+  private fun generateWrapKey(alias: String, strongBox: Boolean): SecretKey {
+    val builder =
+      KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+        .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+        .setKeySize(WRAP_KEY_SIZE)
+        /*
+         * No user authentication, for the same reason as the signing key:
+         * background sync must open the database with nobody holding the
+         * phone, and the record's integrity does not depend on re-proving
+         * who is holding it.
+         */
+        .setUserAuthenticationRequired(false)
+        .setRandomizedEncryptionRequired(true)
+
+    if (strongBox && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+      builder.setIsStrongBoxBacked(true)
+    }
+
+    val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE)
+    generator.init(builder.build())
+
+    return generator.generateKey()
+  }
+
+  private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
+
+  private fun String.hexToBytes(): ByteArray {
+    require(length % 2 == 0) { "Odd-length hex string." }
+    return chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+  }
 
   /**
    * X.509 SubjectPublicKeyInfo DER wrapped as PEM, at 64 characters per line.

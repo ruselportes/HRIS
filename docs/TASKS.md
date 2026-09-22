@@ -108,12 +108,15 @@ Check off tasks as they're completed; a phase counts as done once every task und
 >    here, but the *manual* STD runs still need real hardware. The release
     APK (2026-09-21) now makes that run an actual install-and-test, not a
     build exercise.
-> 2. **SQLCipher is still deferred.** The HMAC secret sits in AsyncStorage —
->    app-private but unencrypted. Root access reads it and forges self-verifying
->    chain entries. The ECDSA key is non-exportable in the TEE, so that attacker
->    still cannot produce a signature the server accepts: layer 2 degrades, layer
->    3 holds. op-sqlite supports SQLCipher via a build flag; enabling it is the
->    proper hardening.
+> 2. **SQLCipher has landed (2026-09-22, decision A).** The local database is
+>    SQLCipher-encrypted: the `op-sqlite` `sqlcipher` build flag plus a TEE-wrapped
+>    32-byte key (`HrisTeeSigner` AES-GCM wrap, `x'<hex>'` raw-key shape), opened with
+>    `encryptionKey` and refused outright on a non-SQLCipher build. The HMAC secret
+>    itself still sits in AsyncStorage — app-private but unencrypted — so the
+>    layer-2-degrades/layer-3-holds threat model is unchanged. A pre-encryption
+>    database file fails loudly with a reinstall message (no in-place upgrade);
+>    the TC-02 debug build is a fresh install anyway, and its key is shown on a
+>    `__DEV__`-only panel on the Sync screen for the tester.
 >
 > **Schema additions needing SDD §3.1 + `.drawio` updates (Efren):** `device_keys`
 > (new table), `attendances.date` + `attendances.status`, `device_keys` clock-history
