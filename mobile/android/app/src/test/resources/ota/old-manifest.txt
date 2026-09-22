@@ -1,0 +1,7 @@
+id=ota-1-1
+bundleVersion=1
+nativeVersion=1
+sha256=aac197f348e53f2696f2b42beb0f08bcf1ae967cd0f9aa92b16c7555b79aa070
+createdAt=2026-09-22T00:00:00+08:00
+notes=test fixture: superseded version
+signature=3045022100997495d853b0c834ff21a95a85c99f4332ec839cb8181daa853be7cca766a50302204def31dbba1580a241bdbfa9d1842c596f544a05bc18ba92c4d336714660fd4b

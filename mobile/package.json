@@ -8,7 +8,10 @@
     "lint": "eslint .",
     "postinstall": "patch-package",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "ota:publish": "node scripts/ota-publish.mjs",
+    "ota:record-native": "node scripts/ota-record-native.mjs",
+    "ota:fixtures": "node scripts/ota-test-fixtures.mjs"
   },
   "dependencies": {
     "@noble/hashes": "^2.4.0",

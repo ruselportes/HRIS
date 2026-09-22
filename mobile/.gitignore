@@ -35,6 +35,12 @@ local.properties
 !debug.keystore
 android/keystore.properties
 .kotlin/
+# OTA: the private signing key lives outside the repo
+# (%USERPROFILE%/.hris/ota_private.pem, via HRIS_OTA_KEY) — this bare pattern
+# is only a safety net against accidentally dropping it under mobile/ota/.
+# Sourcemaps stay local to the publishing machine for crash symbolication.
+ota_private.pem
+ota/maps/
 
 # node.js
 #
