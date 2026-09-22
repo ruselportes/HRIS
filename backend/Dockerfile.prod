@@ -5,7 +5,11 @@ FROM php:8.4-fpm-bookworm AS base
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libzip-dev libicu-dev \
     && docker-php-ext-install pdo_mysql bcmath intl zip pcntl opcache \
-    && rm -rf /var/lib/apt/lists/*
+    # phpredis, for the Redis Cluster cache (as in the dev Dockerfile). The
+    # Debian php images keep $PHPIZE_DEPS installed, so pecl can build here.
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && rm -rf /var/lib/apt/lists/* /tmp/pear
 
 FROM base AS build
 

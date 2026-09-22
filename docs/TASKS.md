@@ -699,12 +699,35 @@ speed, never correctness. Three separate properties were built:
 
       The drills found R2d–R2h, and each has a test. **Still owed:** the
       team's sign-off on the stack amendment.
-- [ ] **Production parity:** `compose.prod.yaml` has **no Redis**. Production
-      therefore uses the database cache (Laravel's default) and none of this
-      add-on runs there. Decide: add the cluster to production, run a single
-      node there, or state plainly that clustering is demonstrated in
-      development only. Until then, the runbook (§1, §9) says plainly that
-      production runs without it.
+- [x] **Production parity (2026-09-22, decided by Rusel: add the cluster).**
+      `compose.prod.yaml` runs the same six nodes and `redis-cluster-init` as
+      development, with these differences:
+      - fixed addresses `172.28.201.11`–`.16`, deliberately not development's
+        `.200`, so both stacks can run on one machine;
+      - an `internal` network that only `api` and `scheduler` join, and no
+        published port;
+      - `restart: unless-stopped`, capped logs, `mem_limit: 128m`, and
+        `--maxmemory 64mb --maxmemory-policy volatile-lru`. `volatile-lru` only
+        evicts keys that expire, so the namespace version counters survive;
+      - no `depends_on` from the API, so a cache that never forms cannot keep
+        the API from starting.
+
+      `CACHE_STORE` is overridable, with a default of `failover`, so
+      `CACHE_STORE=database` in `.env.prod` is a kill switch.
+      `backend/Dockerfile.prod` builds phpredis.
+
+      Verified on a throwaway production stack, from an empty database (full
+      list in `docs/DEPLOYMENT.md` §14):
+      - the cache landed in Redis, and MySQL's `cache` table stayed at 0 rows;
+      - stopping the primary that held a version key: the first read took
+        2.6 s and opened the breaker, then MySQL answered for 15 s, then reads
+        returned to Redis, all 200;
+      - after a restart of all six nodes, the cluster re-formed by itself in
+        about 10 s;
+      - `rm -sfv` then `up -d` rebuilt the cluster fresh, and a plain `up -d`
+        kept the same cluster.
+
+      Runbook §1/§9 and CLAUDE.md §2 updated.
 
 > **Measured on the running stack (2026-09-21), worth quoting rather than
 > claiming.** The full table is in the runbook, §10.
@@ -1168,6 +1191,46 @@ Built alongside the phases; the files are in the repo root and `deploy/`.
 - [x] First-run note in the compose header: seed **only** `RoleSeeder` and
       `HolidaySeeder`. A bare `db:seed` creates the sample accounts, including
       an admin whose password is literally `password`.
+- [x] **The first administrator (2026-09-22): `php artisan hris:make-admin`.**
+      A clean production database had no way in. Every account is made by
+      someone already signed in, and the only seeder that makes an admin sets
+      the password to `password`.
+
+      The command:
+      - asks for names and a hidden password, typed twice, of at least 12
+        characters, and never takes the password as an option;
+      - gives the admin the next `ADC-` code;
+      - writes `ADMIN_CREATED_FROM_CONSOLE` to the audit log, with the admin
+        as its own actor;
+      - refuses before `RoleSeeder` has run;
+      - refuses once an admin exists, unless `--force`, which is for a lost
+        admin password and is named in the audit entry;
+      - refuses with no terminal (`exec -T`).
+
+      `MakeAdminCommandTest`: 6 tests. It ran against production too
+      (DEPLOYMENT.md §14). The compose header runs artisan as `-u www-data`, so
+      no root-owned files land in storage.
+- [x] **`docs/DEPLOYMENT.md` (2026-09-22): the server guide, step by step.**
+      It covers:
+      - Ubuntu preparation: clock/NTP (it matters for clock-skew checks), a
+        fixed LAN address, no sleep, `ufw`;
+      - Docker from Docker's own repo;
+      - a read-only GitHub deploy key;
+      - `.env.prod`, with which secrets cannot be changed later and why;
+      - a `hris` alias that works from any folder;
+      - the first start and what healthy looks like;
+      - seeding and `hris:make-admin`;
+      - checks, including that the cache is really Redis;
+      - setting up people (worker birth dates for portal activation);
+      - phones, Tailscale and the tunnel;
+      - cron backups, off-machine copies, and the restore drill and a real
+        restore;
+      - update, rollback, and everyday commands (never `down -v`);
+      - Redis operations (failover drill, kill switch, rebuild);
+      - troubleshooting, and a pre-launch checklist.
+
+      The server-only steps (§1–§3, cron, Tailscale, a real reboot) are
+      untested until the first real run.
 
 ### Mobile release build (2026-09-21)
 
@@ -1243,10 +1306,16 @@ Built alongside the phases; the files are in the repo root and `deploy/`.
       the release build.
 - [ ] **Restore drill.** Backups are written but never yet restored. Restore
       into a scratch database and confirm the payroll figures and the crypto
-      ledger survive it.
-- [ ] **Cache parity** with Add-on A (see above).
+      ledger survive it. The exact commands are now in `docs/DEPLOYMENT.md`
+      §9.3, and they ran cleanly on the throwaway stack, but that database was
+      empty. Still owed: the run against real data, with its figures recorded
+      here.
+- [x] **Cache parity** with Add-on A (see above): production runs the Redis
+      cluster since 2026-09-22.
 - [ ] **A queue worker, if anything starts queueing.** `QUEUE_CONNECTION`
       defaults to `database` and no worker container runs, so a queued job
       would sit unprocessed. Nothing queues today.
 - [ ] **Deployment checklist for the defense:** the exact commands, who runs
-      them, and what "healthy" looks like (`hris ps`, `/up`, a sign-in).
+      them, and what "healthy" looks like (`hris ps`, `/up`, a sign-in). The
+      commands and what "healthy" looks like are now in `docs/DEPLOYMENT.md`
+      (§5, §7, §13). Still owed: who runs them on the day.

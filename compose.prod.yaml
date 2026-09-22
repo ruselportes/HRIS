@@ -10,14 +10,18 @@
 #   hris ps                                 all services should be healthy
 #   hris logs -f api
 #
-# First run only, load the reference data the system cannot start without:
-#   hris exec api php artisan db:seed --class=RoleSeeder
-#   hris exec api php artisan db:seed --class=HolidaySeeder
-# Do NOT run a bare `db:seed` while the tunnel is on: EmployeeSeeder creates
-# sample accounts, including an admin, whose password is literally "password".
-# The seeded worker dates of birth are public too, so a committed database
-# lets anyone activate a demo worker's portal account (Add-on B) — demo-only
-# data, never real crew records.
+# First run only (full walk-through: docs/DEPLOYMENT.md). Load the reference
+# data the system cannot start without, then make the first administrator —
+# it asks for a password, hidden, and everyone else is made from the app:
+#   hris exec -u www-data api php artisan db:seed --class=RoleSeeder --force
+#   hris exec -u www-data api php artisan db:seed --class=HolidaySeeder --force
+#   hris exec -u www-data api php artisan hris:make-admin
+# Do NOT run a bare `db:seed`: EmployeeSeeder creates sample accounts,
+# including an admin, whose password is literally "password". The seeded
+# worker dates of birth are public too, so a seeded database lets anyone
+# activate a demo worker's portal account (Add-on B) — demo-only data, never
+# real crew records. Artisan runs as www-data (-u) so it leaves no root-owned
+# files in storage that php-fpm's workers could not write.
 #
 # Reaching it:
 #   http://<server LAN or Tailscale IP>/       portal + API, on port 80
@@ -47,11 +51,14 @@
 # Memory: mem_limit is set per service for the 7GB box. api = 1g against a
 # 256M-per-worker cap with pm.max_children = 3 (docker/php-fpm-prod.conf):
 # worst case (3 x 256M + opcache's shared 128M + the master) fits under 1g, so
-# a spike fails with a PHP memory error rather than an OOM kill.
+# a spike fails with a PHP memory error rather than an OOM kill. The six Redis
+# nodes are 128m each (a 64mb cache apiece, see x-redis): about 4.5g in all,
+# leaving the rest for Ubuntu and the page cache.
 #
-# MySQL and php-fpm publish no ports: only nginx (80) is reachable from outside.
-# Data: mysql-data (database) and api-storage (Laravel storage). Back up with
-# deploy/backup.sh; the disk is an old spinning drive.
+# MySQL, php-fpm and Redis publish no ports: only nginx (80) is reachable from
+# outside. Data: mysql-data (database) and api-storage (Laravel storage). Back
+# up with deploy/backup.sh; the disk is an old spinning drive. Redis holds
+# nothing worth backing up — it is a cache, and MySQL has everything in it.
 
 name: hris
 
@@ -79,6 +86,20 @@ x-api-env: &api-env
   # lands on the api-storage volume.
   SESSION_DRIVER: file
   HRIS_REQUIRE_HARDWARE_KEYS: ${HRIS_REQUIRE_HARDWARE_KEYS:-false}
+  # Cache on the Redis cluster below (the Redis add-on, CLAUDE.md §2), the
+  # same way as in development. The store is `failover` (config/cache.php):
+  # Redis first, MySQL's cache table whenever Redis cannot answer, and
+  # App\Support\ResilientCache stops a dead cluster from costing every request
+  # a connection attempt. So Redis being down makes the system slower, never
+  # wrong and never unavailable — docs/REDIS_CLUSTER_RUNBOOK.md.
+  # CACHE_STORE=database in .env.prod takes Redis out of the path altogether.
+  CACHE_STORE: ${CACHE_STORE:-failover}
+  REDIS_CLIENT: phpredis
+  REDIS_CACHE_CONNECTION: cluster
+  # All six, by fixed address (see redis-1): after a failover the primaries
+  # may be the nodes that started as replicas, and a stopped node's NAME takes
+  # Docker's DNS seconds to fail where its address fails in 0.5s.
+  REDIS_CLUSTER_NODES: "172.28.201.11:6379,172.28.201.12:6379,172.28.201.13:6379,172.28.201.14:6379,172.28.201.15:6379,172.28.201.16:6379"
   # Every setting an operator can override must appear here (with its default)
   # AND in .env.prod.example: `--env-file` only substitutes compose variables,
   # it does not inject env vars into containers. Values default to the same
@@ -96,6 +117,41 @@ x-api-env: &api-env
   HRIS_CLOCK_SKEW_TOLERANCE: ${HRIS_CLOCK_SKEW_TOLERANCE:-120}
   HRIS_LATE_OVERRIDE_GRACE_MINUTES: ${HRIS_LATE_OVERRIDE_GRACE_MINUTES:-15}
   HRIS_ATTENDANCE_TIMEZONE: ${HRIS_ATTENDANCE_TIMEZONE:-Asia/Manila}
+
+x-redis: &redis
+  image: redis:7-alpine
+  restart: unless-stopped
+  mem_limit: 128m
+  logging: *logging
+  # Cache only: no appendonly, no RDB snapshots — losing a node loses cached
+  # copies, never data. maxmemory keeps each node inside its mem_limit: when
+  # full, it evicts the least recently used entry that has an expiry
+  # (volatile-lru) instead of growing until the kernel kills it. Only the
+  # namespace version counters (ResilientCache) are kept without an expiry,
+  # and those are the keys that must survive, or an edit could stop showing.
+  command:
+    - redis-server
+    - --cluster-enabled
+    - "yes"
+    - --cluster-config-file
+    - nodes.conf
+    - --cluster-node-timeout
+    - "5000"
+    - --appendonly
+    - "no"
+    - --save
+    - ""
+    - --protected-mode
+    - "no"
+    - --maxmemory
+    - 64mb
+    - --maxmemory-policy
+    - volatile-lru
+  healthcheck:
+    test: ["CMD", "redis-cli", "ping"]
+    interval: 10s
+    timeout: 3s
+    retries: 20
 
 services:
   mysql:
@@ -138,6 +194,12 @@ services:
       HRIS_MIGRATE_ON_START: ${HRIS_MIGRATE_ON_START:-true}
     volumes:
       - api-storage:/var/www/html/storage
+    # `redis` as well as the default: a cluster client is redirected to each
+    # node's own address, which only resolves on the network the nodes are on.
+    networks: [default, redis]
+    # Deliberately no dependency on Redis: a cache that has not formed yet, or
+    # never does, must not keep the API from starting. Until the cluster is
+    # up, the failover store answers from MySQL.
     depends_on:
       mysql:
         condition: service_healthy
@@ -160,6 +222,7 @@ services:
     command: ["php", "artisan", "schedule:work"]
     volumes:
       - api-storage:/var/www/html/storage
+    networks: [default, redis]
     depends_on:
       api:
         condition: service_healthy
@@ -186,6 +249,65 @@ services:
       retries: 3
       start_period: 5s
 
+  # Redis Cluster: three primaries, each with one replica. On one machine this
+  # demonstrates failover, not high availability — the box itself is still a
+  # single point of failure (docs/REDIS_CLUSTER_RUNBOOK.md §2).
+  #
+  # Fixed addresses, and this is load-bearing. A node remembers the cluster in
+  # nodes.conf, which survives a restart (the image keeps /data in a volume),
+  # but Docker hands addresses out afresh each time containers start. Measured
+  # in development: after a recreate, redis-5 was given redis-1's old address,
+  # its saved topology said its own primary was itself, and the failover this
+  # exists for was quietly gone while cluster_state still read ok. With fixed
+  # addresses what a node remembers stays true — also after the server
+  # reboots, when Docker restarts the nodes and they re-form the cluster.
+  redis-1:
+    <<: *redis
+    networks: {redis: {ipv4_address: 172.28.201.11}}
+  redis-2:
+    <<: *redis
+    networks: {redis: {ipv4_address: 172.28.201.12}}
+  redis-3:
+    <<: *redis
+    networks: {redis: {ipv4_address: 172.28.201.13}}
+  redis-4:
+    <<: *redis
+    networks: {redis: {ipv4_address: 172.28.201.14}}
+  redis-5:
+    <<: *redis
+    networks: {redis: {ipv4_address: 172.28.201.15}}
+  redis-6:
+    <<: *redis
+    networks: {redis: {ipv4_address: 172.28.201.16}}
+
+  redis-cluster-init:
+    # Runs once per `up`, then exits (so `hris ps` lists it only with -a): it
+    # forms the cluster if it is not formed already, so a redeploy never tears
+    # a working cluster down.
+    image: redis:7-alpine
+    restart: "no"
+    logging: *logging
+    networks: [redis]
+    depends_on:
+      redis-1: {condition: service_healthy}
+      redis-2: {condition: service_healthy}
+      redis-3: {condition: service_healthy}
+      redis-4: {condition: service_healthy}
+      redis-5: {condition: service_healthy}
+      redis-6: {condition: service_healthy}
+    entrypoint: ["sh", "-c"]
+    # One folded line: every line here is indented the same, so YAML joins them
+    # with spaces. Indenting any of them further would keep the newline and
+    # split the command into pieces.
+    command:
+      - >
+        if redis-cli -h redis-1 cluster info 2>/dev/null | grep -q 'cluster_state:ok';
+        then echo 'Redis cluster already formed.';
+        else redis-cli --cluster create
+        redis-1:6379 redis-2:6379 redis-3:6379 redis-4:6379 redis-5:6379 redis-6:6379
+        --cluster-replicas 1 --cluster-yes;
+        fi
+
   tunnel:
     # Optional: a free Cloudflare quick tunnel, so the app is reachable from
     # outside the LAN with no domain, no account and no router changes.
@@ -197,6 +319,24 @@ services:
     command: ["tunnel", "--no-autoupdate", "--url", "http://web:80"]
     depends_on:
       - web
+
+networks:
+  default:
+  redis:
+    # Internal: nothing outside Docker can route in and the nodes cannot reach
+    # out. Only api and scheduler join it. There is no Redis password because
+    # nothing else can reach the nodes, and what they hold are copies of what
+    # those two containers already read from MySQL.
+    #
+    # A /24 of its own for the fixed addresses — not development's
+    # 172.28.200.0/24, so both stacks can run on one machine. If it clashes
+    # with a network on the server, change the subnet and the six addresses
+    # (here and in REDIS_CLUSTER_NODES) together, then `hris down` and
+    # `hris up -d` to form a fresh cluster.
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.28.201.0/24
 
 volumes:
   mysql-data:

@@ -20,7 +20,7 @@ primaries, each with one replica**. If a primary stops, its replica takes over.
 | Persistence | **none** (no AOF, no snapshots): a node that restarts comes back empty |
 | Store of record | **MySQL, always.** Redis holds copies only. |
 | Formed by | `redis-cluster-init`, a one-shot container that runs on every `up` and does nothing if the cluster already exists |
-| Production | **not deployed.** `compose.prod.yaml` has no Redis and uses the database cache. See §9. |
+| Production | **deployed since 2026-09-22.** `compose.prod.yaml` runs the same six nodes at `172.28.201.11` … `.16`, on an *internal* network with no published port, capped at 64 MB of cache per node (`volatile-lru`). On the server, type `hris` wherever this runbook says `docker compose` (`docs/DEPLOYMENT.md` §11). |
 
 **What is cached** (everything else reads MySQL directly):
 
@@ -354,7 +354,9 @@ portal still works, start it again.
 - Not **zero downtime for the cache**: a failover means about 15–20 s of reads
   from MySQL (§2). That is slower, not broken.
 - Not the **laptop's timings as the system's speed** (§2, last point).
-- Not **deployed**: production runs without Redis today (next paragraph).
+- Not **measured on the server**: every figure here comes from the development
+  laptop. Production carries the cluster since 2026-09-22; re-run Drill 1 there
+  before quoting its numbers for the server.
 
 **Likely questions:**
 
@@ -367,10 +369,11 @@ portal still works, start it again.
   once, including a write made while Redis was down.
 - *Why six nodes?* It is the smallest cluster in which every primary has a
   replica: three primaries to share the data, three replicas to take over.
-- *Why is it not in production?* That decision is still open with the team:
-  add the cluster, run a single node, or state that clustering is
-  development-only. Until then, production uses the database cache, which is
-  correct but does not demonstrate this add-on.
+- *Is it in production?* Yes, since 2026-09-22: the same six nodes, reachable
+  only from the API and the scheduler (an internal network, no published
+  port), each capped at 64 MB so it evicts old copies instead of running out of
+  memory. The team's sign-off on the stack amendment is still owed
+  (CLAUDE.md §2).
 
 ---
 

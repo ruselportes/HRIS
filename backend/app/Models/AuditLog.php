@@ -77,6 +77,13 @@ class AuditLog extends Model
     public const ROLE_CHANGED = 'ROLE_CHANGED';
 
     /**
+     * An administrator created from the server console (hris:make-admin), not
+     * through the app — how the first account on a fresh install comes to
+     * exist, and the one path to an admin that no other admin approved.
+     */
+    public const ADMIN_CREATED_FROM_CONSOLE = 'ADMIN_CREATED_FROM_CONSOLE';
+
+    /**
      * Leave & Overtime workflow steps (Phase 9, UC-10). One family for both
      * request kinds: the description carries the type and id, so the list is
      * uniform and the intent (endorse/approve/reject/cancel/reassign) is

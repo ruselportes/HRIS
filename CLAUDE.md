@@ -33,8 +33,9 @@ with special focus on:
 > **Redis is an add-on outside the original fixed stack** (asked for 2026-09-20,
 > flagged before starting). The SPMP, SRS and SDD, both `.md` and `.docx`, record it
 > as of 2026-09-21; **team sign-off on the amendment is still owed.** Production
-> does not run it (`compose.prod.yaml` has no Redis; that decision is open). How it
-> behaves when nodes fail, with measurements: `docs/REDIS_CLUSTER_RUNBOOK.md`.
+> runs it too since 2026-09-22 (`compose.prod.yaml`: same six nodes, internal
+> network, 64 MB cap per node). How it behaves when nodes fail, with
+> measurements: `docs/REDIS_CLUSTER_RUNBOOK.md`.
 
 ## 3. Core modules
 
@@ -288,6 +289,12 @@ Both are named per `C:\capstone\internal\Request-Letter-to-Conduct-a-Study.docx`
   resources, tools, infrastructure) and a new SDD §2.2 *Caching Layer* (plus two
   §1.3 definitions and a reference) were added to both the `.md` and `.docx`
   versions of each.
+- `/docs/DEPLOYMENT.md` — step-by-step server deployment (2026-09-22): Ubuntu
+  and Docker setup, `.env.prod`, first start, the first admin
+  (`php artisan hris:make-admin`, the only safe way to get one — never a bare
+  `db:seed`), phones, Tailscale/tunnel, backups and the restore drill,
+  updates/rollback, Redis operations, troubleshooting. Keep it in step with
+  `compose.prod.yaml`.
 - `/docs/HRIS_ERD.drawio` — entity-relationship diagram (editable in draw.io)
 - `/docs/HRIS_ERD_reference.md` — ERD design/formatting notes
 
