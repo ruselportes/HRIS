@@ -1,8 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\ActingForemanController;
-use App\Http\Controllers\Api\AdminDeviceController;
 use App\Http\Controllers\Api\AdminAccountController;
+use App\Http\Controllers\Api\AdminDeviceController;
+use App\Http\Controllers\Api\AdminSettingsController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AttendanceSyncController;
 use App\Http\Controllers\Api\AuthController;
@@ -185,6 +186,7 @@ Route::middleware(['auth:sanctum', 'portal.scope', 'acting.expire'])->group(func
     Route::prefix('admin')->middleware('role:admin')->group(function () {
         Route::get('accounts', [AdminAccountController::class, 'index'])->name('admin.accounts');
         Route::post('accounts/{employee}/sign-out', [AdminAccountController::class, 'signOut'])->name('admin.sign-out');
+        Route::get('settings', [AdminSettingsController::class, 'show'])->name('admin.settings');
     });
 
     // Overrides & Audit (Phase 7, UC-05). Viewing per the nav matrix, foremen
