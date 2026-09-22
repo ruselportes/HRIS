@@ -7,7 +7,8 @@ import com.facebook.react.module.model.ReactModuleInfo
 import com.facebook.react.module.model.ReactModuleInfoProvider
 
 /**
- * Registers this project's own TurboModules (Phase 5 integrity engine).
+ * Registers this project's own TurboModules (Phase 5 integrity engine,
+ * Add-on C OTA loader).
  *
  * BaseReactPackage rather than the older ReactPackage: it resolves modules
  * lazily by name, so a module is only constructed when JS actually requires
@@ -20,11 +21,16 @@ class HrisNativePackage : BaseReactPackage() {
     when (name) {
       HrisMonotonicClockModule.NAME -> HrisMonotonicClockModule(reactContext)
       HrisTeeSignerModule.NAME -> HrisTeeSignerModule(reactContext)
+      HrisOtaModule.NAME -> HrisOtaModule(reactContext)
       else -> null
     }
 
   override fun getReactModuleInfoProvider(): ReactModuleInfoProvider = ReactModuleInfoProvider {
-    listOf(HrisMonotonicClockModule.NAME, HrisTeeSignerModule.NAME).associateWith { name ->
+    listOf(
+      HrisMonotonicClockModule.NAME,
+      HrisTeeSignerModule.NAME,
+      HrisOtaModule.NAME,
+    ).associateWith { name ->
       ReactModuleInfo(
         name,
         name,

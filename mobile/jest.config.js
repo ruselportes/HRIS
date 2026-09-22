@@ -22,5 +22,7 @@ module.exports = {
       '<rootDir>/src/native/__mocks__/NativeHrisMonotonicClock.ts',
     '^.*/native/NativeHrisTeeSigner$':
       '<rootDir>/src/native/__mocks__/NativeHrisTeeSigner.ts',
+    '^.*/native/NativeHrisOta$':
+      '<rootDir>/src/native/__mocks__/NativeHrisOta.ts',
   },
 };

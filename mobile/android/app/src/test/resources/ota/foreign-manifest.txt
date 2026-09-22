@@ -1,0 +1,7 @@
+id=ota-2-1
+bundleVersion=1
+nativeVersion=2
+sha256=f6d4bea48be5ec079b518ee3c758583806db33a336bb465bf5f60cc27cf3ff28
+createdAt=2026-09-22T00:00:00+08:00
+notes=test fixture: another native version
+signature=3044022004937c0537edba26bfc0a777fad32d9a361e4b21e5e0548b170fd2b9f4456a780220371be47b8dd900bfd18e75980b78422e559a9c6f85a4b9ecfbf9381133b5e4b4

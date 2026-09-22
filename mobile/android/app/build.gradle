@@ -135,6 +135,9 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
+    // OTA loader unit tests (Add-on C, O1) — test scope only, not shipped.
+    testImplementation("junit:junit:4.13.2")
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

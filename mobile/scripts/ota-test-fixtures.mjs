@@ -17,6 +17,10 @@
  *                                                the test public key rejects
  *   old-manifest.txt + old-bundle.bin          — bundleVersion 1, test-key
  *                                                signed (staging anti-downgrade)
+ *   foreign-manifest.txt + foreign-bundle.bin  — nativeVersion 2, test-key
+ *                                                signed (APK-upgrade discard:
+ *                                                stored bundles for another
+ *                                                native version are dropped)
  *
  * Bundle payloads are small synthetic byte strings, not real hermesc output:
  * the verifier is byte-agnostic (sha256 + signature), so the crypto and
@@ -136,7 +140,21 @@ function main() {
     testKey,
   );
 
-  console.log(`ota-test-fixtures: wrote 8 fixture files to ${FIXTURE_DIR}.`);
+  const foreignBundle = patternBytes(55, 128);
+  fs.writeFileSync(path.join(FIXTURE_DIR, 'foreign-bundle.bin'), foreignBundle);
+  writeManifest(
+    'foreign-manifest.txt',
+    {
+      id: 'ota-2-1',
+      bundleVersion: 1,
+      nativeVersion: 2,
+      notes: 'test fixture: another native version',
+      __bundle: foreignBundle,
+    },
+    testKey,
+  );
+
+  console.log(`ota-test-fixtures: wrote 10 fixture files to ${FIXTURE_DIR}.`);
 }
 
 try {
