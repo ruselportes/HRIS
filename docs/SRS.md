@@ -122,7 +122,7 @@ This subsection provides a summary of the major functions that the HRIS for Arce
 
 ### 2.3. User Characteristics
 
-The potential users of the system are identified, classified, and described as follows. Per `backend/database/seeders/RoleSeeder.php`, `Role` has 7 rows; the first 5 below sign into the staff surfaces (web and mobile), while Worker and Operator sign into the web worker portal only (§3.2.5) — every role is login-capable on its own surface once `Employee.password` is set:
+The potential users of the system are identified, classified, and described as follows. Per `backend/database/seeders/RoleSeeder.php`, `Role` has 7 rows; the Site Foreman signs into the staff web app and the foreman-only mobile app, HR Personnel, Site Engineers, the System Administrator, and the Executive sign into the staff web app only, while Worker and Operator sign into the web worker portal only (§3.2.5) — every role is login-capable on its own surface once `Employee.password` is set:
 
 - **HR Personnel** – Responsible for managing employee records, attendance, leave, payroll, and other human resource processes.
 - **Site Foremen** – Responsible for recording and monitoring employee attendance at construction sites using the mobile attendance application.
@@ -390,14 +390,10 @@ birth, and a new password (`POST /auth/activate`):
   range.
 
 **Sign-in.** A portal account signs in through the same login endpoint as
-staff. The backend opened portal sign-in one commit before the web portal and
-the mobile refusal landed, so for that window a worker could hold a token with
-no surface to use it on; since W3 closed that gap, sign-in and the portal move
-together and a worker is never logged in with nowhere to go. Portal sessions
-live in the tab only (never persisted for shared phones), and portal tokens
-expire after about 2 hours — unlike the original "tokens never expire" design,
-which now holds for no role (staff web 12 hours, foreman mobile 30 days,
-decided server-side from role).
+staff. Sign-in and the portal ship together, so a worker is never logged in
+with nowhere to go. Portal sessions live in the tab only, never persisted for
+shared phones, and portal tokens expire after about 2 hours (staff web 12
+hours, foreman mobile 30 days, decided server-side from role).
 
 **Deny by default.** A Worker or Operator may reach only `auth/me`,
 `auth/logout`, `auth/password` (their own password change), `me/attendance*`,
@@ -444,12 +440,11 @@ password IS the credential until the worker changes it.
 **How credentials are issued in practice.** A worker's first credential is
 self-set at activation (code + birthday + chosen password); every later
 credential comes from HR's reset, handed over in person, never by message. HR
-can therefore always produce a working password for any worker — that is the
-rehearsed answer to "can HR log in as a worker?": yes, transiently and
-visibly, through the reset flow with its audit row, not by knowing a secret.
-No self-serve reset exists (`POST /auth/forgot-password` only files a note HR
-can look up; the page says plainly that nobody is paged by it), because most
-field workers have no company email.
+can issue a working credential for any worker only through the audited reset
+flow — transiently and visibly, never by knowing a secret. No self-serve reset
+exists (`POST /auth/forgot-password` only files a note HR can look up; the
+page says plainly that HR is not notified automatically and sends the worker
+to HR in person), because most field workers have no company email.
 
 **Mobile.** The mobile attendance app is foreman-only: anyone whose role is not
 foreman is refused at sign-in ("This app is for site foremen. Please use the

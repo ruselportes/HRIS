@@ -182,6 +182,13 @@ Both are named per `C:\capstone\internal\Request-Letter-to-Conduct-a-Study.docx`
   nobody decides their own request, overtime's required window and
   server-derived hours, conflicts, batches, closed periods). These are company
   metrics and company policy, not DOLE rules — §3.2.3 says so in those words.
+  **2026-09-22 (Add-on B, W4):** `FR-11` added to §2.2, §2.3 roles are now
+  portal-login for Worker/Operator (mobile is foreman-only), and **§3.2.5
+  Worker Self-Service Portal** records the add-on contract (activation,
+  sign-in, allowlist, own-data reads, reset, mobile refusal) plus the
+  credential-issuance note. The docx got the same: FR-11, role lines, UC-11 /
+  PR-11 as §3.2.1.11 / §3.2.2.11 with Figures 21.0 / 22.0 placeholders, and
+  the §3.2.5 prose.
 - `/docs/SRS.docx` — the Word SRS, for submission (source copy lives in the
   user's Downloads). **It holds the only copies of the 18 use-case and
   prototype images** — `SRS.md` has never had them, so for figures the docx

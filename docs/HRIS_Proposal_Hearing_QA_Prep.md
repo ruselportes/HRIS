@@ -238,6 +238,14 @@ One codebase across Android (primary) and iOS (secondary), with native modules o
 hardware demands it — Keystore/Secure Enclave signing and the monotonic clock. The parts that
 must be native, are.
 
+**Q12. Can HR log in as a worker?**
+Yes — transiently and visibly, and that is the whole answer. A worker's first credential is
+self-set at activation; every later one comes from HR's "Reset portal access", which sets a
+random temporary password, revokes the worker's tokens, shows the password once, and writes a
+`PORTAL_ACCESS_RESET` audit row naming HR as the actor. There is no forced rotation at first
+sign-in, so until the worker changes it that temporary password IS the login — hand it over in
+person, never by message. HR never knows a worker's chosen password and there is no master key.
+
 ---
 
 ## 6. CarlVey Sente — UI/UX Designer
