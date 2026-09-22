@@ -56,7 +56,7 @@ class SiteController extends Controller
 
         $site = Site::create($data + ['status' => Site::STATUS_ACTIVE]);
 
-        $this->audit($request->user(), AuditLog::SITE_CREATED, "Site {$site->site_name} created.");
+        $this->audit($request->user(), AuditLog::SITE_CREATED, "Site {$site->site_name} created");
 
         return response()->json(['data' => $this->row($site->fresh())], 201);
     }
@@ -69,11 +69,17 @@ class SiteController extends Controller
             'location' => ['nullable', 'string', 'max:255'],
         ]);
 
+        $oldName = $site->site_name;
         $site->update($data);
+        $fresh = $site->fresh();
 
-        $this->audit($request->user(), AuditLog::SITE_UPDATED, "Site {$site->site_name} updated.");
+        $what = $fresh->site_name !== $oldName
+            ? "renamed from {$oldName} to {$fresh->site_name}"
+            : 'details updated';
 
-        return response()->json(['data' => $this->row($site->fresh())]);
+        $this->audit($request->user(), AuditLog::SITE_UPDATED, "Site {$fresh->site_name} {$what}");
+
+        return response()->json(['data' => $this->row($fresh)]);
     }
 
     /** POST /api/sites/{site}/close (admin): refused while crews are deployed. */
@@ -93,7 +99,7 @@ class SiteController extends Controller
 
         $site->update(['status' => Site::STATUS_CLOSED]);
 
-        $this->audit($request->user(), AuditLog::SITE_CLOSED, "Site {$site->site_name} closed.");
+        $this->audit($request->user(), AuditLog::SITE_CLOSED, "Site {$site->site_name} closed");
 
         return response()->json(['data' => $this->row($site->fresh())]);
     }
@@ -107,7 +113,7 @@ class SiteController extends Controller
 
         $site->update(['status' => Site::STATUS_ACTIVE]);
 
-        $this->audit($request->user(), AuditLog::SITE_REOPENED, "Site {$site->site_name} reopened.");
+        $this->audit($request->user(), AuditLog::SITE_REOPENED, "Site {$site->site_name} reopened");
 
         return response()->json(['data' => $this->row($site->fresh())]);
     }
@@ -164,7 +170,7 @@ class SiteController extends Controller
         AuditLog::create([
             'actor_id' => $actor->employee_id,
             'action_type' => $action,
-            'description' => $description.' by '.$actor->employee_code.'.',
+            'description' => "{$description} by {$actor->employee_code}.",
             'timestamp' => now(),
         ]);
     }

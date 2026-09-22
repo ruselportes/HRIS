@@ -189,4 +189,45 @@ class RemittanceTest extends TestCase
                 ->assertForbidden();
         }
     }
+
+    public function test_partly_approved_period_reads_partly_approved_with_held_rows(): void
+    {
+        $hr = $this->loginUser('hr');
+        $a = $this->staffer('worker');
+        $b = $this->staffer('worker');
+        $this->payrollRun($a, '2026-09-A', Payroll::APPROVED);
+        $this->payrollRun($b, '2026-09-A', Payroll::DRAFT);
+        $this->payrollRun($a, '2026-09-B', Payroll::APPROVED);
+        $this->payrollRun($b, '2026-09-B', Payroll::APPROVED);
+
+        $response = $this->actingAs($hr, 'sanctum')
+            ->getJson('/api/payroll/remittances?month=2026-09')
+            ->assertOk();
+
+        // One held row: the month is partial even though every half has an
+        // approved row, and the held row's share is missing from the totals.
+        $this->assertSame('partly_approved', $response->json('periods.0.state'));
+        $this->assertSame(1, $response->json('periods.0.held_rows'));
+        $this->assertSame('approved', $response->json('periods.1.state'));
+        $this->assertSame(0, $response->json('periods.1.held_rows'));
+        $this->assertTrue($response->json('partial'));
+        $this->assertEquals(1200, $response->json('totals.sss.employee'));
+    }
+
+    public function test_totals_are_rounded_to_centavos(): void
+    {
+        $hr = $this->loginUser('hr');
+        $a = $this->staffer('worker');
+        // 333.33 summed as floats drifts (999.98999…); the response rounds.
+        $this->payrollRun($a, '2026-09-A', Payroll::APPROVED, ['sss_employee' => 333.33]);
+        $this->payrollRun($a, '2026-09-B', Payroll::APPROVED, ['sss_employee' => 333.33]);
+        $b = $this->staffer('worker');
+        $this->payrollRun($b, '2026-09-A', Payroll::APPROVED, ['sss_employee' => 333.33]);
+
+        $response = $this->actingAs($hr, 'sanctum')
+            ->getJson('/api/payroll/remittances?month=2026-09')
+            ->assertOk();
+
+        $this->assertEquals(999.99, $response->json('totals.sss.employee'));
+    }
 }

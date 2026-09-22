@@ -94,6 +94,11 @@ class RollCallMonitorController extends Controller
         $receivedIds = $records->pluck('employee_id')->unique()->values();
         $byStatus = $records->groupBy('status')->map->count();
 
+        // Missing counts members with no record — never "records minus
+        // members". A record for someone off today's roster (moved crews, a
+        // past date, the foreman's own tap) must not lower it.
+        $missing = $memberIds->diff($receivedIds)->count();
+
         $pendingReviews = Attendance::query()
             ->where('crew_id', $crew->crew_id)
             ->where('date', $date->toDateString())
@@ -102,10 +107,17 @@ class RollCallMonitorController extends Controller
                 ->orWhereHas('timeOutEvent', fn (Builder $qq) => $qq->where('review_status', AuditLog::REVIEW_PENDING)))
             ->count();
 
+        // Read the newest row and return the converted attribute (ISO with Z):
+        // max() skips the model's datetime cast and hands back a raw UTC
+        // string with no timezone, which a browser reads as local Manila
+        // time — 8 hours off, so every phone looks offline.
         $lastSync = DeviceKey::query()
             ->where('employee_id', $crew->foreman_id)
             ->whereNull('revoked_at')
-            ->max('last_synced_at');
+            ->orderByDesc('last_synced_at')
+            ->first()
+            ?->last_synced_at
+            ?->toIso8601String();
 
         return [
             'crew_id' => $crew->crew_id,
@@ -114,7 +126,7 @@ class RollCallMonitorController extends Controller
             'foreman' => $crew->foreman?->full_name,
             'crew_size' => $memberIds->count(),
             'received' => $byStatus->all(),
-            'missing' => max(0, $memberIds->count() - $receivedIds->count()),
+            'missing' => $missing,
             'nothing_received' => $records->isEmpty(),
             'foreman_last_synced_at' => $lastSync,
             'pending_reviews' => $pendingReviews,

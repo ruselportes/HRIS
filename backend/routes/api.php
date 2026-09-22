@@ -186,6 +186,7 @@ Route::middleware(['auth:sanctum', 'portal.scope', 'acting.expire'])->group(func
     Route::prefix('admin')->middleware('role:admin')->group(function () {
         Route::get('accounts', [AdminAccountController::class, 'index'])->name('admin.accounts');
         Route::post('accounts/{employee}/sign-out', [AdminAccountController::class, 'signOut'])->name('admin.sign-out');
+        Route::get('role-changes', [AdminAccountController::class, 'roleChanges'])->name('admin.role-changes');
         Route::get('settings', [AdminSettingsController::class, 'show'])->name('admin.settings');
     });
 

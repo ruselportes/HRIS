@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -56,11 +57,14 @@ class AdminSettingsController extends Controller
     /** Latest effective `from` per statutory set — the table in force. */
     private function statutoryInEffectFrom(): array
     {
+        // On or before today: a future-dated set must not report as already
+        // in force the moment it is configured.
+        $today = Carbon::now()->toDateString();
         $inEffect = [];
 
         foreach (['sss', 'philhealth', 'pagibig', 'withholding'] as $agency) {
             $sets = config("payroll.statutory.{$agency}", []);
-            $inEffect[$agency] = collect($sets)->max('from');
+            $inEffect[$agency] = collect($sets)->where('from', '<=', $today)->max('from');
         }
 
         return $inEffect;

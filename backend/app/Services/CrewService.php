@@ -166,6 +166,15 @@ class CrewService
             );
         }
 
+        // A draft crew left at a site that later closed must not deploy
+        // there: closing only refuses deployed crews, so this is the check
+        // that keeps a closed site crew-free.
+        if ($crew->site?->isClosed()) {
+            throw new HttpResponseException(
+                new JsonResponse(['message' => "Cannot deploy {$crew->crew_name}: its site is closed."], 422)
+            );
+        }
+
         $crew->update(['status' => 'deployed', 'deployed_at' => Carbon::now()]);
 
         CrewAssignment::query()

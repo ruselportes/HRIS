@@ -134,6 +134,31 @@ class RollCallMonitorTest extends TestCase
         $this->assertSame(2, $card['missing']);
     }
 
+    public function test_a_record_from_someone_off_the_roster_does_not_lower_missing(): void
+    {
+        $foreman = $this->loginUser('foreman');
+        $crew = $this->crewWithMembers($foreman, 2, 'Site A');
+        $date = $this->manilaToday();
+
+        // A moved-away worker's stale record, and the foreman's own tap —
+        // neither is a current member, so both members are still missing.
+        $moved = Employee::factory()->create([
+            'role_id' => $this->role('worker')->role_id,
+            'site_id' => $crew->site_id,
+        ]);
+        $this->record($moved->employee_id, $crew->crew_id, $date, 'present');
+        $this->record($foreman->employee_id, $crew->crew_id, $date, 'present');
+
+        $response = $this->actingAs($foreman, 'sanctum')
+            ->getJson('/api/rollcall/today')
+            ->assertOk();
+
+        $card = $response->json('data.0');
+        $this->assertSame(2, $card['crew_size']);
+        $this->assertSame(2, $card['missing']);
+        $this->assertFalse($card['nothing_received']);
+    }
+
     public function test_pending_reviews_and_last_sync_are_reported(): void
     {
         $foreman = $this->loginUser('foreman');
@@ -163,7 +188,9 @@ class RollCallMonitorTest extends TestCase
 
         $card = $response->json('data.0');
         $this->assertSame(1, $card['pending_reviews']);
-        $this->assertNotNull($card['foreman_last_synced_at']);
+        // ISO with an explicit zone — a raw UTC string with no timezone
+        // reads as local Manila time in the browser, 8 hours off.
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/', $card['foreman_last_synced_at']);
     }
 
     public function test_date_validation(): void

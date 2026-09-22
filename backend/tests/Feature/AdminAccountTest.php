@@ -149,4 +149,27 @@ class AdminAccountTest extends TestCase
             ->assertJsonPath('data.first_name', 'Still')
             ->assertJsonPath('role_change_history', []);
     }
+
+    public function test_role_changes_are_listed_for_admins_only(): void
+    {
+        $admin = $this->loginUser('admin');
+        $foreman = $this->loginUser('foreman');
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/employees/{$foreman->employee_id}", ['role_id' => $this->role('worker')->role_id])
+            ->assertOk();
+
+        $response = $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/admin/role-changes')
+            ->assertOk();
+
+        $rows = $response->json('data');
+        $this->assertSame(1, count($rows));
+        $this->assertStringContainsString($foreman->employee_code, $rows[0]['description']);
+        $this->assertSame($admin->employee_code, $rows[0]['actor_code']);
+
+        $this->actingAs($this->loginUser('hr'), 'sanctum')
+            ->getJson('/api/admin/role-changes')
+            ->assertForbidden();
+    }
 }

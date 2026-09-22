@@ -25,10 +25,13 @@ class RemittanceController extends Controller
      * GET /api/payroll/remittances?month=YYYY-MM — HR and executive.
      *
      * Only payroll rows marked approved for exactly the month's two period
-     * codes count; drafts never do. Each half-month reads approved (at
-     * least one approved row), draft (rows but none approved) or
-     * not_computed (no rows), and the month is partial unless both halves
-     * are approved.
+     * codes count; drafts never do. Each half-month uses the same four
+     * states as the runs themselves (PayrollRuns::status): approved (every
+     * row approved), partly_approved (some rows held as drafts), draft (rows
+     * but none approved), or not_computed (no rows). The month is partial
+     * unless both halves are fully approved — a run with 180 approved rows
+     * and 20 held ones must not read as complete while those 20 people's
+     * contributions are missing from the totals.
      */
     public function index(Request $request): JsonResponse
     {
@@ -39,6 +42,7 @@ class RemittanceController extends Controller
         $codes = ["{$data['month']}-A", "{$data['month']}-B"];
         $periods = [];
         $states = [];
+        $held = 0;
 
         foreach ($codes as $code) {
             $period = PayPeriod::fromCode($code);
@@ -47,15 +51,21 @@ class RemittanceController extends Controller
                 ->where('run_code', $code)
                 ->get();
 
-            $states[$code] = $rows->contains(fn (Payroll $p) => $p->status === Payroll::APPROVED)
-                ? 'approved'
-                : ($rows->isNotEmpty() ? 'draft' : 'not_computed');
+            $approvedCount = $rows->where('status', Payroll::APPROVED)->count();
+            $states[$code] = match (true) {
+                $rows->isEmpty() => 'not_computed',
+                $approvedCount === 0 => 'draft',
+                $approvedCount < $rows->count() => 'partly_approved',
+                default => 'approved',
+            };
+            $held += $rows->count() - $approvedCount;
 
             $periods[] = [
                 'code' => $code,
                 'start' => $period->start,
                 'end' => $period->end,
                 'state' => $states[$code],
+                'held_rows' => $rows->count() - $approvedCount,
             ];
         }
 
@@ -83,9 +93,14 @@ class RemittanceController extends Controller
             $totals['withholding_tax'] += (float) ($detail?->withholding_tax ?? 0);
         }
 
+        // Shares are decimal(12,2) but sum as PHP floats: round like
+        // PayrollRuns does, or totals come out like 1234.5600000000002.
         foreach (['sss', 'philhealth', 'pagibig'] as $agency) {
-            $totals[$agency]['total'] = $totals[$agency]['employee'] + $totals[$agency]['employer'];
+            $totals[$agency]['employee'] = round($totals[$agency]['employee'], 2);
+            $totals[$agency]['employer'] = round($totals[$agency]['employer'], 2);
+            $totals[$agency]['total'] = round($totals[$agency]['employee'] + $totals[$agency]['employer'], 2);
         }
+        $totals['withholding_tax'] = round($totals['withholding_tax'], 2);
 
         $response = [
             'month' => $data['month'],
@@ -112,10 +127,18 @@ class RemittanceController extends Controller
             $employee = $first->employee;
 
             $amounts = [
-                'sss' => $runs->sum(fn (Payroll $p) => (float) ($p->detail?->sss_employee ?? 0)),
-                'philhealth' => $runs->sum(fn (Payroll $p) => (float) ($p->detail?->philhealth_employee ?? 0)),
-                'pagibig' => $runs->sum(fn (Payroll $p) => (float) ($p->detail?->pagibig_employee ?? 0)),
-                'withholding_tax' => $runs->sum(fn (Payroll $p) => (float) ($p->detail?->withholding_tax ?? 0)),
+                'sss' => round($runs->sum(fn (Payroll $p) => (float) ($p->detail?->sss_employee ?? 0)), 2),
+                'philhealth' => round($runs->sum(fn (Payroll $p) => (float) ($p->detail?->philhealth_employee ?? 0)), 2),
+                'pagibig' => round($runs->sum(fn (Payroll $p) => (float) ($p->detail?->pagibig_employee ?? 0)), 2),
+                'withholding_tax' => round($runs->sum(fn (Payroll $p) => (float) ($p->detail?->withholding_tax ?? 0)), 2),
+            ];
+
+            // The agencies' remittance forms list the employer share per
+            // person too, so the HR table carries both sides.
+            $employerAmounts = [
+                'sss' => round($runs->sum(fn (Payroll $p) => (float) ($p->detail?->sss_employer ?? 0)), 2),
+                'philhealth' => round($runs->sum(fn (Payroll $p) => (float) ($p->detail?->philhealth_employer ?? 0)), 2),
+                'pagibig' => round($runs->sum(fn (Payroll $p) => (float) ($p->detail?->pagibig_employer ?? 0)), 2),
             ];
 
             $ids = [
@@ -140,6 +163,7 @@ class RemittanceController extends Controller
                 'employee_code' => $employee?->employee_code,
                 'full_name' => $employee?->full_name,
                 'amounts' => $amounts,
+                'employer_amounts' => $employerAmounts,
                 'ids' => $ids,
                 'warnings' => $warnings,
             ];

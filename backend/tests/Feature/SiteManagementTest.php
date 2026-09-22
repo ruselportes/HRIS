@@ -38,6 +38,15 @@ class SiteManagementTest extends TestCase
             ->assertJsonPath('data.location', 'Liloan, Cebu (north gate)');
         $this->assertDatabaseHas('audit_logs', ['action_type' => AuditLog::SITE_UPDATED]);
 
+        // A rename records the old name too.
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/sites/{$siteId}", ['site_name' => 'Site 12 — Liloan', 'location' => 'Liloan, Cebu (north gate)'])
+            ->assertOk();
+        $this->assertDatabaseHas('audit_logs', [
+            'action_type' => AuditLog::SITE_UPDATED,
+            'description' => 'Site Site 12 — Liloan renamed from Site 12 — Liloan Estate to Site 12 — Liloan by '.$admin->employee_code.'.',
+        ]);
+
         $this->actingAs($admin, 'sanctum')
             ->postJson("/api/sites/{$siteId}/close")
             ->assertOk()
@@ -114,6 +123,41 @@ class SiteManagementTest extends TestCase
             ->postJson('/api/crews', ['site_id' => $site->site_id, 'crew_name' => 'Crew Z'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('site_id');
+    }
+
+    public function test_no_crew_can_be_moved_onto_a_closed_site(): void
+    {
+        $engineer = $this->loginUser('engineer');
+        $open = $this->site('Site A');
+        $closed = $this->site('Site B');
+        $closed->update(['status' => Site::STATUS_CLOSED]);
+        $crew = Crew::factory()->create(['site_id' => $open->site_id, 'status' => 'draft']);
+
+        $this->actingAs($engineer, 'sanctum')
+            ->putJson("/api/crews/{$crew->crew_id}", ['site_id' => $closed->site_id])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('site_id');
+
+        $this->assertSame($open->site_id, $crew->fresh()->site_id);
+    }
+
+    public function test_a_draft_crew_left_behind_cannot_deploy_after_the_site_closes(): void
+    {
+        $engineer = $this->loginUser('engineer');
+        $foreman = $this->loginUser('foreman');
+        $site = $this->site('Site A');
+        $crew = Crew::factory()->create([
+            'site_id' => $site->site_id,
+            'foreman_id' => $foreman->employee_id,
+            'status' => 'draft',
+        ]);
+        $site->update(['status' => Site::STATUS_CLOSED]);
+
+        $this->actingAs($engineer, 'sanctum')
+            ->postJson("/api/crews/{$crew->crew_id}/deploy", ['effective_date' => '2026-09-07'])
+            ->assertUnprocessable();
+
+        $this->assertSame('draft', $crew->fresh()->status);
     }
 
     public function test_a_new_site_appears_in_the_reference_list_at_once(): void

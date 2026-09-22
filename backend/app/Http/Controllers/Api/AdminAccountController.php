@@ -8,6 +8,8 @@ use App\Models\Employee;
 use App\Models\Role;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Laravel\Sanctum\PersonalAccessToken;
 
 /**
  * Users & Roles (C5, UC-01/FR-01) — the admin's account list. Login
@@ -32,13 +34,23 @@ class AdminAccountController extends Controller
     {
         $slugs = array_merge(Role::LOGIN_SLUGS, Role::PORTAL_SLUGS);
 
-        $accounts = Employee::query()
+        $employees = Employee::query()
             ->with(['role', 'site'])
             ->whereHas('role', fn ($q) => $q->whereIn('slug', $slugs))
             ->orderBy('last_name')
             ->orderBy('first_name')
-            ->get()
-            ->map(fn (Employee $e) => $this->account($e))
+            ->get();
+
+        // One token query for the whole list: per-account queries here would
+        // be N+1, and the list now covers every worker too.
+        $tokensByOwner = PersonalAccessToken::query()
+            ->where('tokenable_type', Employee::class)
+            ->whereIn('tokenable_id', $employees->pluck('employee_id'))
+            ->get(['tokenable_id', 'name', 'last_used_at'])
+            ->groupBy('tokenable_id');
+
+        $accounts = $employees
+            ->map(fn (Employee $e) => $this->account($e, $tokensByOwner->get($e->employee_id, collect())))
             ->values();
 
         $perRole = $accounts->groupBy('role.slug')->map->count();
@@ -80,11 +92,35 @@ class AdminAccountController extends Controller
         return response()->json(['message' => 'Sessions revoked.', 'signed_out' => $deleted]);
     }
 
-    /** @return array<string, mixed> */
-    private function account(Employee $employee): array
+    /**
+     * GET /api/admin/role-changes — recent ROLE_CHANGED rows, newest first.
+     * The Users & Roles page reads its history here; the employee update
+     * response only ever carried one person's rows for the editor. The
+     * subject rides in the description in a fixed shape ("... for {code} by
+     * ..."), since audit rows carry no subject column.
+     */
+    public function roleChanges(): JsonResponse
     {
-        $tokens = $employee->tokens()->get(['name', 'last_used_at']);
+        $rows = AuditLog::query()
+            ->with('actor')
+            ->where('action_type', AuditLog::ROLE_CHANGED)
+            ->orderByDesc('audit_id')
+            ->take(50)
+            ->get()
+            ->map(fn (AuditLog $log) => [
+                'audit_id' => $log->audit_id,
+                'description' => $log->description,
+                'actor_code' => $log->actor?->employee_code,
+                'timestamp' => $log->timestamp,
+            ])
+            ->values();
 
+        return response()->json(['data' => $rows]);
+    }
+
+    /** @return array<string, mixed> */
+    private function account(Employee $employee, Collection $tokens): array
+    {
         $sessions = ['web' => 0, 'mobile' => 0, 'portal' => 0];
 
         foreach ($tokens as $token) {
