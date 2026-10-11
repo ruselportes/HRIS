@@ -61,6 +61,9 @@ class AuditLog extends Model
     /** A user changed their own password (Add-on B, FR-11, W3). */
     public const PASSWORD_CHANGED = 'PASSWORD_CHANGED';
 
+    /** Someone with edit rights set another person's password (C5). */
+    public const PASSWORD_CHANGED_BY_OTHER = 'PASSWORD_CHANGED_BY_OTHER';
+
     /** Project site administration (C2, UC-03): created, renamed, closed, reopened. */
     public const SITE_CREATED = 'SITE_CREATED';
 

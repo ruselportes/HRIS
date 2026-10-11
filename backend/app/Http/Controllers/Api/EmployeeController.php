@@ -99,7 +99,20 @@ class EmployeeController extends Controller
         $data = $request->validated();
         $data['employee_code'] = $data['employee_code'] ?? $this->employees->nextEmployeeCode();
 
+        $this->guardPrivilegedRole($request->user(), null, $data['role_id'] ?? null);
+        $this->guardAdminPassword($request->user(), null, $data);
+
         $employee = Employee::create($data);
+
+        // A provisioned password is set by someone else too.
+        if (array_key_exists('password', $data) && $data['password'] !== null) {
+            AuditLog::create([
+                'actor_id' => $request->user()->employee_id,
+                'action_type' => AuditLog::PASSWORD_CHANGED_BY_OTHER,
+                'description' => "Password for {$employee->employee_code} set by {$request->user()->employee_code}.",
+                'timestamp' => now(),
+            ]);
+        }
 
         return new EmployeeResource($employee->load('role', 'site'));
     }
@@ -123,6 +136,9 @@ class EmployeeController extends Controller
 
         $oldRole = Role::query()->find($employee->role_id)?->slug;
 
+        $this->guardPrivilegedRole($request->user(), $employee, $data['role_id'] ?? null);
+        $this->guardAdminPassword($request->user(), $employee, $data);
+
         $employee->update($data);
 
         // A token's lifetime is set at sign-in from the role at the time: a
@@ -135,6 +151,18 @@ class EmployeeController extends Controller
                 'actor_id' => $request->user()->employee_id,
                 'action_type' => AuditLog::ROLE_CHANGED,
                 'description' => "Role changed from {$oldRole} to {$employee->fresh()->role?->slug} for {$employee->employee_code} by {$request->user()->employee_code}.",
+                'timestamp' => now(),
+            ]);
+        }
+
+        // A password set by someone else is audited: unlike the own-account
+        // change, nothing here proves the account holder asked for it.
+        if (array_key_exists('password', $data)
+            && (int) $request->user()->employee_id !== (int) $employee->employee_id) {
+            AuditLog::create([
+                'actor_id' => $request->user()->employee_id,
+                'action_type' => AuditLog::PASSWORD_CHANGED_BY_OTHER,
+                'description' => "Password for {$employee->employee_code} set by {$request->user()->employee_code}.",
                 'timestamp' => now(),
             ]);
         }
@@ -169,6 +197,61 @@ class EmployeeController extends Controller
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Who may grant which roles. Nobody changes their own role, and only an
+     * admin grants or removes the admin, HR and executive roles — HR keeps
+     * the field roles (foreman/worker/operator/engineer), which it already
+     * manages. Without this, HR could promote itself to admin (or demote the
+     * admin away) through the same form that edits names, and the audit
+     * would only record it after the fact. Team to confirm the protected
+     * set if it should grow.
+     */
+    private function guardPrivilegedRole(Employee $actor, ?Employee $target, mixed $newRoleId): void
+    {
+        if ($newRoleId === null) {
+            return;
+        }
+
+        if ($target !== null && (int) $newRoleId === (int) $target->role_id) {
+            return;
+        }
+
+        if ($target !== null && (int) $actor->employee_id === (int) $target->employee_id) {
+            throw ValidationException::withMessages(['role_id' => 'You cannot change your own role.']);
+        }
+
+        $protected = ['admin', 'hr', 'executive'];
+        $newSlug = Role::query()->find($newRoleId)?->slug;
+        $oldSlug = $target !== null ? Role::query()->find($target->role_id)?->slug : null;
+
+        if ($actor->role?->slug !== 'admin'
+            && (in_array($newSlug, $protected, true) || in_array($oldSlug, $protected, true))) {
+            throw ValidationException::withMessages(['role_id' => 'Only an admin can grant or remove the admin, HR and executive roles.']);
+        }
+    }
+
+    /**
+     * HR cannot set an admin's password and sign in as the admin. Admins may
+     * set anyone's (audited as PASSWORD_CHANGED_BY_OTHER by the caller).
+     * The effective role decides: promoting someone to admin and setting a
+     * password in one request is refused unless the actor is an admin —
+     * though the role guard above already stops non-admins from granting
+     * admin at all, so this second check is the belt to those braces.
+     */
+    private function guardAdminPassword(Employee $actor, ?Employee $target, array $data): void
+    {
+        if (! array_key_exists('password', $data) || $data['password'] === null) {
+            return;
+        }
+
+        $effectiveRoleId = $data['role_id'] ?? $target?->role_id;
+        $effectiveSlug = $effectiveRoleId !== null ? Role::query()->find($effectiveRoleId)?->slug : null;
+
+        if ($effectiveSlug === 'admin' && $actor->role?->slug !== 'admin') {
+            throw ValidationException::withMessages(['password' => 'Only an admin can set an admin password.']);
+        }
     }
 
     /**

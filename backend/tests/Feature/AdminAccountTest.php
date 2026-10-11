@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\AuditLog;
+use App\Models\Employee;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
@@ -171,5 +173,116 @@ class AdminAccountTest extends TestCase
         $this->actingAs($this->loginUser('hr'), 'sanctum')
             ->getJson('/api/admin/role-changes')
             ->assertForbidden();
+    }
+
+    public function test_nobody_can_change_their_own_role(): void
+    {
+        foreach (['hr', 'admin'] as $slug) {
+            $user = $this->loginUser($slug);
+
+            $this->actingAs($user, 'sanctum')
+                ->putJson("/api/employees/{$user->employee_id}", ['role_id' => $this->role('foreman')->role_id])
+                ->assertUnprocessable();
+        }
+    }
+
+    public function test_only_admins_can_grant_or_remove_protected_roles(): void
+    {
+        $hr = $this->loginUser('hr');
+        $admin = $this->loginUser('admin');
+        $foreman = $this->loginUser('foreman');
+        $adminId = $this->role('admin')->role_id;
+        $hrId = $this->role('hr')->role_id;
+        $executiveId = $this->role('executive')->role_id;
+
+        // HR cannot promote anyone to admin, HR or executive...
+        foreach ([$adminId, $hrId, $executiveId] as $roleId) {
+            $this->actingAs($hr, 'sanctum')
+                ->putJson("/api/employees/{$foreman->employee_id}", ['role_id' => $roleId])
+                ->assertUnprocessable();
+        }
+
+        // ...nor demote an admin away.
+        $otherAdmin = $this->loginUser('admin');
+        $this->actingAs($hr, 'sanctum')
+            ->putJson("/api/employees/{$otherAdmin->employee_id}", ['role_id' => $this->role('foreman')->role_id])
+            ->assertUnprocessable();
+
+        // An admin can grant the admin role.
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/employees/{$foreman->employee_id}", ['role_id' => $adminId])
+            ->assertOk();
+        $this->assertSame($adminId, $foreman->fresh()->role_id);
+
+        // HR keeps the field roles it already manages.
+        $worker = $this->loginUser('foreman');
+        $this->actingAs($hr, 'sanctum')
+            ->putJson("/api/employees/{$worker->employee_id}", ['role_id' => $this->role('worker')->role_id])
+            ->assertOk();
+    }
+
+    public function test_hr_cannot_set_an_admin_password_but_admins_can_set_anyones(): void
+    {
+        $hr = $this->loginUser('hr');
+        $admin = $this->loginUser('admin');
+        $subject = $this->loginUser('admin');
+
+        $this->actingAs($hr, 'sanctum')
+            ->putJson("/api/employees/{$subject->employee_id}", ['password' => 'TakenOver99x'])
+            ->assertUnprocessable();
+        $this->assertTrue(Hash::check('password', $subject->fresh()->getAuthPassword()));
+
+        $worker = $this->loginUser('worker');
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/employees/{$worker->employee_id}", ['password' => 'ResetByAdmin99x'])
+            ->assertOk();
+        $this->assertTrue(Hash::check('ResetByAdmin99x', $worker->fresh()->getAuthPassword()));
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_id' => $admin->employee_id,
+            'action_type' => AuditLog::PASSWORD_CHANGED_BY_OTHER,
+        ]);
+    }
+
+    public function test_hr_cannot_create_an_admin_account(): void
+    {
+        $hr = $this->loginUser('hr');
+        $adminId = $this->role('admin')->role_id;
+
+        $payload = [
+            'employee_code' => 'ADC-4001',
+            'email' => 'newadmin@arcenasdev.ph',
+            'first_name' => 'New',
+            'last_name' => 'Admin',
+            'role_id' => $adminId,
+            'site_id' => $this->site()->site_id,
+            'date_of_birth' => '1995-01-01',
+            'mobile' => '+63 917 555 0101',
+            'date_hired' => '2026-09-01',
+            'employment_status' => 'probationary',
+            'daily_rate' => 820.00,
+            'cost_centre' => 'CO-04',
+        ];
+
+        // With or without a password: HR cannot create the admin role.
+        $this->actingAs($hr, 'sanctum')
+            ->postJson('/api/employees', $payload + ['password' => 'FreshAdmin99x'])
+            ->assertUnprocessable();
+        $this->actingAs($hr, 'sanctum')
+            ->postJson('/api/employees', $payload)
+            ->assertUnprocessable();
+
+        // An admin provisioning with a password is allowed — and audited.
+        $admin = $this->loginUser('admin');
+        $created = $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/employees', $payload + ['password' => 'Provisioned99x'])
+            ->assertCreated();
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_id' => $admin->employee_id,
+            'action_type' => AuditLog::PASSWORD_CHANGED_BY_OTHER,
+        ]);
+        $this->assertTrue(Hash::check(
+            'Provisioned99x',
+            Employee::find($created->json('data.employee_id'))->getAuthPassword()
+        ));
     }
 }
